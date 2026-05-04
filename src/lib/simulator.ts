@@ -1,445 +1,319 @@
-// 聖遺物シミュレーターのコアロジック (TypeScript版)
+// 汎用シミュレーターロジック (セット効果・詳細確率対応版)
+import { GameId } from './game_data';
 
-export const parts = ["花", "羽", "時計", "杯", "冠"] as const;
-export type Part = typeof parts[number];
-
-export const setNames = ["セット1", "セット2"] as const;
-export type SetName = typeof setNames[number];
-
-export const substatPool = [
-    "会心率",
-    "会心ダメージ",
-    "攻撃%",
-    "HP%",
-    "防御%",
-    "元素熟知",
-    "元素チャージ効率",
-    "攻撃",
-    "HP",
-    "防御"
-] as const;
-export type Substat = typeof substatPool[number];
-
-export const substatValues: Record<Substat, number[]> = {
-    "会心率": [2.7, 3.1, 3.5, 3.9],
-    "会心ダメージ": [5.4, 6.2, 7.0, 7.8],
-    "攻撃%": [4.1, 4.7, 5.3, 5.8],
-    "HP%": [4.1, 4.7, 5.3, 5.8],
-    "防御%": [5.1, 5.8, 6.6, 7.3],
-    "元素熟知": [16, 19, 21, 23],
-    "元素チャージ効率": [4.5, 5.2, 5.8, 6.5],
-    "攻撃": [14, 16, 18, 19],
-    "HP": [209, 239, 269, 299],
-    "防御": [16, 19, 21, 23]
+// --- サブステータス定義 ---
+const GENSHIN_SUBSTAT_VALUES: Record<string, number[]> = {
+  "会心率": [2.7, 3.1, 3.5, 3.9], "会心ダメージ": [5.4, 6.2, 7.0, 7.8],
+  "攻撃力%": [4.1, 4.7, 5.3, 5.8], "HP%": [4.1, 4.7, 5.3, 5.8], "防御力%": [5.1, 5.8, 6.6, 7.3],
+  "元素熟知": [16, 19, 21, 23], "元素チャージ効率": [4.5, 5.2, 5.8, 6.5],
+  "攻撃力": [14, 16, 18, 19], "HP": [209, 239, 269, 299], "防御力": [16, 19, 21, 23],
 };
 
-export const mainstatWeights: Record<Part, Record<string, number>> = {
-    "花": { "HP": 100 },
-    "羽": { "攻撃力": 100 },
-    "時計": {
-        "攻撃%": 26.68,
-        "HP%": 26.66,
-        "防御%": 26.66,
-        "元素熟知": 10.00,
-        "元素チャージ効率": 10.00
-    },
-    "杯": {
-        "攻撃%": 19.25,
-        "HP%": 19.25,
-        "防御%": 19.00,
-        "元素熟知": 2.50,
-        "炎ダメージ": 5.00,
-        "水ダメージ": 5.00, 
-        "氷ダメージ": 5.00, 
-        "雷ダメージ": 5.00,
-        "風ダメージ": 5.00, 
-        "岩ダメージ": 5.00,
-        "草ダメージ": 5.00,
-        "物理ダメージ": 5.00 
-    },
-    "冠": {
-        "会心率": 10.00,
-        "会心ダメージ": 10.00,
-        "治療効果": 10.00,
-        "攻撃%": 22.00,
-        "HP%": 22.00,
-        "防御%": 22.00,
-        "元素熟知": 4.00
-    }
+const STARRAIL_SUBSTAT_VALUES: Record<string, number[]> = {
+  "HP": [33, 38, 42], "攻撃力": [16, 19, 21], "防御力": [16, 19, 21],
+  "HP%": [3.4, 3.8, 4.3], "攻撃力%": [3.4, 3.8, 4.3], "防御力%": [4.3, 4.8, 5.4],
+  "会心率": [2.5, 2.9, 3.2], "会心ダメージ": [5.1, 5.8, 6.4],
+  "速度": [2.0, 2.3, 2.6], "撃破特効": [5.1, 5.8, 6.4],
+  "効果命中": [3.4, 3.8, 4.3], "効果抵抗": [3.4, 3.8, 4.3],
 };
 
-export function getForbiddenSubstat(mainstat: string): Substat | null {
-    if (substatPool.includes(mainstat as Substat)) {
-        return mainstat as Substat;
+const ZZZ_SUBSTAT_VALUES: Record<string, number> = {
+  "会心率": 2.4, "会心ダメージ": 4.8, "攻撃力%": 3.0, "HP%": 3.0, "防御力%": 4.8,
+  "攻撃力": 19, "HP": 112, "防御力": 15, "異常マスタリー": 9, "異常掌握": 9, "貫通値": 9, "衝撃力": 1.2,
+};
+
+const getSubstatValue = (gameId: GameId, substatName: string): number => {
+  if (gameId === "zzz") return ZZZ_SUBSTAT_VALUES[substatName] || 0;
+  const values = gameId === "genshin" ? GENSHIN_SUBSTAT_VALUES[substatName] : STARRAIL_SUBSTAT_VALUES[substatName];
+  return values ? values[Math.floor(Math.random() * values.length)] : 0;
+};
+
+// --- 出現確率 ---
+export const MAIN_PROBS: Record<GameId, Record<string, Record<string, number>>> = {
+  genshin: {
+    "生の花": { "HP(固定値)": 100 }, "死の羽": { "攻撃力(固定値)": 100 },
+    "時の砂": { "攻撃力%": 26.6, "HP%": 26.6, "防御力%": 26.6, "元素熟知": 10.0, "元素チャージ効率": 10.0 },
+    "空の杯": { 
+      "炎元素ダメージ": 5.0, "水元素ダメージ": 5.0, "風元素ダメージ": 5.0, "雷元素ダメージ": 5.0, 
+      "草元素ダメージ": 5.0, "氷元素ダメージ": 5.0, "岩元素ダメージ": 5.0, "物理ダメージ": 5.0,
+      "攻撃力%": 21.3, "HP%": 21.3, "防御力%": 20.0, "元素熟知": 2.5 
+    },
+    "理の冠": { "会心率": 10.0, "会心ダメージ": 10.0, "攻撃力%": 22.0, "HP%": 22.0, "防御力%": 22.0, "与える治癒効果": 10.0, "元素熟知": 4.0 }
+  },
+  starrail: {
+    "頭部": { "HP(固定値)": 100 }, "手部": { "攻撃力(固定値)": 100 },
+    "胴体": { "HP%": 18.0, "攻撃力%": 18.0, "防御力%": 18.0, "会心率": 10.0, "会心ダメージ": 10.0, "治癒量": 10.0, "効果命中": 10.0 },
+    "脚部": { "HP%": 28.0, "攻撃力%": 28.0, "防御力%": 28.0, "速度": 16.0 },
+    "次元界オーブ": { 
+      "物理属性ダメージ": 9.0, "火属性ダメージ": 9.0, "氷属性ダメージ": 9.0, "雷属性ダメージ": 9.0, 
+      "風属性ダメージ": 9.0, "量子属性ダメージ": 9.0, "虚数属性ダメージ": 9.0,
+      "攻撃力%": 12.0, "HP%": 12.0, "防御力%": 12.0 
+    },
+    "連結縄": { "攻撃力%": 25.0, "HP%": 25.0, "防御力%": 25.0, "撃破特効": 20.0, "EP回復効率": 5.0 }
+  },
+  zzz: {
+    "スロット1": { "HP(固定値)": 100 }, "スロット2": { "攻撃力(固定値)": 100 }, "スロット3": { "防御力(固定値)": 100 },
+    "スロット4": { "攻撃力%": 25.0, "HP%": 25.0, "防御力%": 25.0, "会心率": 10.0, "会心ダメージ": 10.0, "異常マスタリー": 5.0 },
+    "スロット5": { 
+      "物理属性ダメージ": 12.0, "炎属性ダメージ": 12.0, "氷属性ダメージ": 12.0, "電気属性ダメージ": 12.0, "エーテル属性ダメージ": 12.0,
+      "攻撃力%": 10.0, "HP%": 10.0, "防御力%": 10.0, "貫通率": 10.0 
+    },
+    "スロット6": { "攻撃力%": 20.0, "HP%": 20.0, "防御力%": 20.0, "衝撃力": 15.0, "異常掌握": 15.0, "エネルギー自動回復": 10.0 }
+  }
+};
+
+const SUB_WEIGHTS: Record<GameId, Record<string, number>> = {
+  genshin: { "会心率": 100, "会心ダメージ": 100, "攻撃力%": 100, "HP%": 100, "防御力%": 100, "元素チャージ効率": 100, "元素熟知": 100, "攻撃力(固定値)": 150, "HP(固定値)": 150, "防御力(固定値)": 150 },
+  starrail: { "会心率": 4, "会心ダメージ": 4, "速度": 4, "攻撃力%": 8, "HP%": 8, "防御力%": 8, "効果命中": 8, "効果抵抗": 8, "撃破特効": 8, "攻撃力(固定値)": 10, "HP(固定値)": 10, "防御力(固定値)": 10 },
+  zzz: { "会心率": 5, "会心ダメージ": 5, "攻撃力%": 10, "HP%": 10, "防御力%": 10, "異常マスタリー": 10, "貫通値": 10, "攻撃力(固定値)": 15, "HP(固定値)": 15, "防御力(固定値)": 15 }
+};
+
+const GAME_DEFAULTS = {
+  genshin: { staminaCost: 20, recycleRatio: 3, dailyStamina: 180 },
+  starrail: { staminaCost: 40, recycleRatio: 10, dailyStamina: 240 },
+  zzz: { staminaCost: 20, recycleRatio: 6, dailyStamina: 240 }
+};
+
+function weightedRandom(probs: Record<string, number>): string {
+  const keys = Object.keys(probs);
+  const total = Object.values(probs).reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < keys.length; i++) {
+    if (r < probs[keys[i]]) return keys[i];
+    r -= probs[keys[i]];
+  }
+  return keys[keys.length - 1];
+}
+
+// 聖遺物生成
+export function generateArtifact(gameId: GameId, part: string, subPool: string[], scoreWeights: Record<string, number>, isOrnament: boolean = false) {
+  const mainProbs = MAIN_PROBS[gameId][part] || { "攻撃力%": 100 };
+  const main = weightedRandom(mainProbs);
+  const isTargetSet = Math.random() < 0.5; // 狙いのセットが出る確率 50%
+  
+  const numSubs = Math.random() < 0.8 ? 3 : 4;
+  const available = subPool.filter(s => s !== main && s !== "未選択");
+  const gameSubWeights = SUB_WEIGHTS[gameId] || {};
+  
+  const selectedSubs: string[] = [];
+  const tempAvailable = [...available];
+  while (selectedSubs.length < numSubs && tempAvailable.length > 0) {
+    const probs: Record<string, number> = {};
+    tempAvailable.forEach(s => probs[s] = gameSubWeights[s] || 10);
+    const s = weightedRandom(probs);
+    if (s) {
+      selectedSubs.push(s);
+      tempAvailable.splice(tempAvailable.indexOf(s), 1);
     }
-    return null;
-}
+  }
 
-// ユーティリティ: 重み付き抽選
-export function weightedRandom(options: string[], weights: number[]): string {
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-    let randomNum = Math.random() * totalWeight;
-    for (let i = 0; i < options.length; i++) {
-        if (randomNum < weights[i]) {
-            return options[i];
-        }
-        randomNum -= weights[i];
-    }
-    return options[options.length - 1];
-}
+  const substats: Record<string, number> = {};
+  for (const s of selectedSubs) substats[s] = getSubstatValue(gameId, s);
 
-// ユーティリティ: 配列からのランダム抽出
-export function randomChoice<T>(arr: T[]): T {
-    return arr[Math.floor(Math.random() * arr.length)];
-}
-
-export function randomSample<T>(arr: T[], n: number): T[] {
-    const shuffled = [...arr].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, n);
-}
-
-export interface Artifact {
-    部位: Part;
-    セット: string;
-    メイン: string;
-    初期サブ: Record<string, number>;
-    サブ: Record<string, number>;
-    初期OP数: number;
-    スコア: number;
-}
-
-export function calcWeightedScore(substats: Record<string, number>, weights: Record<string, number>): number {
-    let score = 0;
-    for (const [stat, weight] of Object.entries(weights)) {
-        if (substats[stat]) {
-            score += substats[stat] * weight;
-        }
-    }
-    return score;
-}
-
-export function generateArtifact(part: Part, scoreWeights?: Record<string, number>, forcedSet?: string): Artifact {
-    const candidates = Object.keys(mainstatWeights[part]);
-    const weights = Object.values(mainstatWeights[part]);
-    const main = weightedRandom(candidates, weights);
-
-    const artifactSet = forcedSet || randomChoice([...setNames]);
-
-    const numSubstats = Math.random() < 0.8 ? 3 : 4;
-
-    const forbiddenSub = getForbiddenSubstat(main);
-    const availableSubstats = substatPool.filter(s => s !== forbiddenSub);
-
-    const subs = randomSample(availableSubstats, numSubstats);
-
-    const substats: Record<string, number> = {};
-    for (const s of subs) {
-        substats[s] = randomChoice(substatValues[s]);
-    }
-
-    const initialSubstats = { ...substats };
-
-    if (numSubstats === 3) {
-        const remainingSubs = availableSubstats.filter(s => !(s in substats));
-        const newSub = randomChoice(remainingSubs);
-        substats[newSub] = randomChoice(substatValues[newSub]);
-
-        for (let i = 0; i < 4; i++) {
-            const s = randomChoice(Object.keys(substats));
-            substats[s] += randomChoice(substatValues[s as Substat]);
-        }
+  // 5回(3つの場合は強化1回分追加で計5回)の強化
+  const rolls = 5; 
+  for (let i = 0; i < rolls; i++) {
+    const keys = Object.keys(substats);
+    if (keys.length < 4) {
+      const rem = available.filter(s => !(s in substats));
+      const probs: Record<string, number> = {};
+      rem.forEach(s => probs[s] = gameSubWeights[s] || 10);
+      const s = weightedRandom(probs);
+      if (s) substats[s] = getSubstatValue(gameId, s);
     } else {
-        for (let i = 0; i < 5; i++) {
-            const s = randomChoice(Object.keys(substats));
-            substats[s] += randomChoice(substatValues[s as Substat]);
-        }
+      const s = keys[Math.floor(Math.random() * keys.length)];
+      substats[s] += getSubstatValue(gameId, s);
     }
+  }
 
-    if (!scoreWeights) {
-        scoreWeights = {
-            "会心率": 2.0,
-            "会心ダメージ": 1.0,
-            "攻撃%": 1.0
-        };
+  let score = 0;
+
+  if (gameId === "zzz") {
+    let totalUsefulRolls = 0;
+    for (const [s, v] of Object.entries(substats)) {
+      const weight = scoreWeights[s] || 0;
+      if (weight > 0) {
+        const baseValue = ZZZ_SUBSTAT_VALUES[s] || 1;
+        totalUsefulRolls += (v / baseValue) * weight;
+      }
     }
-
-    const score = Math.round(calcWeightedScore(substats, scoreWeights) * 10) / 10;
-
-    return {
-        部位: part,
-        セット: artifactSet,
-        メイン: main,
-        初期サブ: initialSubstats,
-        サブ: substats,
-        初期OP数: numSubstats,
-        スコア: score
-    };
+    score = (totalUsefulRolls / 7) * 100;
+  } else if (gameId === "starrail") {
+    const mainScore = 50; 
+    let totalUsefulRolls = 0;
+    for (const [s, v] of Object.entries(substats)) {
+      const weight = scoreWeights[s] || 0;
+      if (weight > 0) {
+        const avgRoll = s === "会心率" ? 2.9 : s === "会心ダメージ" ? 5.8 : s === "速度" ? 2.3 : 3.9;
+        totalUsefulRolls += (v / avgRoll) * weight;
+      }
+    }
+    const subScore = (totalUsefulRolls / 9) * 50;
+    score = mainScore + subScore;
+  } else {
+    for (const [s, v] of Object.entries(substats)) {
+      const weight = scoreWeights[s] || 0;
+      if (weight > 0) score += v * weight;
+    }
+  }
+  
+  return { part, main, score: score || 0, substats, isTargetSet, isOrnament };
 }
 
-export function generateElixirArtifact(part: Part, mainstat: string, fixedSubstats: string[], scoreWeights?: Record<string, number>): Artifact {
-    const substats: Record<string, number> = {};
-    const forbidden = getForbiddenSubstat(mainstat);
+// 最高スコア(コンボ考慮)を計算
+function calculateBestCombo(gameId: GameId, bestPieces: Record<string, {target: any, any: any}>) {
+  const breakdown: Record<string, any> = {};
+  const slots = Object.keys(bestPieces);
 
-    for (const s of fixedSubstats) {
-        if (substatValues[s as Substat] && s !== forbidden) {
-            substats[s] = randomChoice(substatValues[s as Substat]);
-        }
+  if (gameId === "genshin") {
+    let max = 0;
+    let bestSet: Record<string, any> = {};
+    for (let off = 0; off < 5; off++) {
+      let current = 0;
+      const currentSet: Record<string, any> = {};
+      slots.forEach((s, i) => {
+        const art = (i === off) ? bestPieces[s].any : bestPieces[s].target;
+        current += art?.score || 0;
+        currentSet[s] = art;
+      });
+      if (current > max) {
+        max = current;
+        bestSet = currentSet;
+      }
     }
-
-    const available = substatPool.filter(s => !(s in substats) && s !== forbidden);
-    const subs = randomSample(available, 4 - Object.keys(substats).length);
-    for (const s of subs) {
-        substats[s] = randomChoice(substatValues[s as Substat]);
-    }
-
-    const initialSubstats = { ...substats };
-
-    for (let i = 0; i < 5; i++) {
-        const s = randomChoice(Object.keys(substats));
-        substats[s] += randomChoice(substatValues[s as Substat]);
-    }
-
-    if (!scoreWeights) {
-        scoreWeights = { "会心率": 2.0, "会心ダメージ": 1.0, "攻撃%": 1.0 };
-    }
-
-    const score = Math.round(calcWeightedScore(substats, scoreWeights) * 10) / 10;
-
-    return {
-        部位: part,
-        セット: "セット1",
-        メイン: mainstat,
-        初期サブ: initialSubstats,
-        サブ: substats,
-        初期OP数: 4,
-        スコア: score
-    };
+    return { total: max, pieces: bestSet };
+  } else if (gameId === "starrail") {
+    let total = 0;
+    slots.forEach(s => { 
+      const art = bestPieces[s].target;
+      total += art?.score || 0; 
+      breakdown[s] = art; 
+    });
+    return { total, pieces: breakdown };
+  } else if (gameId === "zzz") {
+    const diffs = slots.map(s => ({ s, diff: (bestPieces[s].any?.score || 0) - (bestPieces[s].target?.score || 0) }));
+    diffs.sort((a,b) => b.diff - a.diff);
+    let total = 0;
+    slots.forEach(s => {
+      const isOff = diffs.slice(0, 2).some(d => d.s === s);
+      const art = isOff ? bestPieces[s].any : bestPieces[s].target;
+      total += art?.score || 0;
+      breakdown[s] = art;
+    });
+    return { total, pieces: breakdown };
+  }
+  return { total: 0, pieces: {} };
 }
 
-export function findBestValidCombo(selected: Record<Part, Record<SetName, Artifact | null>>, requiredSet: string = "セット1", minCount: number = 4): number | null {
-    const choicesPerPart: Artifact[][] = [];
+// シミュレーション (目標スコア)
+export function simulateUntilScore(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>) {
+  const parts = Object.keys(MAIN_PROBS[gameId]);
+  const bestPieces: Record<string, {target: any, any: any}> = {};
+  parts.forEach(p => bestPieces[p] = { target: null, any: null });
+  
+  let attempts = 0;
+  let recycleQueue = 0;
+  const defaults = GAME_DEFAULTS[gameId];
+  let finalResult = { total: 0, pieces: {} };
 
-    for (const p of parts) {
-        const candidates: Artifact[] = [];
-        for (const setName of setNames) {
-            const artifact = selected[p][setName as SetName];
-            if (artifact !== null) {
-                candidates.push(artifact);
-            }
-        }
-        if (candidates.length === 0) return null;
-        choicesPerPart.push(candidates);
+  while (attempts < 50000) {
+    attempts++;
+    const p = parts[Math.floor(Math.random() * parts.length)];
+    const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
+    const art = generateArtifact(gameId, p, subPool, scoreWeights, isOrnament);
+    
+    // メイン一致判定
+    const isMainMatch = art.main === mainStats[p] || 
+      p.includes("花") || p.includes("羽") || 
+      p === "頭部" || p === "手部" || 
+      p === "スロット1" || p === "スロット2" || p === "スロット3";
+
+    if (isMainMatch) {
+      if (art.isTargetSet && art.score > (bestPieces[p].target?.score || 0)) bestPieces[p].target = art;
+      if (art.score > (bestPieces[p].any?.score || 0)) bestPieces[p].any = art;
+    } else if (useRecycle) {
+      recycleQueue++;
     }
 
-    let bestTotal: number | null = null;
+    if (useRecycle && recycleQueue >= defaults.recycleRatio) {
+      recycleQueue -= defaults.recycleRatio;
+      const sp = parts[Math.floor(Math.random() * parts.length)];
+      const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
+      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, isSOrnament);
+      const isSMainMatch = sart.main === mainStats[sp] || 
+        sp.includes("花") || sp.includes("羽") || 
+        sp === "頭部" || sp === "手部" || 
+        sp === "スロット1" || sp === "スロット2" || sp === "スロット3";
 
-    const comboHelper = (partIndex: number, currentCombo: Artifact[]) => {
-        if (partIndex === parts.length) {
-            const requiredCount = currentCombo.filter(a => a.セット === requiredSet).length;
-            if (requiredCount >= minCount) {
-                const total = currentCombo.reduce((sum, a) => sum + a.スコア, 0);
-                if (bestTotal === null || total > bestTotal) {
-                    bestTotal = Math.round(total * 10) / 10;
-                }
-            }
-            return;
-        }
+      if (isSMainMatch) {
+        if (sart.isTargetSet && sart.score > (bestPieces[sp].target?.score || 0)) bestPieces[sp].target = sart;
+        if (sart.score > (bestPieces[sp].any?.score || 0)) bestPieces[sp].any = sart;
+      }
+    }
 
-        for (const artifact of choicesPerPart[partIndex]) {
-            currentCombo.push(artifact);
-            comboHelper(partIndex + 1, currentCombo);
-            currentCombo.pop();
-        }
-    };
-
-    comboHelper(0, []);
-
-    return bestTotal;
+    finalResult = calculateBestCombo(gameId, bestPieces);
+    if (finalResult.total >= target) break;
+  }
+  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces };
 }
 
-export function simulateUntilTotalScoreForCustomBuild(
-    mainstats: Record<Part, string>,
-    scoreWeights: Record<string, number>,
-    targetScore: number = 180,
-    maxAttempts: number = 100000,
-    useStrongbox: boolean = true,
-    elixirInterval: number = 0,
-    elixirBulkCount: number = 0,
-    elixirFixedSubstats?: Record<string, string[]>
-) {
-    const selected: Record<Part, Record<SetName, Artifact | null>> = {
-        "花": { "セット1": null, "セット2": null },
-        "羽": { "セット1": null, "セット2": null },
-        "時計": { "セット1": null, "セット2": null },
-        "杯": { "セット1": null, "セット2": null },
-        "冠": { "セット1": null, "セット2": null }
-    };
-
-    let reinforceCount = 0;
-    let trashCount = 0;
+// シミュレーション (固定期間)
+export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, staminaPerDay: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>) {
+  const parts = Object.keys(MAIN_PROBS[gameId]);
+  const bestPieces: Record<string, {target: any, any: any}> = {};
+  parts.forEach(p => bestPieces[p] = { target: null, any: null });
+  
+  let recycleQueue = 0;
+  const defaults = GAME_DEFAULTS[gameId];
+  for (let i = 0; i < totalAttempts; i++) {
+    const p = parts[Math.floor(Math.random() * parts.length)];
+    const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
+    const art = generateArtifact(gameId, p, subPool, scoreWeights, isOrnament);
     
-    const tryEquip = (artifact: Artifact) => {
-        if (artifact.メイン === mainstats[artifact.部位]) {
-            const artifactSet = artifact.セット as SetName;
-            const current = selected[artifact.部位][artifactSet];
-            if (!current || artifact.スコア > current.スコア) {
-                selected[artifact.部位][artifactSet] = artifact;
-                return true;
-            }
-        }
-        return false;
-    };
+    const isMainMatch = art.main === mainStats[p] || 
+      p.includes("花") || p.includes("羽") || 
+      p === "頭部" || p === "手部" || 
+      p === "スロット1" || p === "スロット2" || p === "スロット3";
 
-    if (elixirBulkCount > 0 && elixirFixedSubstats) {
-        const priorityParts: Part[] = ["時計", "杯", "冠", "羽", "花"];
-        for (let i = 0; i < Math.min(elixirBulkCount, parts.length); i++) {
-            const targetPart = priorityParts[i];
-            const elixirArt = generateElixirArtifact(targetPart, mainstats[targetPart], elixirFixedSubstats[targetPart] || [], scoreWeights);
-            tryEquip(elixirArt);
-        }
-        
-        const bestTotal = findBestValidCombo(selected);
-        if (bestTotal !== null && bestTotal >= targetScore) {
-            return {
-                attempts: 0,
-                bestTotal: bestTotal,
-                selected: selected
-            };
-        }
+    if (isMainMatch) {
+      if (art.isTargetSet && art.score > (bestPieces[p].target?.score || 0)) bestPieces[p].target = art;
+      if (art.score > (bestPieces[p].any?.score || 0)) bestPieces[p].any = art;
+    } else if (useRecycle) {
+      recycleQueue++;
     }
 
-    while (reinforceCount < maxAttempts) {
-        const part = randomChoice([...parts]) as Part;
-        const artifact = generateArtifact(part, scoreWeights);
-        reinforceCount++;
+    if (useRecycle && recycleQueue >= defaults.recycleRatio) {
+      recycleQueue -= defaults.recycleRatio;
+      const sp = parts[Math.floor(Math.random() * parts.length)];
+      const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
+      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, isSOrnament);
+      const isSMainMatch = sart.main === mainStats[sp] || 
+        sp.includes("花") || sp.includes("羽") || 
+        sp === "頭部" || sp === "手部" || 
+        sp === "スロット1" || sp === "スロット2" || sp === "スロット3";
 
-        const kept = tryEquip(artifact);
-        if (!kept && useStrongbox) trashCount++;
-
-        if (useStrongbox && trashCount >= 3) {
-            trashCount -= 3;
-            const sbPart = randomChoice([...parts]) as Part;
-            const sbArt = generateArtifact(sbPart, scoreWeights, "セット1");
-            const keptSb = tryEquip(sbArt);
-            if (!keptSb) trashCount++;
-        }
-
-        const bestTotal = findBestValidCombo(selected);
-        if (bestTotal !== null && bestTotal >= targetScore) {
-            return {
-                attempts: reinforceCount,
-                bestTotal: bestTotal,
-                selected: selected
-            };
-        }
+      if (isSMainMatch) {
+        if (sart.isTargetSet && sart.score > (bestPieces[sp].target?.score || 0)) bestPieces[sp].target = sart;
+        if (sart.score > (bestPieces[sp].any?.score || 0)) bestPieces[sp].any = sart;
+      }
     }
-    
-    return {
-        attempts: reinforceCount,
-        bestTotal: findBestValidCombo(selected),
-        selected: selected
-    };
+  }
+  const res = calculateBestCombo(gameId, bestPieces);
+  return { score: res.total, pieces: res.pieces };
 }
 
-export function simulateScoreAfterFixedAttemptsForCustomBuild(
-    mainstats: Record<Part, string>,
-    scoreWeights: Record<string, number>,
-    totalAttempts: number,
-    useStrongbox: boolean = true,
-    elixirInterval: number = 250,
-    elixirBulkCount: number = 0,
-    elixirFixedSubstats?: Record<string, string[]>
-) {
-    const selected: Record<Part, Record<SetName, Artifact | null>> = {
-        "花": { "セット1": null, "セット2": null },
-        "羽": { "セット1": null, "セット2": null },
-        "時計": { "セット1": null, "セット2": null },
-        "杯": { "セット1": null, "セット2": null },
-        "冠": { "セット1": null, "セット2": null }
-    };
+// --- リサイクル効率比較シミュレーション ---
+export function compareRecycleEfficiency(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], mainStats: Record<string, string>) {
+  const resultWithRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, true, mainStats);
+  const resultWithoutRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, false, mainStats);
 
-    let trashCount = 0;
+  const staminaSaved = resultWithoutRecycle.stamina - resultWithRecycle.stamina;
+  const daysSaved = staminaSaved / GAME_DEFAULTS[gameId].dailyStamina;
 
-    const tryEquip = (artifact: Artifact) => {
-        if (artifact.メイン === mainstats[artifact.部位]) {
-            const artifactSet = artifact.セット as SetName;
-            const current = selected[artifact.部位][artifactSet];
-            if (!current || artifact.スコア > current.スコア) {
-                selected[artifact.部位][artifactSet] = artifact;
-                return true;
-            }
-        }
-        return false;
-    };
-
-    if (elixirBulkCount > 0 && elixirFixedSubstats) {
-        const priorityParts: Part[] = ["時計", "杯", "冠", "羽", "花"];
-        for (let i = 0; i < Math.min(elixirBulkCount, parts.length); i++) {
-            const targetPart = priorityParts[i];
-            const elixirArt = generateElixirArtifact(targetPart, mainstats[targetPart], elixirFixedSubstats[targetPart] || [], scoreWeights);
-            tryEquip(elixirArt);
-        }
-    }
-
-    for (let i = 0; i < totalAttempts; i++) {
-        const part = randomChoice([...parts]) as Part;
-        const artifact = generateArtifact(part, scoreWeights);
-
-        const kept = tryEquip(artifact);
-        if (!kept && useStrongbox) trashCount++;
-
-        if (elixirInterval > 0 && i > 0 && i % elixirInterval === 0 && elixirFixedSubstats) {
-            const targetPart = randomChoice([...parts]) as Part;
-            const elixirArt = generateElixirArtifact(targetPart, mainstats[targetPart], elixirFixedSubstats[targetPart] || [], scoreWeights);
-            tryEquip(elixirArt);
-        }
-
-        if (useStrongbox && trashCount >= 3) {
-            trashCount -= 3;
-            const sbPart = randomChoice([...parts]) as Part;
-            const sbArt = generateArtifact(sbPart, scoreWeights, "セット1");
-            const keptSb = tryEquip(sbArt);
-            if (!keptSb) trashCount++;
-        }
-    }
-    
-    return {
-        bestTotal: findBestValidCombo(selected),
-        selected: selected
-    };
+  return {
+    withRecycle: resultWithRecycle,
+    withoutRecycle: resultWithoutRecycle,
+    staminaSaved: staminaSaved,
+    daysSaved: daysSaved,
+  };
 }
-
-export function calculateDamageIndex(selected: Record<Part, Record<SetName, Artifact | null>>, scoreMode: string): number {
-    let mainStatValue = 0;
-    let critRate = 5.0; // 基礎会心率
-    let critDmg = 50.0; // 基礎会心ダメージ
-    let dmgBonus = 0;
-
-    let targetMainSub = "攻撃%";
-    if (scoreMode === "HP型") targetMainSub = "HP%";
-    if (scoreMode === "防御力型") targetMainSub = "防御%";
-    
-    for (const part of parts) {
-        const a = selected[part]["セット1"] || selected[part]["セット2"];
-        if (!a) continue;
-        
-        if (a.メイン === targetMainSub) mainStatValue += 46.6;
-        if (a.メイン === "会心率") critRate += 31.1;
-        if (a.メイン === "会心ダメージ") critDmg += 62.2;
-        if (a.メイン.includes("ダメージ")) dmgBonus += 46.6;
-        
-        if (a.サブ[targetMainSub]) mainStatValue += a.サブ[targetMainSub];
-        if (a.サブ["会心率"]) critRate += a.サブ["会心率"];
-        if (a.サブ["会心ダメージ"]) critDmg += a.サブ["会心ダメージ"];
-    }
-    
-    const effectiveCR = Math.min(critRate / 100, 1.0);
-    const effectiveCD = critDmg / 100;
-    
-    const baseMultiplier = 1 + (mainStatValue / 100);
-    const critMultiplier = 1 + (effectiveCR * effectiveCD);
-    const dmgMultiplier = 1 + (dmgBonus / 100);
-    
-    return baseMultiplier * critMultiplier * dmgMultiplier;
-}
-
