@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GAME_CONFIGS, GameId, GameConfig } from '@/lib/game_data';
-import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, substatValues, MAIN_PROBS } from '@/lib/simulator';
+import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, MAIN_PROBS } from '@/lib/simulator';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis } from 'recharts';
 import { Zap, X, LayoutGrid } from 'lucide-react';
