@@ -1,8 +1,8 @@
-import { MetadataRoute } from 'next'
+import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://artifact-sim.com'
-
+  const baseUrl = 'https://artifact-sim.com';
+  
   return [
     {
       url: baseUrl,
@@ -11,34 +11,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${baseUrl}/chronicle`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/chronicle/genshin`,
+      url: `${baseUrl}/blog/usage`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/chronicle/starrail`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/chronicle/zzz`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/about`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
     },
     {
       url: `${baseUrl}/privacy`,
@@ -47,10 +23,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.3,
     },
     {
-      url: `${baseUrl}/terms`,
+      url: `${baseUrl}/chronicle`,
       lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.3,
+      changeFrequency: 'weekly',
+      priority: 0.5,
     },
-  ]
+  ];
 }
