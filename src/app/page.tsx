@@ -857,12 +857,27 @@ export default function Home() {
                         )}
                       </div>
                     ))}
-                  </div>
                 </div>
               </div>
             )}
           </div>
         </div>
+
+        {/* --- Footer --- */}
+        <footer className="mt-20 pb-12 border-t border-slate-800/50 pt-12 text-center">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+            <Link href="/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link>
+            <a href="https://github.com/bonta9puri" target="_blank" rel="noopener" className="hover:text-white transition-colors">GitHub</a>
+            <a href="https://twitter.com" target="_blank" rel="noopener" className="hover:text-sky-400 transition-colors">Twitter (X)</a>
+          </div>
+          <div className="space-y-2">
+            <p className="text-[9px] text-slate-600 font-medium">© 2026 artifact-sim.com. All Rights Reserved.</p>
+            <p className="text-[8px] text-slate-700 font-bold max-w-xl mx-auto px-4 leading-relaxed">
+              当サイトは個人が制作した非公式のファンサイトであり、HoYoverse、COGNOSPHERE社とは一切関係ありません。
+              ゲーム画像の著作権は各権利所有者に帰属します。
+            </p>
+          </div>
+        </footer>
       </div>
 
       {/* Drawer */}
