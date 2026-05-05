@@ -171,22 +171,32 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
 
 // 最高スコア(コンボ考慮)を計算
 function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<string, any>>, targetSets: string[]) {
-  const breakdown: Record<string, any> = {};
   const slots = Object.keys(bestPieces);
-  const activeTargets = targetSets.filter(s => s !== "" && s !== "未選択");
+  const setsA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
+  const setsB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
 
   if (gameId === "genshin") {
     let max = 0;
     let bestSet: Record<string, any> = {};
-    activeTargets.forEach(targetName => {
+    const activeTargets = targetSets.filter(s => s && s !== "未選択");
+    
+    (activeTargets.length > 0 ? activeTargets : ["any"]).forEach(targetName => {
       for (let off = 0; off < 5; off++) {
         let current = 0;
+        let count = 0;
         const currentSet: Record<string, any> = {};
         slots.forEach((s, i) => {
           const art = (i === off) ? bestPieces[s]["any"] : bestPieces[s][targetName];
-          current += art?.score || 0;
+          if (art) {
+            current += art.score;
+            if (i !== off && art.setName === targetName) count++;
+          }
           currentSet[s] = art;
         });
+        // セットボーナス加算
+        if (count >= 2) current += 15;
+        if (count >= 4) current += 40;
+        
         if (current > max) {
           max = current;
           bestSet = currentSet;
@@ -200,24 +210,35 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
     const relicSlots = ["頭部", "手部", "胴体", "脚部"];
     const ornamentSlots = ["次元界オーブ", "連結縄"];
     
-    // ダンジョンA(1,2)とダンジョンB(3,4)の組み合わせを全パターン試す
-    const setsA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
-    const setsB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
-
     (setsA.length > 0 ? setsA : ["any"]).forEach(tRelic => {
       (setsB.length > 0 ? setsB : ["any"]).forEach(tOrna => {
         let current = 0;
+        let rCount = 0;
+        let oCount = 0;
         const currentSet: Record<string, any> = {};
+        
         relicSlots.forEach(s => {
           const art = bestPieces[s][tRelic] || bestPieces[s]["any"];
-          current += art?.score || 0;
+          if (art) {
+            current += art.score;
+            if (art.setName === tRelic) rCount++;
+          }
           currentSet[s] = art;
         });
         ornamentSlots.forEach(s => {
           const art = bestPieces[s][tOrna] || bestPieces[s]["any"];
-          current += art?.score || 0;
+          if (art) {
+            current += art.score;
+            if (art.setName === tOrna) oCount++;
+          }
           currentSet[s] = art;
         });
+        
+        // セットボーナス加算
+        if (rCount >= 2) current += 15;
+        if (rCount >= 4) current += 40;
+        if (oCount >= 2) current += 20;
+
         if (current > max) {
           max = current;
           bestSet = currentSet;
@@ -228,20 +249,31 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
   } else if (gameId === "zzz") {
     let max = 0;
     let bestSet: Record<string, any> = {};
-    const setsA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
-    const setsB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
-
-    // 4+2の組み合わせを試す
+    
     (setsA.length > 0 ? setsA : ["any"]).forEach(t4 => {
       (setsB.length > 0 ? setsB : ["any"]).forEach(t2 => {
         let current = 0;
+        let aCount = 0;
+        let bCount = 0;
         const currentSet: Record<string, any> = {};
+        
         slots.forEach((s, i) => {
-          // 簡易的に1-4をメイン、5-6をサブとする（実際はどのスロットでも良いが計算量のため）
-          const art = i < 4 ? (bestPieces[s][t4] || bestPieces[s]["any"]) : (bestPieces[s][t2] || bestPieces[s]["any"]);
-          current += art?.score || 0;
+          // 4+2の理想構成を目指す
+          const target = i < 4 ? t4 : t2;
+          const art = bestPieces[s][target] || bestPieces[s]["any"];
+          if (art) {
+            current += art.score;
+            if (art.setName === t4) aCount++;
+            else if (art.setName === t2) bCount++;
+          }
           currentSet[s] = art;
         });
+
+        // セットボーナス加算 (ZZZは2セットが重複可だがここでは簡易的に4+2)
+        if (aCount >= 2) current += 15;
+        if (aCount >= 4) current += 40;
+        if (bCount >= 2) current += 15;
+
         if (current > max) {
           max = current;
           bestSet = currentSet;
