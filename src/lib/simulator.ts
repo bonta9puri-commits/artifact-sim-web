@@ -176,43 +176,50 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
   const setsB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
 
   if (gameId === "genshin") {
-    let max = 0;
+    let maxTotal = 0;
+    let maxSubstat = 0;
     let bestSet: Record<string, any> = {};
     const activeTargets = targetSets.filter(s => s && s !== "未選択");
     
     (activeTargets.length > 0 ? activeTargets : ["any"]).forEach(targetName => {
       for (let off = 0; off < 5; off++) {
-        let current = 0;
+        let currentTotal = 0;
+        let currentSubstat = 0;
         let count = 0;
         const currentSet: Record<string, any> = {};
         slots.forEach((s, i) => {
           const art = (i === off) ? bestPieces[s]["any"] : bestPieces[s][targetName];
           if (art) {
-            current += art.score;
+            currentTotal += art.score;
+            currentSubstat += art.score;
             if (i !== off && art.setName === targetName) count++;
           }
           currentSet[s] = art;
         });
-        // セットボーナス加算
-        if (count >= 2) current += 15;
-        if (count >= 4) current += 40;
         
-        if (current > max) {
-          max = current;
+        // シミュレーション用のボーナス
+        if (count >= 2) currentTotal += 15;
+        if (count >= 4) currentTotal += 40;
+        
+        if (currentTotal > maxTotal) {
+          maxTotal = currentTotal;
+          maxSubstat = currentSubstat;
           bestSet = currentSet;
         }
       }
     });
-    return { total: max, pieces: bestSet };
+    return { total: maxTotal, substatTotal: maxSubstat, pieces: bestSet };
   } else if (gameId === "starrail") {
-    let max = 0;
+    let maxTotal = 0;
+    let maxSubstat = 0;
     let bestSet: Record<string, any> = {};
     const relicSlots = ["頭部", "手部", "胴体", "脚部"];
     const ornamentSlots = ["次元界オーブ", "連結縄"];
     
     (setsA.length > 0 ? setsA : ["any"]).forEach(tRelic => {
       (setsB.length > 0 ? setsB : ["any"]).forEach(tOrna => {
-        let current = 0;
+        let currentTotal = 0;
+        let currentSubstat = 0;
         let rCount = 0;
         let oCount = 0;
         const currentSet: Record<string, any> = {};
@@ -220,7 +227,8 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
         relicSlots.forEach(s => {
           const art = bestPieces[s][tRelic] || bestPieces[s]["any"];
           if (art) {
-            current += art.score;
+            currentTotal += art.score;
+            currentSubstat += art.score;
             if (art.setName === tRelic) rCount++;
           }
           currentSet[s] = art;
@@ -228,61 +236,64 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
         ornamentSlots.forEach(s => {
           const art = bestPieces[s][tOrna] || bestPieces[s]["any"];
           if (art) {
-            current += art.score;
+            currentTotal += art.score;
+            currentSubstat += art.score;
             if (art.setName === tOrna) oCount++;
           }
           currentSet[s] = art;
         });
         
-        // セットボーナス加算
-        if (rCount >= 2) current += 15;
-        if (rCount >= 4) current += 40;
-        if (oCount >= 2) current += 20;
+        if (rCount >= 2) currentTotal += 15;
+        if (rCount >= 4) currentTotal += 40;
+        if (oCount >= 2) currentTotal += 20;
 
-        if (current > max) {
-          max = current;
+        if (currentTotal > maxTotal) {
+          maxTotal = currentTotal;
+          maxSubstat = currentSubstat;
           bestSet = currentSet;
         }
       });
     });
-    return { total: max, pieces: bestSet };
+    return { total: maxTotal, substatTotal: maxSubstat, pieces: bestSet };
   } else if (gameId === "zzz") {
-    let max = 0;
+    let maxTotal = 0;
+    let maxSubstat = 0;
     let bestSet: Record<string, any> = {};
     
     (setsA.length > 0 ? setsA : ["any"]).forEach(t4 => {
       (setsB.length > 0 ? setsB : ["any"]).forEach(t2 => {
-        let current = 0;
+        let currentTotal = 0;
+        let currentSubstat = 0;
         let aCount = 0;
         let bCount = 0;
         const currentSet: Record<string, any> = {};
         
         slots.forEach((s, i) => {
-          // 4+2の理想構成を目指す
           const target = i < 4 ? t4 : t2;
           const art = bestPieces[s][target] || bestPieces[s]["any"];
           if (art) {
-            current += art.score;
+            currentTotal += art.score;
+            currentSubstat += art.score;
             if (art.setName === t4) aCount++;
             else if (art.setName === t2) bCount++;
           }
           currentSet[s] = art;
         });
 
-        // セットボーナス加算 (ZZZは2セットが重複可だがここでは簡易的に4+2)
-        if (aCount >= 2) current += 15;
-        if (aCount >= 4) current += 40;
-        if (bCount >= 2) current += 15;
+        if (aCount >= 2) currentTotal += 15;
+        if (aCount >= 4) currentTotal += 40;
+        if (bCount >= 2) currentTotal += 15;
 
-        if (current > max) {
-          max = current;
+        if (currentTotal > maxTotal) {
+          maxTotal = currentTotal;
+          maxSubstat = currentSubstat;
           bestSet = currentSet;
         }
       });
     });
-    return { total: max, pieces: bestSet };
+    return { total: maxTotal, substatTotal: maxSubstat, pieces: bestSet };
   }
-  return { total: 0, pieces: {} };
+  return { total: 0, substatTotal: 0, pieces: {} };
 }
 
 // シミュレーション (目標スコア)
@@ -382,7 +393,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
     finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
     if (finalResult.total >= target) break;
   }
-  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces };
+  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces, score: finalResult.substatTotal };
 }
 
 // シミュレーション (固定期間)
@@ -399,7 +410,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
   const dungeonA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
   const dungeonB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
 
-  let finalResult = { total: 0, pieces: {} };
+  let finalResult = { total: 0, substatTotal: 0, pieces: {} };
 
   for (let i = 0; i < totalAttempts; i++) {
     // どのダンジョンを回すか動的に最適化
@@ -470,7 +481,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
     }
   }
-  return { score: finalResult.total, pieces: finalResult.pieces };
+  return { score: finalResult.substatTotal, pieces: finalResult.pieces };
 }
 
 // --- リサイクル効率比較シミュレーション ---
