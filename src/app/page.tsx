@@ -866,6 +866,7 @@ export default function Home() {
         {/* --- Footer --- */}
         <footer className="mt-20 pb-12 border-t border-slate-800/50 pt-12 text-center">
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+            <Link href="/blog/usage" className="hover:text-emerald-400 transition-colors">Usage Guide / 使い方</Link>
             <Link href="/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link>
             <a href="https://github.com/bonta9puri" target="_blank" rel="noopener" className="hover:text-white transition-colors">GitHub</a>
             <a href="https://twitter.com" target="_blank" rel="noopener" className="hover:text-sky-400 transition-colors">Twitter (X)</a>
