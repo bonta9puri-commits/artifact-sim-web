@@ -45,6 +45,7 @@ export default function Home() {
   const [baseEr, setBaseEr] = useState(100.0);
   const [scalingMode, setScalingMode] = useState<"atk" | "hp" | "def" | "er">("atk");
   const [useReaction, setUseReaction] = useState(true);
+  const [targetSets, setTargetSets] = useState<string[]>(["", "", "", ""]);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -150,7 +151,7 @@ export default function Home() {
     setResult(null);
     
     const staminaCost = gameId === "genshin" ? 20 : 40;
-    const trials = 500; // 試行回数を減らしてフリーズを防止
+    const trials = 500;
     const subPool = config.subStats.filter(s => s !== "未選択");
 
     if (simMode === "target") {
@@ -160,7 +161,7 @@ export default function Home() {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
-        const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats);
+        const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets);
         results.push(res);
       }
       results.sort((a, b) => a.attempts - b.attempts);
@@ -168,8 +169,8 @@ export default function Home() {
       const medianRes = results[Math.floor(trials / 2)];
       const top10Res = results[Math.floor(trials * 0.1)];
       const bottom10Res = results[Math.floor(trials * 0.9)];
- 
-      const comparison = compareRecycleEfficiency(gameId, targetScore, scoreWeights, subPool, mainStats);
+  
+      const comparison = compareRecycleEfficiency(gameId, targetScore, scoreWeights, subPool, mainStats, targetSets);
       setRecycleComparison({
         staminaSaved: comparison.staminaSaved,
         daysSaved: comparison.daysSaved,
@@ -187,8 +188,8 @@ export default function Home() {
       };
       setResult(finalRes);
       saveHistory(finalRes);
-    } else if (simMode === "period") {
-      const activeDays = overrideDays || days;
+    } else {
+      const activeDays = (simMode === "period" ? (overrideDays || days) : days);
       const totalAttempts = Math.floor((activeDays * staminaPerDay) / staminaCost);
       const results: {score: number, pieces: any}[] = [];
       for (let i = 0; i < trials; i++) {
@@ -196,55 +197,43 @@ export default function Home() {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
-        const res = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats);
+        const res = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats, targetSets);
         results.push(res);
       }
       results.sort((a, b) => a.score - b.score);
       
-      const medianRes = results[Math.floor(trials / 2)];
-      const top10Res = results[Math.floor(trials * 0.9)];
-      const bottom10Res = results[Math.floor(trials * 0.1)];
-      
-      const finalRes = {
-        type: "period",
-        median: medianRes.score,
-        top10: top10Res.score,
-        bottom10: bottom10Res.score,
-        pieces: medianRes.pieces,
-        top10Pieces: top10Res.pieces,
-        bottom10Pieces: bottom10Res.pieces,
-        rawScores: results.map(r => r.score),
-        trials
-      };
-      setResult(finalRes);
-      saveHistory(finalRes);
-    } else if (simMode === "rank") {
-      const totalAttempts = Math.floor((days * staminaPerDay) / staminaCost);
-      const results: {score: number, pieces: any}[] = [];
-      for (let i = 0; i < trials; i++) {
-        if (i % 10 === 0) {
-          setSimProgress(Math.floor((i / trials) * 100));
-          await new Promise(r => setTimeout(r, 1));
-        }
-        const res = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats);
-        results.push(res);
+      if (simMode === "period") {
+        const medianRes = results[Math.floor(trials / 2)];
+        const top10Res = results[Math.floor(trials * 0.9)];
+        const bottom10Res = results[Math.floor(trials * 0.1)];
+        const finalRes = {
+          type: "period",
+          median: medianRes.score,
+          top10: top10Res.score,
+          bottom10: bottom10Res.score,
+          pieces: medianRes.pieces,
+          top10Pieces: top10Res.pieces,
+          bottom10Pieces: bottom10Res.pieces,
+          rawScores: results.map(r => r.score),
+          trials
+        };
+        setResult(finalRes);
+        saveHistory(finalRes);
+      } else {
+        const userTotal = Object.values(userPartScores).reduce((a, b) => a + b, 0);
+        const belowCount = results.filter(r => r.score <= userTotal).length;
+        const percentile = (belowCount / trials) * 100;
+        const finalRes = {
+          type: "rank",
+          percentile,
+          userScore: userTotal,
+          median: results[Math.floor(trials / 2)].score,
+          pieces: results[Math.floor(trials / 2)].pieces,
+          trials
+        };
+        setResult(finalRes);
+        saveHistory(finalRes);
       }
-      results.sort((a, b) => a.score - b.score);
-      
-      const userTotal = Object.values(userPartScores).reduce((a, b) => a + b, 0);
-      const belowCount = results.filter(r => r.score <= userTotal).length;
-      const percentile = (belowCount / trials) * 100;
-
-      const finalRes = {
-        type: "rank",
-        percentile,
-        userScore: userTotal,
-        median: results[Math.floor(trials / 2)].score,
-        pieces: results[Math.floor(trials / 2)].pieces,
-        trials
-      };
-      setResult(finalRes);
-      saveHistory(finalRes);
     }
 
     setSimProgress(100);
@@ -380,6 +369,30 @@ export default function Home() {
                   <select value={characterName} onChange={e => setCharacterName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none">
                     {config.characters.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
+                </div>
+
+                <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                  <label className="block text-sm font-medium text-slate-400 mb-3">狙いのセット (最大4つ)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {targetSets.map((setName, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">セット {idx + 1}</p>
+                        <select 
+                          value={setName} 
+                          onChange={e => {
+                            const newSets = [...targetSets];
+                            newSets[idx] = e.target.value;
+                            setTargetSets(newSets);
+                          }}
+                          className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none"
+                        >
+                          <option value="">未選択</option>
+                          {config.sets.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-slate-500 mt-2 italic">※4セット+2セット、2+2+2などの組み合わせを自動計算します</p>
                 </div>
 
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">

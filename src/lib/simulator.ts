@@ -86,10 +86,20 @@ function weightedRandom(probs: Record<string, number>): string {
 }
 
 // 聖遺物生成
-export function generateArtifact(gameId: GameId, part: string, subPool: string[], scoreWeights: Record<string, number>, isOrnament: boolean = false) {
+export function generateArtifact(gameId: GameId, part: string, subPool: string[], scoreWeights: Record<string, number>, targetSets: string[] = [], isOrnament: boolean = false) {
   const mainProbs = MAIN_PROBS[gameId][part] || { "攻撃力%": 100 };
   const main = weightedRandom(mainProbs);
-  const isTargetSet = Math.random() < 0.5; // 狙いのセットが出る確率 50%
+  
+  const activeTargetSets = targetSets.filter(s => s !== "" && s !== "未選択");
+  let setName = "その他";
+  let isTargetSet = false;
+
+  if (Math.random() < 0.5) {
+    if (activeTargetSets.length > 0) {
+      setName = activeTargetSets[Math.floor(Math.random() * activeTargetSets.length)];
+      isTargetSet = true;
+    }
+  }
   
   const numSubs = Math.random() < 0.8 ? 3 : 4;
   const available = subPool.filter(s => s !== main && s !== "未選択");
@@ -110,7 +120,6 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
   const substats: Record<string, number> = {};
   for (const s of selectedSubs) substats[s] = getSubstatValue(gameId, s);
 
-  // 5回(3つの場合は強化1回分追加で計5回)の強化
   const rolls = 5; 
   for (let i = 0; i < rolls; i++) {
     const keys = Object.keys(substats);
@@ -157,59 +166,91 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
     }
   }
   
-  return { part, main, score: score || 0, substats, isTargetSet, isOrnament };
+  return { part, main, score: score || 0, substats, isTargetSet, setName, isOrnament };
 }
 
 // 最高スコア(コンボ考慮)を計算
-function calculateBestCombo(gameId: GameId, bestPieces: Record<string, {target: any, any: any}>) {
+function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<string, any>>, targetSets: string[]) {
   const breakdown: Record<string, any> = {};
   const slots = Object.keys(bestPieces);
+  const activeTargets = targetSets.filter(s => s !== "");
 
   if (gameId === "genshin") {
     let max = 0;
     let bestSet: Record<string, any> = {};
-    for (let off = 0; off < 5; off++) {
-      let current = 0;
-      const currentSet: Record<string, any> = {};
-      slots.forEach((s, i) => {
-        const art = (i === off) ? bestPieces[s].any : bestPieces[s].target;
-        current += art?.score || 0;
-        currentSet[s] = art;
-      });
-      if (current > max) {
-        max = current;
-        bestSet = currentSet;
+    activeTargets.forEach(targetName => {
+      for (let off = 0; off < 5; off++) {
+        let current = 0;
+        const currentSet: Record<string, any> = {};
+        slots.forEach((s, i) => {
+          const art = (i === off) ? bestPieces[s]["any"] : bestPieces[s][targetName];
+          current += art?.score || 0;
+          currentSet[s] = art;
+        });
+        if (current > max) {
+          max = current;
+          bestSet = currentSet;
+        }
       }
-    }
+    });
     return { total: max, pieces: bestSet };
   } else if (gameId === "starrail") {
-    let total = 0;
-    slots.forEach(s => { 
-      const art = bestPieces[s].target;
-      total += art?.score || 0; 
-      breakdown[s] = art; 
+    let max = 0;
+    let bestSet: Record<string, any> = {};
+    const relicSlots = ["頭部", "手部", "胴体", "脚部"];
+    const ornamentSlots = ["次元界オーブ", "連結縄"];
+    activeTargets.forEach(tRelic => {
+      activeTargets.forEach(tOrna => {
+        let current = 0;
+        const currentSet: Record<string, any> = {};
+        relicSlots.forEach(s => {
+          const art = bestPieces[s][tRelic];
+          current += art?.score || 0;
+          currentSet[s] = art;
+        });
+        ornamentSlots.forEach(s => {
+          const art = bestPieces[s][tOrna];
+          current += art?.score || 0;
+          currentSet[s] = art;
+        });
+        if (current > max) {
+          max = current;
+          bestSet = currentSet;
+        }
+      });
     });
-    return { total, pieces: breakdown };
+    return { total: max, pieces: bestSet };
   } else if (gameId === "zzz") {
-    const diffs = slots.map(s => ({ s, diff: (bestPieces[s].any?.score || 0) - (bestPieces[s].target?.score || 0) }));
-    diffs.sort((a,b) => b.diff - a.diff);
-    let total = 0;
-    slots.forEach(s => {
-      const isOff = diffs.slice(0, 2).some(d => d.s === s);
-      const art = isOff ? bestPieces[s].any : bestPieces[s].target;
-      total += art?.score || 0;
-      breakdown[s] = art;
+    let max = 0;
+    let bestSet: Record<string, any> = {};
+    activeTargets.forEach(t4 => {
+      activeTargets.forEach(t2 => {
+        let current = 0;
+        const currentSet: Record<string, any> = {};
+        slots.forEach((s, i) => {
+          const art = i < 4 ? bestPieces[s][t4] : bestPieces[s][t2];
+          current += art?.score || 0;
+          currentSet[s] = art;
+        });
+        if (current > max) {
+          max = current;
+          bestSet = currentSet;
+        }
+      });
     });
-    return { total, pieces: breakdown };
+    return { total: max, pieces: bestSet };
   }
   return { total: 0, pieces: {} };
 }
 
 // シミュレーション (目標スコア)
-export function simulateUntilScore(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>) {
+export function simulateUntilScore(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[]) {
   const parts = Object.keys(MAIN_PROBS[gameId]);
-  const bestPieces: Record<string, {target: any, any: any}> = {};
-  parts.forEach(p => bestPieces[p] = { target: null, any: null });
+  const bestPieces: Record<string, Record<string, any>> = {};
+  parts.forEach(p => {
+    bestPieces[p] = { "any": null };
+    targetSets.forEach(s => { if(s) bestPieces[p][s] = null; });
+  });
   
   let attempts = 0;
   let recycleQueue = 0;
@@ -220,17 +261,16 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
     attempts++;
     const p = parts[Math.floor(Math.random() * parts.length)];
     const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
-    const art = generateArtifact(gameId, p, subPool, scoreWeights, isOrnament);
+    const art = generateArtifact(gameId, p, subPool, scoreWeights, targetSets, isOrnament);
     
-    // メイン一致判定
     const isMainMatch = art.main === mainStats[p] || 
       p.includes("花") || p.includes("羽") || 
       p === "頭部" || p === "手部" || 
       p === "スロット1" || p === "スロット2" || p === "スロット3";
 
     if (isMainMatch) {
-      if (art.isTargetSet && art.score > (bestPieces[p].target?.score || 0)) bestPieces[p].target = art;
-      if (art.score > (bestPieces[p].any?.score || 0)) bestPieces[p].any = art;
+      if (art.isTargetSet && art.score > (bestPieces[p][art.setName]?.score || 0)) bestPieces[p][art.setName] = art;
+      if (art.score > (bestPieces[p]["any"]?.score || 0)) bestPieces[p]["any"] = art;
     } else if (useRecycle) {
       recycleQueue++;
     }
@@ -239,36 +279,39 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
       recycleQueue -= defaults.recycleRatio;
       const sp = parts[Math.floor(Math.random() * parts.length)];
       const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
-      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, isSOrnament);
+      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, targetSets, isSOrnament);
       const isSMainMatch = sart.main === mainStats[sp] || 
         sp.includes("花") || sp.includes("羽") || 
         sp === "頭部" || sp === "手部" || 
         sp === "スロット1" || sp === "スロット2" || sp === "スロット3";
 
       if (isSMainMatch) {
-        if (sart.isTargetSet && sart.score > (bestPieces[sp].target?.score || 0)) bestPieces[sp].target = sart;
-        if (sart.score > (bestPieces[sp].any?.score || 0)) bestPieces[sp].any = sart;
+        if (sart.isTargetSet && sart.score > (bestPieces[sp][sart.setName]?.score || 0)) bestPieces[sp][sart.setName] = sart;
+        if (sart.score > (bestPieces[sp]["any"]?.score || 0)) bestPieces[sp]["any"] = sart;
       }
     }
 
-    finalResult = calculateBestCombo(gameId, bestPieces);
+    finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
     if (finalResult.total >= target) break;
   }
   return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces };
 }
 
 // シミュレーション (固定期間)
-export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, staminaPerDay: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>) {
+export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, staminaPerDay: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[]) {
   const parts = Object.keys(MAIN_PROBS[gameId]);
-  const bestPieces: Record<string, {target: any, any: any}> = {};
-  parts.forEach(p => bestPieces[p] = { target: null, any: null });
+  const bestPieces: Record<string, Record<string, any>> = {};
+  parts.forEach(p => {
+    bestPieces[p] = { "any": null };
+    targetSets.forEach(s => { if(s) bestPieces[p][s] = null; });
+  });
   
   let recycleQueue = 0;
   const defaults = GAME_DEFAULTS[gameId];
   for (let i = 0; i < totalAttempts; i++) {
     const p = parts[Math.floor(Math.random() * parts.length)];
     const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
-    const art = generateArtifact(gameId, p, subPool, scoreWeights, isOrnament);
+    const art = generateArtifact(gameId, p, subPool, scoreWeights, targetSets, isOrnament);
     
     const isMainMatch = art.main === mainStats[p] || 
       p.includes("花") || p.includes("羽") || 
@@ -276,8 +319,8 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       p === "スロット1" || p === "スロット2" || p === "スロット3";
 
     if (isMainMatch) {
-      if (art.isTargetSet && art.score > (bestPieces[p].target?.score || 0)) bestPieces[p].target = art;
-      if (art.score > (bestPieces[p].any?.score || 0)) bestPieces[p].any = art;
+      if (art.isTargetSet && art.score > (bestPieces[p][art.setName]?.score || 0)) bestPieces[p][art.setName] = art;
+      if (art.score > (bestPieces[p]["any"]?.score || 0)) bestPieces[p]["any"] = art;
     } else if (useRecycle) {
       recycleQueue++;
     }
@@ -286,26 +329,26 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       recycleQueue -= defaults.recycleRatio;
       const sp = parts[Math.floor(Math.random() * parts.length)];
       const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
-      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, isSOrnament);
+      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, targetSets, isSOrnament);
       const isSMainMatch = sart.main === mainStats[sp] || 
         sp.includes("花") || sp.includes("羽") || 
         sp === "頭部" || sp === "手部" || 
         sp === "スロット1" || sp === "スロット2" || sp === "スロット3";
 
       if (isSMainMatch) {
-        if (sart.isTargetSet && sart.score > (bestPieces[sp].target?.score || 0)) bestPieces[sp].target = sart;
-        if (sart.score > (bestPieces[sp].any?.score || 0)) bestPieces[sp].any = sart;
+        if (sart.isTargetSet && sart.score > (bestPieces[sp][sart.setName]?.score || 0)) bestPieces[sp][sart.setName] = sart;
+        if (sart.score > (bestPieces[sp]["any"]?.score || 0)) bestPieces[sp]["any"] = sart;
       }
     }
   }
-  const res = calculateBestCombo(gameId, bestPieces);
+  const res = calculateBestCombo(gameId, bestPieces, targetSets);
   return { score: res.total, pieces: res.pieces };
 }
 
 // --- リサイクル効率比較シミュレーション ---
-export function compareRecycleEfficiency(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], mainStats: Record<string, string>) {
-  const resultWithRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, true, mainStats);
-  const resultWithoutRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, false, mainStats);
+export function compareRecycleEfficiency(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], mainStats: Record<string, string>, targetSets: string[]) {
+  const resultWithRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, true, mainStats, targetSets);
+  const resultWithoutRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, false, mainStats, targetSets);
 
   const staminaSaved = resultWithoutRecycle.stamina - resultWithRecycle.stamina;
   const daysSaved = staminaSaved / GAME_DEFAULTS[gameId].dailyStamina;
