@@ -372,27 +372,31 @@ export default function Home() {
                 </div>
 
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <label className="block text-sm font-medium text-slate-400 mb-3">狙いのセット (最大4つ)</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-3">狙いのセット (ダンジョン別)</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {targetSets.map((setName, idx) => (
-                      <div key={idx} className="space-y-1">
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">セット {idx + 1}</p>
-                        <select 
-                          value={setName} 
-                          onChange={e => {
-                            const newSets = [...targetSets];
-                            newSets[idx] = e.target.value;
-                            setTargetSets(newSets);
-                          }}
-                          className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none"
-                        >
-                          <option value="">未選択</option>
-                          {config.sets.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </div>
-                    ))}
+                    {targetSets.map((setName, idx) => {
+                      const isMain = idx < 2;
+                      const label = gameId === "starrail" ? (isMain ? "遺物" : "オーナメント") : (isMain ? "メイン" : "サブ");
+                      return (
+                        <div key={idx} className="space-y-1">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{label} {isMain ? idx + 1 : idx - 1}</p>
+                          <select 
+                            value={setName} 
+                            onChange={e => {
+                              const newSets = [...targetSets];
+                              newSets[idx] = e.target.value;
+                              setTargetSets(newSets);
+                            }}
+                            className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none"
+                          >
+                            <option value="">未選択</option>
+                            {config.sets.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <p className="text-[9px] text-slate-500 mt-2 italic">※4セット+2セット、2+2+2などの組み合わせを自動計算します</p>
+                  <p className="text-[9px] text-slate-500 mt-2 italic">※1&2(A)と3&4(B)は別ダンジョンとして計算します</p>
                 </div>
 
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">

@@ -173,7 +173,7 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
 function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<string, any>>, targetSets: string[]) {
   const breakdown: Record<string, any> = {};
   const slots = Object.keys(bestPieces);
-  const activeTargets = targetSets.filter(s => s !== "");
+  const activeTargets = targetSets.filter(s => s !== "" && s !== "未選択");
 
   if (gameId === "genshin") {
     let max = 0;
@@ -199,17 +199,22 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
     let bestSet: Record<string, any> = {};
     const relicSlots = ["頭部", "手部", "胴体", "脚部"];
     const ornamentSlots = ["次元界オーブ", "連結縄"];
-    activeTargets.forEach(tRelic => {
-      activeTargets.forEach(tOrna => {
+    
+    // ダンジョンA(1,2)とダンジョンB(3,4)の組み合わせを全パターン試す
+    const setsA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
+    const setsB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
+
+    (setsA.length > 0 ? setsA : ["any"]).forEach(tRelic => {
+      (setsB.length > 0 ? setsB : ["any"]).forEach(tOrna => {
         let current = 0;
         const currentSet: Record<string, any> = {};
         relicSlots.forEach(s => {
-          const art = bestPieces[s][tRelic];
+          const art = bestPieces[s][tRelic] || bestPieces[s]["any"];
           current += art?.score || 0;
           currentSet[s] = art;
         });
         ornamentSlots.forEach(s => {
-          const art = bestPieces[s][tOrna];
+          const art = bestPieces[s][tOrna] || bestPieces[s]["any"];
           current += art?.score || 0;
           currentSet[s] = art;
         });
@@ -223,12 +228,17 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
   } else if (gameId === "zzz") {
     let max = 0;
     let bestSet: Record<string, any> = {};
-    activeTargets.forEach(t4 => {
-      activeTargets.forEach(t2 => {
+    const setsA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
+    const setsB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
+
+    // 4+2の組み合わせを試す
+    (setsA.length > 0 ? setsA : ["any"]).forEach(t4 => {
+      (setsB.length > 0 ? setsB : ["any"]).forEach(t2 => {
         let current = 0;
         const currentSet: Record<string, any> = {};
         slots.forEach((s, i) => {
-          const art = i < 4 ? bestPieces[s][t4] : bestPieces[s][t2];
+          // 簡易的に1-4をメイン、5-6をサブとする（実際はどのスロットでも良いが計算量のため）
+          const art = i < 4 ? (bestPieces[s][t4] || bestPieces[s]["any"]) : (bestPieces[s][t2] || bestPieces[s]["any"]);
           current += art?.score || 0;
           currentSet[s] = art;
         });
@@ -249,7 +259,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
   const bestPieces: Record<string, Record<string, any>> = {};
   parts.forEach(p => {
     bestPieces[p] = { "any": null };
-    targetSets.forEach(s => { if(s) bestPieces[p][s] = null; });
+    targetSets.forEach(s => { if(s && s !== "未選択") bestPieces[p][s] = null; });
   });
   
   let attempts = 0;
@@ -257,11 +267,23 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
   const defaults = GAME_DEFAULTS[gameId];
   let finalResult = { total: 0, pieces: {} };
 
-  while (attempts < 50000) {
+  const dungeonA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
+  const dungeonB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
+
+  while (attempts < 100000) {
     attempts++;
-    const p = parts[Math.floor(Math.random() * parts.length)];
+    let currentPool = dungeonA;
+    let p = parts[Math.floor(Math.random() * parts.length)];
+    
+    if (gameId === "starrail") {
+      const isOrnamentSlot = (p === "次元界オーブ" || p === "連結縄");
+      if (isOrnamentSlot) currentPool = dungeonB.length > 0 ? dungeonB : dungeonA;
+    } else if (dungeonB.length > 0) {
+      if (Math.random() < 0.3) currentPool = dungeonB;
+    }
+
     const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
-    const art = generateArtifact(gameId, p, subPool, scoreWeights, targetSets, isOrnament);
+    const art = generateArtifact(gameId, p, subPool, scoreWeights, currentPool, isOrnament);
     
     const isMainMatch = art.main === mainStats[p] || 
       p.includes("花") || p.includes("羽") || 
@@ -279,7 +301,10 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
       recycleQueue -= defaults.recycleRatio;
       const sp = parts[Math.floor(Math.random() * parts.length)];
       const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
-      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, targetSets, isSOrnament);
+      let sPool = dungeonA;
+      if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? dungeonB : dungeonA;
+
+      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament);
       const isSMainMatch = sart.main === mainStats[sp] || 
         sp.includes("花") || sp.includes("羽") || 
         sp === "頭部" || sp === "手部" || 
@@ -303,15 +328,27 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
   const bestPieces: Record<string, Record<string, any>> = {};
   parts.forEach(p => {
     bestPieces[p] = { "any": null };
-    targetSets.forEach(s => { if(s) bestPieces[p][s] = null; });
+    targetSets.forEach(s => { if(s && s !== "未選択") bestPieces[p][s] = null; });
   });
   
   let recycleQueue = 0;
   const defaults = GAME_DEFAULTS[gameId];
+  const dungeonA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
+  const dungeonB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
+
   for (let i = 0; i < totalAttempts; i++) {
-    const p = parts[Math.floor(Math.random() * parts.length)];
+    let currentPool = dungeonA;
+    let p = parts[Math.floor(Math.random() * parts.length)];
+    
+    if (gameId === "starrail") {
+      const isOrnamentSlot = (p === "次元界オーブ" || p === "連結縄");
+      if (isOrnamentSlot) currentPool = dungeonB.length > 0 ? dungeonB : dungeonA;
+    } else if (dungeonB.length > 0) {
+      if (Math.random() < 0.3) currentPool = dungeonB;
+    }
+
     const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
-    const art = generateArtifact(gameId, p, subPool, scoreWeights, targetSets, isOrnament);
+    const art = generateArtifact(gameId, p, subPool, scoreWeights, currentPool, isOrnament);
     
     const isMainMatch = art.main === mainStats[p] || 
       p.includes("花") || p.includes("羽") || 
@@ -329,7 +366,10 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       recycleQueue -= defaults.recycleRatio;
       const sp = parts[Math.floor(Math.random() * parts.length)];
       const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
-      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, targetSets, isSOrnament);
+      let sPool = dungeonA;
+      if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? dungeonB : dungeonA;
+
+      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament);
       const isSMainMatch = sart.main === mainStats[sp] || 
         sp.includes("花") || sp.includes("羽") || 
         sp === "頭部" || sp === "手部" || 
