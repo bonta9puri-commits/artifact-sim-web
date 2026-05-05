@@ -272,14 +272,45 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
 
   while (attempts < 100000) {
     attempts++;
-    let currentPool = dungeonA;
-    let p = parts[Math.floor(Math.random() * parts.length)];
     
+    // どのダンジョンを回すか動的に最適化 (Greedy Strategy)
+    let currentPool = dungeonA;
+    const pieces = finalResult.pieces as any;
+    
+    if (dungeonB.length > 0) {
+      // 現在のビルドでA由来とB由来のパーツの平均スコアを比較
+      let scoreA = 0, countA = 0;
+      let scoreB = 0, countB = 0;
+      
+      Object.values(pieces).forEach((art: any) => {
+        if (!art) return;
+        if (dungeonA.includes(art.setName)) { scoreA += art.score; countA++; }
+        else if (dungeonB.includes(art.setName)) { scoreB += art.score; countB++; }
+      });
+
+      const avgA = countA > 0 ? scoreA / countA : 0;
+      const avgB = countB > 0 ? scoreB / countB : 0;
+
+      // 伸び代がある方（平均が低い方）を優先
+      // ただしスタレの場合、スロットの制約があるためそれを優先
+      if (gameId === "starrail") {
+        // スタレは特定の部位が必要ならそっち、そうでなければバランス
+        const relicTargetCount = 4;
+        const ornaTargetCount = 2;
+        if (countA < relicTargetCount) currentPool = dungeonA;
+        else if (countB < ornaTargetCount) currentPool = dungeonB;
+        else currentPool = avgA < avgB ? dungeonA : dungeonB;
+      } else {
+        currentPool = avgA < avgB ? dungeonA : dungeonB;
+      }
+    }
+
+    // パーツの抽選
+    let p = parts[Math.floor(Math.random() * parts.length)];
     if (gameId === "starrail") {
-      const isOrnamentSlot = (p === "次元界オーブ" || p === "連結縄");
-      if (isOrnamentSlot) currentPool = dungeonB.length > 0 ? dungeonB : dungeonA;
-    } else if (dungeonB.length > 0) {
-      if (Math.random() < 0.3) currentPool = dungeonB;
+      // スタレは回しているダンジョンによって出る部位が固定
+      const isA = currentPool === dungeonA;
+      p = isA ? parts[Math.floor(Math.random() * 4)] : parts[4 + Math.floor(Math.random() * 2)];
     }
 
     const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
@@ -336,15 +367,37 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
   const dungeonA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
   const dungeonB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
 
+  let finalResult = { total: 0, pieces: {} };
+
   for (let i = 0; i < totalAttempts; i++) {
+    // どのダンジョンを回すか動的に最適化
     let currentPool = dungeonA;
-    let p = parts[Math.floor(Math.random() * parts.length)];
+    const pieces = finalResult.pieces as any;
     
+    if (dungeonB.length > 0) {
+      let scoreA = 0, countA = 0;
+      let scoreB = 0, countB = 0;
+      Object.values(pieces).forEach((art: any) => {
+        if (!art) return;
+        if (dungeonA.includes(art.setName)) { scoreA += art.score; countA++; }
+        else if (dungeonB.includes(art.setName)) { scoreB += art.score; countB++; }
+      });
+      const avgA = countA > 0 ? scoreA / countA : 0;
+      const avgB = countB > 0 ? scoreB / countB : 0;
+
+      if (gameId === "starrail") {
+        if (countA < 4) currentPool = dungeonA;
+        else if (countB < 2) currentPool = dungeonB;
+        else currentPool = avgA < avgB ? dungeonA : dungeonB;
+      } else {
+        currentPool = avgA < avgB ? dungeonA : dungeonB;
+      }
+    }
+
+    let p = parts[Math.floor(Math.random() * parts.length)];
     if (gameId === "starrail") {
-      const isOrnamentSlot = (p === "次元界オーブ" || p === "連結縄");
-      if (isOrnamentSlot) currentPool = dungeonB.length > 0 ? dungeonB : dungeonA;
-    } else if (dungeonB.length > 0) {
-      if (Math.random() < 0.3) currentPool = dungeonB;
+      const isA = currentPool === dungeonA;
+      p = isA ? parts[Math.floor(Math.random() * 4)] : parts[4 + Math.floor(Math.random() * 2)];
     }
 
     const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
@@ -380,9 +433,12 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
         if (sart.score > (bestPieces[sp]["any"]?.score || 0)) bestPieces[sp]["any"] = sart;
       }
     }
+    // 戦略を更新するためにコンボを計算
+    if (i % 10 === 0 || i === totalAttempts - 1) {
+      finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
+    }
   }
-  const res = calculateBestCombo(gameId, bestPieces, targetSets);
-  return { score: res.total, pieces: res.pieces };
+  return { score: finalResult.total, pieces: finalResult.pieces };
 }
 
 // --- リサイクル効率比較シミュレーション ---
