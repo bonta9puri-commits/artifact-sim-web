@@ -15,8 +15,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Genshin Artifact Simulator V2",
-  description: "原神の聖遺物厳選シミュレーター。目標スコア到達までの樹脂や日数を正確に計算し、AI風の診断レポートを出力します。",
+  title: "聖遺物厳選シミュレーター | 原神・スタレ・ゼンゼロ対応",
+  description: "目標スコアまでの日数や樹脂をシミュレート。ビルド比較機能やSNSシェア用レポート生成も。現役プレイヤーによる厳選サポートツール。",
+  keywords: ["原神", "スターレイル", "ゼンレスゾーンゼロ", "聖遺物", "シミュレーター", "厳選"],
+  verification: {
+    google: "xrlDDy9Trh3xKUvFZvTEWf0EgrlL6o7teWeRTkvikPs",
+  },
+  openGraph: {
+    title: "聖遺物厳選シミュレーター | artifact-sim.com",
+    description: "あなたの聖遺物厳選、いつ終わる？期待値を可視化。",
+    url: "https://artifact-sim.com",
+    siteName: "Artifact Simulator",
+    locale: "ja_JP",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

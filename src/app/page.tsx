@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import { GAME_CONFIGS, GameId, GameConfig } from '@/lib/game_data';
 import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, MAIN_PROBS } from '@/lib/simulator';
 import { toPng } from 'html-to-image';
@@ -680,8 +681,19 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-
-                {/* ... (handleSimulate button etc) ... */}
+                {simMode !== "comparison" && (
+                  <button 
+                    onClick={() => handleSimulate()} 
+                    disabled={isSimulating}
+                    className={`w-full py-4 rounded-2xl font-black text-sm shadow-2xl transition-all ${
+                      isSimulating 
+                        ? 'bg-slate-800 text-slate-600' 
+                        : `bg-gradient-to-r ${config.gradient} text-white hover:scale-[1.02] active:scale-[0.98]`
+                    }`}
+                  >
+                    {isSimulating ? 'SIMULATING...' : 'RUN SIMULATION'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -793,11 +805,238 @@ export default function Home() {
 
                   {result && !isSimulating && (
                     <div className="w-full space-y-8 animate-in zoom-in-95 duration-300">
-                      {/* ... (Existing result UI) ... */}
+                      {result.type === "target" && (
+                        <div className="space-y-6">
+                          <h3 className="text-center text-xl font-bold">目標スコア {targetScore} 到達までにかかる日数</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-slate-800/50 p-6 rounded-[32px] border border-blue-500/30 text-center relative overflow-hidden group">
+                              <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                                <Zap size={24} className="text-blue-400" />
+                              </div>
+                              <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">Luck: Top 10%</p>
+                              <p className="text-4xl font-black text-white">{result.top10} <span className="text-sm font-bold text-slate-500">日</span></p>
+                              <p className="text-[10px] text-slate-500 mt-2">非常に運が良い場合</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 p-8 rounded-[40px] border border-white/10 text-center shadow-2xl relative overflow-hidden ring-1 ring-white/10">
+                              <p className="text-[10px] text-purple-400 font-black uppercase tracking-widest mb-1">Average Expectation</p>
+                              <p className="text-6xl font-black text-white tracking-tighter">{result.median} <span className="text-xl font-bold text-slate-500">日</span></p>
+                              <p className="text-xs text-slate-400 mt-3 font-medium">中央値（平均的な運勢）</p>
+                            </div>
+                            <div className="bg-slate-800/50 p-6 rounded-[32px] border border-red-500/20 text-center relative overflow-hidden group">
+                              <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                                <Shield size={24} className="text-red-400" />
+                              </div>
+                              <p className="text-[10px] text-red-400 font-black uppercase tracking-widest mb-1">Luck: Bottom 10%</p>
+                              <p className="text-4xl font-black text-white">{result.bottom10} <span className="text-sm font-bold text-slate-500">日</span></p>
+                              <p className="text-[10px] text-slate-500 mt-2">運が悪い（沼った）場合</p>
+                            </div>
+                          </div>
+
+                          {recycleComparison && (
+                            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400">
+                                  <LayoutGrid size={24} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-emerald-400">廻聖/合成による効率化</p>
+                                  <p className="text-xs text-slate-500">不要な部位を再変換することで厳選期間を短縮できます</p>
+                                </div>
+                              </div>
+                              <div className="text-center md:text-right">
+                                <p className="text-2xl font-black text-emerald-400">約 {recycleComparison.daysSaved.toFixed(1)} 日分 <span className="text-sm">の短縮</span></p>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Efficiency Bonus: +{((1 - recycleComparison.withRecycle / recycleComparison.withoutRecycle) * 100).toFixed(1)}%</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {result.type === "period" && (
+                        <div className="space-y-12">
+                          <div className="text-center space-y-4">
+                            <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{days}日間の厳選期待値</h3>
+                            <div className="flex justify-center gap-2">
+                              <button onClick={() => setBreakdownView("median")} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all ${breakdownView === "median" ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800 text-slate-500'}`}>AVERAGE</button>
+                              <button onClick={() => setBreakdownView("top10")} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all ${breakdownView === "top10" ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-800 text-slate-500'}`}>TOP 10%</button>
+                              <button onClick={() => setBreakdownView("bottom10")} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all ${breakdownView === "bottom10" ? 'bg-red-600 text-white shadow-lg' : 'bg-slate-800 text-slate-500'}`}>BOTTOM 10%</button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col lg:flex-row gap-8 items-center">
+                            <div className="w-full lg:w-1/2 space-y-6">
+                              <div className="bg-slate-800/30 p-8 rounded-[40px] border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all">
+                                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-all transform group-hover:scale-110">
+                                  <Target size={120} />
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] mb-2">Estimated Build Score</p>
+                                <p className="text-7xl font-black text-white tracking-tighter mb-4">
+                                  {result[breakdownView].toFixed(1)} <span className="text-xl font-bold text-slate-600 uppercase">Score</span>
+                                </p>
+                                <div className="flex items-center gap-4 text-xs font-bold">
+                                  <div className="flex items-center gap-1.5 text-blue-400">
+                                    <Sword size={14} />
+                                    <span>DMG Index: {calcDamageIndex({pieces: breakdownView === "median" ? result.pieces : breakdownView === "top10" ? result.top10Pieces : result.bottom10Pieces}).toFixed(0)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="h-48 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={result.rawScores.slice(0, 50).map((s: number, i: number) => ({id: i, score: s}))}>
+                                    <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+                                      {result.rawScores.slice(0, 50).map((_: any, index: number) => (
+                                        <Cell key={`cell-${index}`} fill={index === Math.floor(breakdownView === "median" ? 25 : breakdownView === "top10" ? 45 : 5) ? '#3b82f6' : '#1e293b'} />
+                                      ))}
+                                    </Bar>
+                                    <XAxis hide />
+                                    <Tooltip 
+                                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                                      labelStyle={{ display: 'none' }}
+                                    />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                                <p className="text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-2">Score Distribution (Sample 50)</p>
+                              </div>
+                            </div>
+
+                            <div className="w-full lg:w-1/2 grid grid-cols-2 md:grid-cols-3 gap-3">
+                              {Object.entries((breakdownView === "median" ? result.pieces : breakdownView === "top10" ? result.top10Pieces : result.bottom10Pieces) || {}).map(([slot, art]: [string, any]) => (
+                                <div key={slot} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-3xl group hover:border-blue-500/30 transition-all">
+                                  <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{slot}</p>
+                                  {art ? (
+                                    <div className="space-y-1">
+                                      <p className="text-sm font-black text-white">{art.score.toFixed(1)} <span className="text-[10px] text-slate-500">pt</span></p>
+                                      <p className="text-[9px] text-blue-400 font-bold truncate">{art.setName}</p>
+                                      <p className="text-[8px] text-slate-600 truncate">{art.main}</p>
+                                    </div>
+                                  ) : (
+                                    <p className="text-[10px] text-slate-700 font-bold">N/A</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {result.type === "rank" && (
+                        <div className="space-y-8">
+                          <div className="flex flex-col items-center text-center space-y-4">
+                            <div className="w-32 h-32 rounded-full border-4 border-blue-500/30 flex items-center justify-center relative">
+                              <div className="absolute inset-0 bg-blue-500/10 rounded-full blur-xl"></div>
+                              <span className="text-4xl font-black text-white tracking-tighter">
+                                {result.percentile.toFixed(1)}<span className="text-sm">%</span>
+                              </span>
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-white tracking-tight">上位 {result.percentile.toFixed(1)}% の実力です</h3>
+                              <p className="text-sm text-slate-500 mt-1">{days}日間の厳選を {result.trials}回試行した結果との比較</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5">
+                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Your Current Build</p>
+                              <p className="text-5xl font-black text-white text-center tracking-tighter">{result.userScore} <span className="text-sm text-slate-600 uppercase">Score</span></p>
+                            </div>
+                            <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5">
+                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Average for {days} Days</p>
+                              <p className="text-5xl font-black text-white text-center tracking-tighter">{result.median.toFixed(1)} <span className="text-sm text-slate-600 uppercase">Score</span></p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-8 border-t border-slate-800">
+                        <button onClick={downloadImage} className="flex items-center gap-2 px-8 py-3 bg-white text-slate-950 font-black text-sm rounded-full shadow-xl hover:scale-105 transition-all">
+                          <span>SNSで結果をシェア</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </>
               )}
+            </div>
+
+            {/* --- SNS Share Card (Hidden for toPng) --- */}
+            <div className="fixed -left-[2000px] top-0">
+              <div ref={cardRef} className={`w-[800px] bg-slate-950 p-12 rounded-[60px] border-8 border-slate-900 shadow-2xl overflow-hidden relative`}>
+                <div className={`absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-gradient-to-br ${config.gradient} opacity-20 blur-[100px] rounded-full`}></div>
+                <div className="relative z-10 space-y-8">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className={`text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r ${config.gradient} tracking-tighter mb-2`}>
+                        {config.name} {config.equipName}Sim
+                      </h2>
+                      <p className="text-xl text-slate-400 font-bold">{characterName} 厳選診断結果</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500 font-black uppercase tracking-[0.2em] mb-1">Generated by</p>
+                      <p className="text-sm text-white font-black tracking-widest">ARTIFACT-SIM.COM</p>
+                    </div>
+                  </div>
+
+                  {result && (
+                    <div className="space-y-12 py-8">
+                      {result.type === "target" ? (
+                        <div className="text-center space-y-4">
+                          <p className="text-lg text-slate-400 font-bold uppercase tracking-[0.3em]">目標スコア {targetScore} 到達までの平均</p>
+                          <p className="text-[120px] font-black text-white tracking-tighter leading-none">{result.median} <span className="text-4xl text-slate-500">日</span></p>
+                          <div className="flex justify-center gap-12 mt-8">
+                            <div className="text-center">
+                              <p className="text-xs text-blue-400 font-black uppercase tracking-widest mb-1">Luck: Top 10%</p>
+                              <p className="text-4xl font-black text-white">{result.top10} 日</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-red-400 font-black uppercase tracking-widest mb-1">Luck: Bottom 10%</p>
+                              <p className="text-4xl font-black text-white">{result.bottom10} 日</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : result.type === "period" ? (
+                        <div className="text-center space-y-4">
+                          <p className="text-lg text-slate-400 font-bold uppercase tracking-[0.3em]">{days}日間の厳選期待値</p>
+                          <p className="text-[120px] font-black text-white tracking-tighter leading-none">{result.median.toFixed(1)} <span className="text-4xl text-slate-500">Score</span></p>
+                          <p className="text-2xl text-blue-400 font-black uppercase tracking-widest">DMG Index: {calcDamageIndex({pieces: result.pieces}).toFixed(0)}</p>
+                        </div>
+                      ) : (
+                        <div className="text-center space-y-6">
+                          <div className="inline-block px-10 py-4 bg-blue-600/20 border-2 border-blue-500 rounded-full mb-4">
+                            <p className="text-4xl font-black text-white tracking-tighter uppercase">上位 {result.percentile.toFixed(1)}%</p>
+                          </div>
+                          <p className="text-xl text-slate-400 font-bold uppercase tracking-[0.3em]">あなたの現在のビルド評価</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-6 gap-3">
+                    {result && result.pieces && Object.entries(result.pieces).map(([slot, art]: [string, any]) => (
+                      <div key={slot} className="bg-slate-900/80 border border-slate-800 p-4 rounded-3xl text-center">
+                        <p className="text-[8px] text-slate-600 font-black uppercase mb-1 truncate">{slot}</p>
+                        {art ? (
+                          <>
+                            <p className="text-lg font-black text-white">{art.score.toFixed(1)}</p>
+                            <p className="text-[7px] text-blue-500 font-bold truncate">{art.setName}</p>
+                          </>
+                        ) : (
+                          <p className="text-sm font-black text-slate-800">-</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-8 border-t border-white/5 flex justify-between items-center">
+                    <div className="flex gap-4">
+                      {targetSets.filter(s => s && s !== "未選択").map((s, i) => (
+                        <span key={i} className="text-[10px] font-black text-slate-500 uppercase tracking-widest">#{s}</span>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-600 font-black italic italic">※この診断結果はシミュレーション上の期待値です</p>
+                  </div>
+                </div>
+              </div>
             </div>
             {/* ... (Footer etc) ... */}
                   {result.type === "target" && (
@@ -1062,8 +1301,9 @@ export default function Home() {
             )}
           </div>
         </div>
+      </div>
 
-        {/* --- Footer --- */}
+      {/* --- Footer --- */}
         <footer className="mt-20 pb-12 border-t border-slate-800/50 pt-12 text-center">
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
             <Link href="/blog/usage" className="hover:text-emerald-400 transition-colors">Usage Guide / 使い方</Link>
