@@ -1230,7 +1230,6 @@ export default function Home() {
                   )}
                 </div>
               )}
-            </div>
 
             {/* --- COMPARISON RESULT (Optional) --- */}
             {compareResult && (
@@ -1300,7 +1299,6 @@ export default function Home() {
               </div>
             )}
           </div>
-        </div>
       </div>
 
       {/* --- Footer --- */}
