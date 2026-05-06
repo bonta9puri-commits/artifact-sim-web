@@ -393,7 +393,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
     finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
     if (finalResult.total >= target) break;
   }
-  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces, score: finalResult.substatTotal };
+  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces, score: finalResult.total };
 }
 
 // シミュレーション (固定期間)
