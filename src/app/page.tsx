@@ -1230,6 +1230,7 @@ export default function Home() {
                   )}
                 </div>
               )}
+            </div>
 
             {/* --- COMPARISON RESULT (Optional) --- */}
             {compareResult && (
@@ -1318,6 +1319,7 @@ export default function Home() {
             </p>
           </div>
         </footer>
+      </div>
 
       {/* Drawer */}
       {isDrawerOpen && (
