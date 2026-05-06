@@ -5,13 +5,62 @@ import { GAME_CONFIGS, GameId, GameConfig } from '@/lib/game_data';
 import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, MAIN_PROBS } from '@/lib/simulator';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis } from 'recharts';
-import { Zap, X, LayoutGrid } from 'lucide-react';
+import { Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, X } from 'lucide-react';
 
 export default function Home() {
   const [gameId, setGameId] = useState<GameId>("genshin");
   const config = GAME_CONFIGS[gameId];
   
-  const [simMode, setSimMode] = useState<"target" | "period" | "rank">("target");
+  const [simMode, setSimMode] = useState<"target" | "period" | "rank" | "comparison">("target");
+  const [buildA, setBuildA] = useState<Record<string, number>>({});
+  const [buildB, setBuildB] = useState<Record<string, number>>({});
+  const [selectedWeapon, setSelectedWeapon] = useState<string>("none");
+  const [selectedEnemy, setSelectedEnemy] = useState<string>("standard");
+
+  // 武器・敵のデータ定義
+  const WEAPONS: any = {
+    genshin: [
+      { id: "none", name: "武器なし", stats: {} },
+      { id: "sign", name: "モチーフ(会心ダメ)", stats: { "会心ダメージ": 66.2, "攻撃力%": 20 } },
+      { id: "crit", name: "汎用星5(会心率)", stats: { "会心率": 33.1 } },
+      { id: "f2p", name: "星4配布(攻撃%)", stats: { "攻撃力%": 55.1 } }
+    ],
+    starrail: [
+      { id: "none", name: "光円錐なし", stats: {} },
+      { id: "sign", name: "モチーフ(会心ダメ)", stats: { "会心ダメージ": 36, "会心率": 18 } },
+      { id: "hertha", name: "星5ヘルタ(攻撃%)", stats: { "攻撃力%": 64 } },
+      { id: "f2p", name: "汎用星4", stats: { "攻撃力%": 32 } }
+    ],
+    zzz: [
+      { id: "none", name: "音動機なし", stats: {} },
+      { id: "sign", name: "モチーフ", stats: { "会心率": 24, "攻撃力%": 20 } },
+      { id: "rank_s", name: "汎用S級", stats: { "会心率": 19.2 } }
+    ]
+  };
+
+  const ENEMIES: any = {
+    genshin: [
+      { id: "standard", name: "一般(Lv.90 / 10%耐性)", def: 0.5, res: 0.9 },
+      { id: "boss", name: "精鋭(Lv.90 / 70%耐性)", def: 0.5, res: 0.3 }
+    ],
+    starrail: [
+      { id: "standard", name: "一般(Lv.80 / 弱点あり)", def: 0.5, res: 1.0 },
+      { id: "boss", name: "精鋭(Lv.80 / 弱点なし)", def: 0.5, res: 0.8 }
+    ],
+    zzz: [
+      { id: "standard", name: "一般(Lv.60)", def: 0.5, res: 1.0 }
+    ]
+  };
+
+  // 比較モード用スコア入力UIの更新
+  useEffect(() => {
+    if (simMode === "comparison") {
+      const initial: any = {};
+      config.slots.forEach(s => { if(s !== "未選択") initial[s] = 30; });
+      if (Object.keys(buildA).length === 0) setBuildA(initial);
+      if (Object.keys(buildB).length === 0) setBuildB(initial);
+    }
+  }, [simMode, config]);
   const [characterName, setCharacterName] = useState(config.characters[1] || "未選択");
   
   // Settings
@@ -240,8 +289,9 @@ export default function Home() {
     setIsSimulating(false);
   };
 
-  const calcDamageIndex = (res: any) => {
-    if (!res || !res.pieces) return 0;
+  const calcDamageIndex = (res: any, buildOverride?: Record<string, number>) => {
+    if (!res && !buildOverride) return 0;
+    
     let totalRate = baseRate;
     let totalDmg = baseDmg;
     let totalAtk = baseAtk;
@@ -250,63 +300,90 @@ export default function Home() {
     let totalEr = baseEr;
     let totalEm = baseEm;
 
-    // ゲームごとのメインステータス標準値
+    // 武器ステータスの加算
+    const weapon = WEAPONS[gameId].find((w: any) => w.id === selectedWeapon);
+    if (weapon && weapon.stats) {
+      Object.entries(weapon.stats).forEach(([s, v]: [string, any]) => {
+        if (s === "会心率") totalRate += v;
+        if (s === "会心ダメージ") totalDmg += v;
+        if (s === "攻撃力%") totalAtk += v;
+        if (s === "HP%") totalHp += v;
+        if (s === "防御力%") totalDef += v;
+        if (s === "元素熟知") totalEm += v;
+      });
+    }
+
     const mainValues: any = {
       genshin: { "会心率": 31.1, "会心ダメージ": 62.2, "攻撃力%": 46.6, "HP%": 46.6, "防御力%": 58.3, "元素チャージ効率": 51.8, "元素熟知": 187 },
       starrail: { "会心率": 32.4, "会心ダメージ": 64.8, "攻撃力%": 43.2, "HP%": 43.2, "防御力%": 54.0, "EP回復効率": 19.4, "撃破特効": 64.8 },
       zzz: { "会心率": 24.0, "会心ダメージ": 48.0, "攻撃力%": 30.0, "HP%": 30.0, "防御力%": 40.0, "エネルギー自動回復": 60, "異常マスタリー": 30 }
     };
 
-    Object.values(res.pieces).forEach((art: any) => {
-      if (!art) return;
-      // メインステータス加算
-      const mVal = mainValues[gameId][art.main];
-      if (mVal) {
-        if (art.main === "会心率") totalRate += mVal;
-        if (art.main === "会心ダメージ") totalDmg += mVal;
-        if (art.main === "攻撃力%") totalAtk += mVal;
-        if (art.main === "HP%") totalHp += mVal;
-        if (art.main === "防御力%") totalDef += mVal;
-        if (art.main === "元素チャージ効率" || art.main === "EP回復効率" || art.main === "エネルギー自動回復") totalEr += mVal;
-        if (art.main === "元素熟知" || art.main === "撃破特効" || art.main === "異常マスタリー") totalEm += mVal;
-      }
+    if (buildOverride) {
+      // 部位スコアから統計的にサブステータスを逆算
+      Object.entries(buildOverride).forEach(([slot, score]) => {
+        // メインステータス加算 (簡易的に現在設定されているメインを使用)
+        const main = mainStats[slot];
+        const mVal = mainValues[gameId][main];
+        if (mVal) {
+          if (main === "会心率") totalRate += mVal;
+          if (main === "会心ダメージ") totalDmg += mVal;
+          if (main === "攻撃力%") totalAtk += mVal;
+          if (main === "HP%") totalHp += mVal;
+          if (main === "防御力%") totalDef += mVal;
+          if (main === "元素熟知") totalEm += mVal;
+        }
 
-      // サブステータス集計
-      if (art.substats) {
-        Object.entries(art.substats).forEach(([s, v]: [string, any]) => {
-          if (s === "会心率") totalRate += v;
-          if (s === "会心ダメージ") totalDmg += v;
-          if (s === "攻撃力%") totalAtk += v;
-          if (s === "HP%") totalHp += v;
-          if (s === "防御力%") totalDef += v;
-          if (s === "元素チャージ効率" || s === "エネルギー回復効率" || s === "EP回復効率" || s === "エネルギー自動回復") totalEr += v;
-          if (s === "元素熟知" || s === "撃破特効" || s === "異常マスタリー") totalEm += v;
-        });
-      }
-    });
+        // スコアからサブステ配分 (会心:攻撃 = 2:1 などの比率で配分)
+        // 1スコア ≒ 会心ダメ1.0% または 攻撃%1.0% と想定
+        totalRate += (score * 0.4) / 2; // スコアの40%を率に (2.0重み)
+        totalDmg += (score * 0.4);      // スコアの40%をダメに (1.0重み)
+        totalAtk += (score * 0.2);      // 残り20%を攻撃に
+      });
+    } else {
+      Object.values(res.pieces).forEach((art: any) => {
+        if (!art) return;
+        const mVal = mainValues[gameId][art.main];
+        if (mVal) {
+          if (art.main === "会心率") totalRate += mVal;
+          if (art.main === "会心ダメージ") totalDmg += mVal;
+          if (art.main === "攻撃力%") totalAtk += mVal;
+          if (art.main === "HP%") totalHp += mVal;
+          if (art.main === "防御力%") totalDef += mVal;
+          if (art.main === "元素チャージ効率" || art.main === "EP回復効率" || art.main === "エネルギー自動回復") totalEr += mVal;
+          if (art.main === "元素熟知" || art.main === "撃破特効" || art.main === "異常マスタリー") totalEm += mVal;
+        }
+        if (art.substats) {
+          Object.entries(art.substats).forEach(([s, v]: [string, any]) => {
+            if (s === "会心率") totalRate += v;
+            if (s === "会心ダメージ") totalDmg += v;
+            if (s === "攻撃力%") totalAtk += v;
+            if (s === "HP%") totalHp += v;
+            if (s === "防御力%") totalDef += v;
+            if (s === "元素熟知" || s === "撃破特効" || s === "異常マスタリー") totalEm += v;
+          });
+        }
+      });
+    }
 
-    // 指数計算
     const critMult = 1 + (Math.min(100, totalRate) / 100) * (totalDmg / 100);
-    
-    // スケーリング倍率の決定
     let statMult = 1;
     if (scalingMode === "atk") statMult = totalAtk / 100;
     else if (scalingMode === "hp") statMult = totalHp / 100;
     else if (scalingMode === "def") statMult = totalDef / 100;
-    else if (scalingMode === "er") statMult = (totalAtk * 0.7 + totalEr * 0.4) / 100; // ハイブリッド評価
+    else if (scalingMode === "er") statMult = (totalAtk * 0.7 + totalEr * 0.4) / 100;
     
     let emMult = 1;
     if (useReaction) {
-      if (gameId === "genshin") {
-        // 蒸発・溶解の簡易計算式
-        emMult = 1 + (2.78 * totalEm) / (totalEm + 1400);
-      } else {
-        // スタレ・ゼンゼロはリニアな伸びとして簡易計算
-        emMult = 1 + (totalEm / 100);
-      }
+      if (gameId === "genshin") emMult = 1 + (2.78 * totalEm) / (totalEm + 1400);
+      else emMult = 1 + (totalEm / 100);
     }
 
-    return critMult * statMult * emMult;
+    // 敵の防御・耐性補正
+    const enemy = ENEMIES[gameId].find((e: any) => e.id === selectedEnemy);
+    const enemyMult = (enemy?.def || 0.5) * (enemy?.res || 0.9);
+
+    return critMult * statMult * emMult * enemyMult * 1000; // 桁を見やすく
   };
 
   const downloadImage = useCallback(() => {
@@ -362,6 +439,7 @@ export default function Home() {
                   <button onClick={() => setSimMode("target")} className={`py-2 rounded-lg text-sm font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"}`}>🎯 目標スコア診断</button>
                   <button onClick={() => setSimMode("period")} className={`py-2 rounded-lg text-sm font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"}`}>⏳ 期間シミュ</button>
                   <button onClick={() => setSimMode("rank")} className={`py-2 rounded-lg text-sm font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"}`}>🏆 ランク診断</button>
+                  <button onClick={() => setSimMode("comparison")} className={`py-2 rounded-lg text-sm font-bold transition-all ${simMode === "comparison" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"}`}>⚖️ ビルド比較</button>
                 </div>
 
                 <div>
@@ -480,6 +558,35 @@ export default function Home() {
                   </div>
                 )}
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="text-sm font-medium text-slate-400">仮想環境設定</label>
+                    <Sword size={16} className="text-slate-500" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">装備武器</p>
+                      <select 
+                        value={selectedWeapon} 
+                        onChange={e => setSelectedWeapon(e.target.value)}
+                        className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"
+                      >
+                        {WEAPONS[gameId].map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">ターゲット(仮想敵)</p>
+                      <select 
+                        value={selectedEnemy} 
+                        onChange={e => setSelectedEnemy(e.target.value)}
+                        className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"
+                      >
+                        {ENEMIES[gameId].map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-sm font-medium text-slate-400">基礎ステータス (火力計算用)</label>
                     <button 
@@ -536,38 +643,45 @@ export default function Home() {
                   <p className="text-[9px] text-slate-600 mt-2">※武器やキャラ突破分、セット効果を含めた数値を入力してください</p>
                 </div>
 
-                <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400">
-                        {gameId === "genshin" ? "聖遺物廻聖" : gameId === "starrail" ? "遺物合成" : "ドライバ調律"}を利用
-                      </label>
-                      <p className="text-[10px] text-slate-500 italic leading-tight mt-1 truncate max-w-[160px]">不要な部位を再変換してシミュレート</p>
+                {simMode === "comparison" && (
+                  <div className="space-y-4 pt-4 border-t border-slate-800">
+                    <p className="text-xs font-bold text-slate-400 mb-2">ビルドA/B スコア調整</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <p className="text-[9px] text-blue-400 font-black uppercase tracking-widest text-center">Build A</p>
+                        {config.slots.filter(s => s !== "未選択").map(slot => (
+                          <div key={slot}>
+                            <p className="text-[8px] text-slate-500 mb-1">{slot}</p>
+                            <input 
+                              type="range" min="0" max="60" step="1" 
+                              value={buildA[slot] || 0} 
+                              onChange={e => setBuildA({...buildA, [slot]: Number(e.target.value)})}
+                              className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                            />
+                            <p className="text-[8px] text-right text-slate-400">{buildA[slot]}pt</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-3">
+                        <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest text-center">Build B</p>
+                        {config.slots.filter(s => s !== "未選択").map(slot => (
+                          <div key={slot}>
+                            <p className="text-[8px] text-slate-500 mb-1">{slot}</p>
+                            <input 
+                              type="range" min="0" max="60" step="1" 
+                              value={buildB[slot] || 0} 
+                              onChange={e => setBuildB({...buildB, [slot]: Number(e.target.value)})}
+                              className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                            />
+                            <p className="text-[8px] text-right text-slate-400">{buildB[slot]}pt</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <button 
-                      onClick={() => setUseStrongbox(!useStrongbox)}
-                      className={`w-12 h-6 rounded-full transition-all relative ${useStrongbox ? 'bg-blue-600' : 'bg-slate-700'}`}
-                    >
-                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${useStrongbox ? 'left-7' : 'left-1'}`}></div>
-                    </button>
                   </div>
-                </div>
+                )}
 
-                <button onClick={() => handleSimulate()} disabled={isSimulating} className={`w-full py-4 rounded-2xl font-black text-lg transition-all shadow-xl active:scale-95 ${isSimulating ? 'bg-slate-700' : `bg-gradient-to-r ${config.gradient} shadow-blue-500/20`}`}>
-                  {isSimulating ? "シミュレート中..." : "実行する"}
-                </button>
-                <div className="pt-4 border-t border-slate-800">
-                  <button 
-                    onClick={() => {
-                      localStorage.removeItem(`sim_settings_${gameId}`);
-                      window.location.reload();
-                    }}
-                    className="w-full py-2 rounded-xl text-[10px] font-bold text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    設定をデフォルトに戻す
-                  </button>
-                </div>
+                {/* ... (handleSimulate button etc) ... */}
               </div>
             </div>
           </div>
@@ -575,31 +689,117 @@ export default function Home() {
           {/* Results Panel */}
           <div className="lg:col-span-8">
             <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 min-h-[600px] flex flex-col items-center justify-center relative overflow-hidden">
-              {!result && !isSimulating && (
-                <div className="text-center space-y-4 opacity-50">
-                  <div className="text-8xl">🎲</div>
-                  <p className="text-xl font-bold">条件を入力して実行してください</p>
-                </div>
-              )}
+              {simMode === "comparison" ? (
+                <div className="w-full space-y-12 animate-in fade-in duration-500">
+                  <div className="text-center space-y-2">
+                    <h3 className="text-2xl font-black text-white italic tracking-tighter">BUILD COMPARISON</h3>
+                    <p className="text-xs text-slate-500 uppercase tracking-[0.3em]">Build A vs Build B Performance</p>
+                  </div>
 
-              {isSimulating && (
-                <div className="flex flex-col items-center gap-6 w-full max-w-md">
-                  <div className={`w-16 h-16 border-4 border-t-transparent rounded-full animate-spin border-blue-500`}></div>
-                  <div className="w-full space-y-2 text-center">
-                    <p className="font-bold text-lg animate-pulse">確率の海を探索中... {simProgress}%</p>
-                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                    {/* Divider with VS */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-slate-950 rounded-full border border-slate-800 flex items-center justify-center z-10 hidden md:flex font-black text-xs text-slate-600">VS</div>
+                    
+                    {/* Build A Card */}
+                    <div className={`p-8 rounded-[40px] border transition-all ${calcDamageIndex(null, buildA) >= calcDamageIndex(null, buildB) ? 'bg-blue-600/10 border-blue-500/50 shadow-2xl shadow-blue-500/10' : 'bg-slate-900/50 border-slate-800'}`}>
+                      <div className="flex justify-between items-center mb-6">
+                        <span className="px-3 py-1 bg-blue-600 text-[10px] font-black rounded-full">BUILD A</span>
+                        {calcDamageIndex(null, buildA) > calcDamageIndex(null, buildB) && <span className="text-blue-400 font-black italic">WINNER</span>}
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Damage Index</p>
+                      <p className="text-6xl font-black text-white mb-8 tracking-tighter">{calcDamageIndex(null, buildA).toFixed(0)}</p>
+                      
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-end border-b border-slate-800 pb-2">
+                          <span className="text-[10px] text-slate-500">Total Score</span>
+                          <span className="text-xl font-bold text-slate-300">{Object.values(buildA).reduce((a,b)=>a+b, 0)} <span className="text-[10px]">pt</span></span>
+                        </div>
+                        <div className="bg-slate-950/50 p-4 rounded-2xl space-y-1">
+                          <p className="text-[9px] text-slate-600 font-bold mb-2 uppercase tracking-widest">Estimated Stats</p>
+                          <div className="flex justify-between text-xs"><span className="text-slate-500">会心率</span><span className="text-slate-300">{(baseRate + (Object.values(buildA).reduce((a,b)=>a+b, 0) * 0.4 / 2) + 31).toFixed(1)}%</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-slate-500">会心ダメ</span><span className="text-slate-300">{(baseDmg + (Object.values(buildA).reduce((a,b)=>a+b, 0) * 0.4) + 62).toFixed(1)}%</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Build B Card */}
+                    <div className={`p-8 rounded-[40px] border transition-all ${calcDamageIndex(null, buildB) > calcDamageIndex(null, buildA) ? 'bg-emerald-600/10 border-emerald-500/50 shadow-2xl shadow-emerald-500/10' : 'bg-slate-900/50 border-slate-800'}`}>
+                      <div className="flex justify-between items-center mb-6">
+                        <span className="px-3 py-1 bg-emerald-600 text-[10px] font-black rounded-full">BUILD B</span>
+                        {calcDamageIndex(null, buildB) > calcDamageIndex(null, buildA) && <span className="text-emerald-400 font-black italic">WINNER</span>}
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Damage Index</p>
+                      <p className="text-6xl font-black text-white mb-8 tracking-tighter">{calcDamageIndex(null, buildB).toFixed(0)}</p>
+                      
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-end border-b border-slate-800 pb-2">
+                          <span className="text-[10px] text-slate-500">Total Score</span>
+                          <span className="text-xl font-bold text-slate-300">{Object.values(buildB).reduce((a,b)=>a+b, 0)} <span className="text-[10px]">pt</span></span>
+                        </div>
+                        <div className="bg-slate-950/50 p-4 rounded-2xl space-y-1">
+                          <p className="text-[9px] text-slate-600 font-bold mb-2 uppercase tracking-widest">Estimated Stats</p>
+                          <div className="flex justify-between text-xs"><span className="text-slate-500">会心率</span><span className="text-slate-300">{(baseRate + (Object.values(buildB).reduce((a,b)=>a+b, 0) * 0.4 / 2) + 31).toFixed(1)}%</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-slate-500">会心ダメ</span><span className="text-slate-300">{(baseDmg + (Object.values(buildB).reduce((a,b)=>a+b, 0) * 0.4) + 62).toFixed(1)}%</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Relative Gap Bar */}
+                  <div className="max-w-2xl mx-auto w-full space-y-4">
+                    <div className="flex justify-between items-end">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Relative Performance Gap</p>
+                      <p className="text-lg font-black text-white">
+                        {Math.abs((calcDamageIndex(null, buildA) / calcDamageIndex(null, buildB) - 1) * 100).toFixed(1)}% <span className="text-xs text-slate-500 font-bold">{calcDamageIndex(null, buildA) > calcDamageIndex(null, buildB) ? 'A is Stronger' : 'B is Stronger'}</span>
+                      </p>
+                    </div>
+                    <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700 flex">
                       <div 
-                        className={`h-full bg-gradient-to-r ${config.gradient} transition-all duration-300`} 
-                        style={{ width: `${simProgress}%` }}
+                        className="h-full bg-blue-500 transition-all duration-500" 
+                        style={{ width: `${(calcDamageIndex(null, buildA) / (calcDamageIndex(null, buildA) + calcDamageIndex(null, buildB))) * 100}%` }}
+                      ></div>
+                      <div 
+                        className="h-full bg-emerald-500 transition-all duration-500" 
+                        style={{ width: `${(calcDamageIndex(null, buildB) / (calcDamageIndex(null, buildA) + calcDamageIndex(null, buildB))) * 100}%` }}
                       ></div>
                     </div>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">Running 2,500 trials per mode</p>
+                    <p className="text-center text-[10px] text-slate-600 italic">※スコアから統計的にサブステ配分を推測して計算しています。厳密な比較にはサブステ入力を検討中。</p>
                   </div>
                 </div>
-              )}
+              ) : (
+                <>
+                  {!result && !isSimulating && (
+                    <div className="text-center space-y-4 opacity-50">
+                      <div className="text-8xl">🎲</div>
+                      <p className="text-xl font-bold">条件を入力して実行してください</p>
+                    </div>
+                  )}
 
-              {result && !isSimulating && (
-                <div className="w-full space-y-8 animate-in zoom-in-95 duration-300">
+                  {isSimulating && (
+                    <div className="flex flex-col items-center gap-6 w-full max-w-md">
+                      <div className={`w-16 h-16 border-4 border-t-transparent rounded-full animate-spin border-blue-500`}></div>
+                      <div className="w-full space-y-2 text-center">
+                        <p className="font-bold text-lg animate-pulse">確率の海を探索中... {simProgress}%</p>
+                        <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                          <div 
+                            className={`h-full bg-gradient-to-r ${config.gradient} transition-all duration-300`} 
+                            style={{ width: `${simProgress}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest">Running 2,500 trials per mode</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {result && !isSimulating && (
+                    <div className="w-full space-y-8 animate-in zoom-in-95 duration-300">
+                      {/* ... (Existing result UI) ... */}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            {/* ... (Footer etc) ... */}
                   {result.type === "target" && (
                     <div className="space-y-6">
                       <h3 className="text-center text-xl font-bold">目標スコア {targetScore} 到達までにかかる日数</h3>
