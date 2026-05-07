@@ -308,7 +308,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
   let attempts = 0;
   let recycleQueue = 0;
   const defaults = GAME_DEFAULTS[gameId];
-  let finalResult = { total: 0, pieces: {} };
+  let finalResult = { total: 0, substatTotal: 0, pieces: {} };
 
   const dungeonA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
   const dungeonB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
@@ -391,9 +391,9 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
     }
 
     finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
-    if (finalResult.total >= target) break;
+    if (finalResult.substatTotal >= target) break;
   }
-  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces, score: finalResult.total };
+  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces, score: finalResult.substatTotal };
 }
 
 // シミュレーション (固定期間)
