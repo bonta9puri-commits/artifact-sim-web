@@ -70,7 +70,7 @@ export default function Home() {
   const [breakdownView, setBreakdownView] = useState<"median" | "top10" | "bottom10">("median");
   const [staminaPerDay, setStaminaPerDay] = useState(gameId === "genshin" ? 180 : 240);
   
-  const [useStrongbox, setUseStrongbox] = useState(true);
+  const [useStrongbox, setUseStrongbox] = useState(false);
   const [mainStats, setMainStats] = useState<Record<string, string>>({});
   const [userPartScores, setUserPartScores] = useState<Record<string, number>>({});
   const [scoreWeights, setScoreWeights] = useState<Record<string, number>>({
@@ -832,23 +832,6 @@ export default function Home() {
                             </div>
                           </div>
 
-                          {recycleComparison && (
-                            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400">
-                                  <LayoutGrid size={24} />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-bold text-emerald-400">廻聖/合成による効率化</p>
-                                  <p className="text-xs text-slate-500">不要な部位を再変換することで厳選期間を短縮できます</p>
-                                </div>
-                              </div>
-                              <div className="text-center md:text-right">
-                                <p className="text-2xl font-black text-emerald-400">約 {recycleComparison.daysSaved.toFixed(1)} 日分 <span className="text-sm">の短縮</span></p>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Efficiency Bonus: +{((1 - recycleComparison.withRecycle / recycleComparison.withoutRecycle) * 100).toFixed(1)}%</p>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )}
 
