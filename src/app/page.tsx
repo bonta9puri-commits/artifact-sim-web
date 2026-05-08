@@ -272,7 +272,7 @@ export default function Home() {
       } else {
         const userTotal = Object.values(userPartScores).reduce((a, b) => a + b, 0);
         const belowCount = results.filter(r => r.score <= userTotal).length;
-        const percentile = (belowCount / trials) * 100;
+        const percentile = Math.max(0.1, 100 - (belowCount / trials) * 100);
         const finalRes = {
           type: "rank",
           percentile,
