@@ -277,6 +277,11 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
         if (count >= 2) currentTotal += 15;
         if (count >= 4) currentTotal += 40;
         
+        // セット1(本命)を絶対に優先する強烈な補正 (表示スコアには影響しない)
+        if (targetName === targetSets[0]) {
+          currentTotal += 10000;
+        }
+        
         if (currentTotal > maxTotal) {
           maxTotal = currentTotal;
           maxSubstat = currentSubstat;
@@ -323,6 +328,10 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
         if (rCount >= 4) currentTotal += 40;
         if (oCount >= 2) currentTotal += 20;
 
+        // セット1とセット3(本命)を優先する補正
+        if (tRelic === targetSets[0]) currentTotal += 10000;
+        if (tOrna === targetSets[2]) currentTotal += 10000;
+
         if (currentTotal > maxTotal) {
           maxTotal = currentTotal;
           maxSubstat = currentSubstat;
@@ -359,6 +368,10 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
         if (aCount >= 2) currentTotal += 15;
         if (aCount >= 4) currentTotal += 40;
         if (bCount >= 2) currentTotal += 15;
+
+        // ZZZの場合もセット1と3を優先
+        if (t4 === targetSets[0]) currentTotal += 10000;
+        if (t2 === targetSets[2]) currentTotal += 10000;
 
         if (currentTotal > maxTotal) {
           maxTotal = currentTotal;
@@ -432,7 +445,6 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
       // 伸び代がある方（平均が低い方）を優先
       // ただしスタレの場合、スロットの制約があるためそれを優先
       if (gameId === "starrail") {
-        // スタレは特定の部位が必要ならそっち、そうでなければバランス
         const relicTargetCount = 4;
         const ornaTargetCount = 2;
         if (countA < relicTargetCount) currentPool = dungeonA;
@@ -441,6 +453,8 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
       } else {
         currentPool = avgA < avgB ? dungeonA : dungeonB;
       }
+    } else {
+      currentPool = dungeonA; // Bが未設定なら絶対にA
     }
 
     // パーツの抽選
@@ -544,6 +558,8 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       } else {
         currentPool = avgA < avgB ? dungeonA : dungeonB;
       }
+    } else {
+      currentPool = dungeonA; // Bが未設定なら絶対にA
     }
 
     let p = parts[Math.floor(Math.random() * parts.length)];
