@@ -112,7 +112,7 @@ export const ELIXIR_COST: Record<string, number> = {
   "理の冠": 3
 };
 
-export function generateArtifact(gameId: GameId, part: string, subPool: string[], scoreWeights: Record<string, number>, targetSets: string[] = [], isOrnament: boolean = false) {
+export function generateArtifact(gameId: GameId, part: string, subPool: string[], scoreWeights: Record<string, number>, targetSets: string[] = [], isOrnament: boolean = false, isStrongbox: boolean = false) {
   const mainProbs = MAIN_PROBS[gameId][part] || { "攻撃力%": 100 };
   const main = weightedRandom(mainProbs);
   
@@ -120,14 +120,22 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
   let setName = "その他";
   let isTargetSet = false;
 
-  if (Math.random() < 0.5) {
+  if (isStrongbox) {
+    if (activeTargetSets.length > 0) {
+      setName = activeTargetSets[0];
+      isTargetSet = true;
+    }
+  } else if (Math.random() < 0.5) {
     if (activeTargetSets.length > 0) {
       setName = activeTargetSets[Math.floor(Math.random() * activeTargetSets.length)];
       isTargetSet = true;
     }
   }
   
-  const numSubs = Math.random() < 0.8 ? 3 : 4;
+  let numSubs = Math.random() < 0.8 ? 3 : 4;
+  if (isStrongbox && gameId === "genshin") {
+    numSubs = Math.random() < 0.5 ? 4 : 3;
+  }
   const available = subPool.filter(s => s !== main && s !== "未選択");
   const gameSubWeights = SUB_WEIGHTS[gameId] || {};
   
@@ -487,10 +495,10 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
       recycleQueue -= defaults.recycleRatio;
       const sp = parts[Math.floor(Math.random() * parts.length)];
       const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
-      let sPool = dungeonA;
-      if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? dungeonB : dungeonA;
+      let sPool = targetSets[0] && targetSets[0] !== "未選択" ? [targetSets[0]] : dungeonA;
+      if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? [dungeonB[0]] : sPool;
 
-      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament);
+      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament, true);
       if (sart.score >= 58) godPieces.push(sart);
       const isSMainMatch = sart.main === mainStats[sp] || 
         sp.includes("花") || sp.includes("羽") || 
@@ -594,10 +602,10 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       recycleQueue -= defaults.recycleRatio;
       const sp = parts[Math.floor(Math.random() * parts.length)];
       const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
-      let sPool = dungeonA;
-      if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? dungeonB : dungeonA;
+      let sPool = targetSets[0] && targetSets[0] !== "未選択" ? [targetSets[0]] : dungeonA;
+      if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? [dungeonB[0]] : sPool;
 
-      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament);
+      const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament, true);
       if (sart.score >= 58) godPieces.push(sart);
       const isSMainMatch = sart.main === mainStats[sp] || 
         sp.includes("花") || sp.includes("羽") || 

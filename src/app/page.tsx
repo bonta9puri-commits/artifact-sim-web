@@ -685,6 +685,22 @@ export default function Home() {
                   </div>
                 )}
 
+                {/* Strongbox Toggle */}
+                <div className="bg-slate-950/50 p-4 rounded-2xl border border-yellow-900/50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-yellow-400 flex items-center gap-2">♻️ 聖遺物廻聖を利用する</label>
+                      <p className="text-[10px] text-slate-500 mt-1">※3個につき1個生成。初期4オプ率50%。「大本命」のセットが固定で排出されます</p>
+                    </div>
+                    <button 
+                      onClick={() => setUseStrongbox(!useStrongbox)}
+                      className={`w-10 h-5 rounded-full relative transition-colors ${useStrongbox ? 'bg-yellow-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${useStrongbox ? 'left-6' : 'left-1'}`} />
+                    </button>
+                  </div>
+                </div>
+
                 {gameId === "genshin" && (
                   <div className="bg-slate-950/50 p-4 rounded-2xl border border-blue-900/50">
                     <div className="flex items-center justify-between mb-4">
