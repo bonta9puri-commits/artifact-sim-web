@@ -53,6 +53,9 @@ export default function Home() {
     ]
   };
 
+  const TALENT_CUMULATIVE_RESIN = [0, 0, 15, 35, 70, 120, 180, 320, 520, 850, 1300];
+  const TALENT_MULTIPLIERS = [0, 1.00, 1.075, 1.15, 1.25, 1.35, 1.45, 1.55, 1.65, 1.75, 1.85];
+
   // 比較モード用スコア入力UIの更新
   useEffect(() => {
     if (simMode === "comparison") {
@@ -106,6 +109,10 @@ export default function Home() {
   const [elixirTargetSet, setElixirTargetSet] = useState("");
   const [elixirSub1, setElixirSub1] = useState("会心率");
   const [elixirSub2, setElixirSub2] = useState("会心ダメージ");
+
+  // Talent Comparison
+  const [talentCurrentLevel, setTalentCurrentLevel] = useState<number>(8);
+  const [talentTargetLevel, setTalentTargetLevel] = useState<number>(10);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -657,6 +664,41 @@ export default function Home() {
                   </div>
                 )}
 
+                {gameId === "genshin" && (
+                  <div className="bg-slate-950/50 p-4 rounded-2xl border border-blue-900/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="text-sm font-medium text-blue-400 flex items-center gap-2">💡 天賦育成との比較</label>
+                    </div>
+                    {talentCurrentLevel < 10 ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">現在の天賦レベル</p>
+                            <select value={talentCurrentLevel} onChange={e => {
+                                const newCurrent = Number(e.target.value);
+                                setTalentCurrentLevel(newCurrent);
+                                if (talentTargetLevel <= newCurrent) setTalentTargetLevel(Math.min(10, newCurrent + 1));
+                              }} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500">
+                              {[1,2,3,4,5,6,7,8,9,10].map(l => <option key={l} value={l}>Lv. {l}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">目標の天賦レベル</p>
+                            <select value={talentTargetLevel} onChange={e => setTalentTargetLevel(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500">
+                              {[2,3,4,5,6,7,8,9,10].filter(l => l > talentCurrentLevel).map(l => <option key={l} value={l}>Lv. {l}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 text-center">
+                        <p className="text-sm font-bold text-blue-400">天賦は既に最大です！</p>
+                        <p className="text-[10px] text-slate-400 mt-1">あとは地獄の聖遺物厳選あるのみです🔥 頑張りましょう！</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
                   <div className="flex items-center justify-between mb-4">
                     <label className="text-sm font-medium text-slate-400">仮想環境設定</label>
@@ -1026,6 +1068,36 @@ export default function Home() {
                               <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Average for {days} Days</p>
                               <p className="text-5xl font-black text-white text-center tracking-tighter">{result.median.toFixed(1)} <span className="text-sm text-slate-600 uppercase">Score</span></p>
                             </div>
+                          </div>
+                        </div>
+                      )}
+                      {/* Talent Comparison Card */}
+                      {gameId === "genshin" && talentCurrentLevel < 10 && (result.type === "target" || result.type === "period") && (
+                        <div className="bg-blue-500/5 border border-blue-500/20 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 w-full animate-in fade-in slide-in-from-bottom-4 duration-700 mt-8 mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400">
+                              <Zap size={24} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-blue-400">💡 天賦育成との比較</p>
+                              <p className="text-[11px] text-slate-400 mt-1">
+                                天賦Lv.{talentCurrentLevel} → {talentTargetLevel} に必要な樹脂は <span className="font-bold text-white">約{TALENT_CUMULATIVE_RESIN[talentTargetLevel] - TALENT_CUMULATIVE_RESIN[talentCurrentLevel]}</span>（約{((TALENT_CUMULATIVE_RESIN[talentTargetLevel] - TALENT_CUMULATIVE_RESIN[talentCurrentLevel])/180).toFixed(1)}日分）です。
+                              </p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                確実に対象スキルのダメージが <span className="font-bold text-white">約{(((TALENT_MULTIPLIERS[talentTargetLevel] / TALENT_MULTIPLIERS[talentCurrentLevel]) - 1) * 100).toFixed(1)}%</span> 上昇します！
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-center md:text-right mt-4 md:mt-0 flex-shrink-0">
+                            {((result.type === "target" ? (result.median * staminaPerDay) : (days * staminaPerDay)) > (TALENT_CUMULATIVE_RESIN[talentTargetLevel] - TALENT_CUMULATIVE_RESIN[talentCurrentLevel])) ? (
+                              <p className="text-[11px] font-bold text-yellow-400 bg-yellow-400/10 px-3 py-1.5 rounded-lg inline-block whitespace-nowrap border border-yellow-400/20">
+                                ⚠️ 先に天賦を上げた方がコスパが良いかもしれません
+                              </p>
+                            ) : (
+                              <p className="text-[11px] font-bold text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-lg inline-block whitespace-nowrap border border-emerald-400/20">
+                                ✓ 聖遺物厳選を優先してもOKなラインです
+                              </p>
+                            )}
                           </div>
                         </div>
                       )}
