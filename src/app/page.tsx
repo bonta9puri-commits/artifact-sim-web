@@ -97,6 +97,16 @@ export default function Home() {
   const [useReaction, setUseReaction] = useState(true);
   const [targetSets, setTargetSets] = useState<string[]>(["", "", "", ""]);
 
+  // Elixir Settings
+  const [elixirEnabled, setElixirEnabled] = useState(false);
+  const [elixirInitialCount, setElixirInitialCount] = useState(0);
+  const [elixirPerVersion, setElixirPerVersion] = useState(1);
+  const [elixirTargetPart, setElixirTargetPart] = useState("空の杯");
+  const [elixirTargetMain, setElixirTargetMain] = useState("元素ダメージ");
+  const [elixirTargetSet, setElixirTargetSet] = useState("");
+  const [elixirSub1, setElixirSub1] = useState("会心率");
+  const [elixirSub2, setElixirSub2] = useState("会心ダメージ");
+
   const cardRef = useRef<HTMLDivElement>(null);
 
   // 設定のロード
@@ -205,13 +215,23 @@ export default function Home() {
     const subPool = config.subStats.filter(s => s !== "未選択");
 
     if (simMode === "target") {
+      const elixirConfig = {
+        enabled: elixirEnabled,
+        initialCount: elixirInitialCount,
+        perVersion: elixirPerVersion,
+        targetPart: elixirTargetPart,
+        targetSet: elixirTargetSet,
+        targetMain: elixirTargetMain,
+        sub1: elixirSub1,
+        sub2: elixirSub2
+      };
       const results: {attempts: number, pieces: any}[] = [];
       for (let i = 0; i < trials; i++) {
         if (i % 10 === 0) {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
-        const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets);
+        const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig);
         results.push(res);
       }
       results.sort((a, b) => a.attempts - b.attempts);
@@ -241,13 +261,23 @@ export default function Home() {
     } else {
       const activeDays = (simMode === "period" ? (overrideDays || days) : days);
       const totalAttempts = Math.floor((activeDays * staminaPerDay) / staminaCost);
+      const elixirConfig = {
+        enabled: elixirEnabled,
+        initialCount: elixirInitialCount,
+        perVersion: elixirPerVersion,
+        targetPart: elixirTargetPart,
+        targetSet: elixirTargetSet,
+        targetMain: elixirTargetMain,
+        sub1: elixirSub1,
+        sub2: elixirSub2
+      };
       const results: {score: number, pieces: any}[] = [];
       for (let i = 0; i < trials; i++) {
         if (i % 10 === 0) {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
-        const res = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats, targetSets);
+        const res = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig);
         results.push(res);
       }
       results.sort((a, b) => a.score - b.score);
@@ -558,6 +588,75 @@ export default function Home() {
                     ))}
                   </div>
                 )}
+
+                {gameId === "genshin" && (
+                  <div className="bg-slate-950/50 p-4 rounded-2xl border border-emerald-900/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="text-sm font-medium text-emerald-400 flex items-center gap-2">✨ 祝聖のエリクシル</label>
+                      <button 
+                        onClick={() => setElixirEnabled(!elixirEnabled)}
+                        className={`w-10 h-5 rounded-full relative transition-colors ${elixirEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${elixirEnabled ? 'left-6' : 'left-1'}`} />
+                      </button>
+                    </div>
+                    {elixirEnabled && (
+                      <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">初期所持数</p>
+                            <input type="number" value={elixirInitialCount} onChange={e => setElixirInitialCount(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">1Ver(42日)の獲得数</p>
+                            <input type="number" value={elixirPerVersion} onChange={e => setElixirPerVersion(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">使用部位 (消費コスト)</p>
+                            <select value={elixirTargetPart} onChange={e => setElixirTargetPart(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                              <option value="生の花">生の花 (1)</option>
+                              <option value="死の羽">死の羽 (1)</option>
+                              <option value="時の砂">時の砂 (2)</option>
+                              <option value="空の杯">空の杯 (4)</option>
+                              <option value="理の冠">理の冠 (3)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">セット</p>
+                            <select value={elixirTargetSet} onChange={e => setElixirTargetSet(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                              {targetSets.filter(s => s && s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
+                              {targetSets.filter(s => s && s !== "未選択").length === 0 && <option value="">ダンジョン設定を反映</option>}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">メイン</p>
+                            <select value={elixirTargetMain} onChange={e => setElixirTargetMain(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                              {Object.keys(MAIN_PROBS["genshin"]?.[elixirTargetPart] || {}).map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">サブ1</p>
+                            <select value={elixirSub1} onChange={e => setElixirSub1(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                              {config.subStats.filter(s => s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">サブ2</p>
+                            <select value={elixirSub2} onChange={e => setElixirSub2(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                              {config.subStats.filter(s => s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <p className="text-[9px] text-emerald-500/70 italic">※初期4オプ率は50%でシミュレートされます</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
                   <div className="flex items-center justify-between mb-4">
                     <label className="text-sm font-medium text-slate-400">仮想環境設定</label>
