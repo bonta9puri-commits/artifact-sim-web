@@ -403,6 +403,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
   const dungeonB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
 
   let craftedElixirs = 0;
+  const godPieces: any[] = [];
 
   while (attempts < 100000) {
     attempts++;
@@ -416,6 +417,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
       if (craftCount > craftedElixirs) {
         for (let i = 0; i < craftCount - craftedElixirs; i++) {
           const eArt = generateElixirArtifact(elixirConfig, subPool, scoreWeights);
+          if (eArt.score >= 58) godPieces.push(eArt);
           const p = eArt.part;
           if (eArt.score > (bestPieces[p][eArt.setName]?.score || 0)) bestPieces[p][eArt.setName] = eArt;
           if (eArt.score > (bestPieces[p]["any"]?.score || 0)) bestPieces[p]["any"] = eArt;
@@ -467,6 +469,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
 
     const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
     const art = generateArtifact(gameId, p, subPool, scoreWeights, currentPool, isOrnament);
+    if (art.score >= 58) godPieces.push(art);
     
     const isMainMatch = art.main === mainStats[p] || 
       p.includes("花") || p.includes("羽") || 
@@ -488,6 +491,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
       if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? dungeonB : dungeonA;
 
       const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament);
+      if (sart.score >= 58) godPieces.push(sart);
       const isSMainMatch = sart.main === mainStats[sp] || 
         sp.includes("花") || sp.includes("羽") || 
         sp === "頭部" || sp === "手部" || 
@@ -502,7 +506,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
     finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
     if (finalResult.substatTotal >= target) break;
   }
-  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces, score: finalResult.substatTotal };
+  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces, score: finalResult.substatTotal, godPieces };
 }
 
 // シミュレーション (固定期間)
@@ -518,6 +522,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
   const defaults = GAME_DEFAULTS[gameId];
   const dungeonA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
   const dungeonB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
+  const godPieces: any[] = [];
 
   let finalResult = { total: 0, substatTotal: 0, pieces: {} };
 
@@ -529,6 +534,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
 
     for (let i = 0; i < craftCount; i++) {
       const eArt = generateElixirArtifact(elixirConfig, subPool, scoreWeights);
+      if (eArt.score >= 58) godPieces.push(eArt);
       const p = eArt.part;
       if (eArt.score > (bestPieces[p][eArt.setName]?.score || 0)) bestPieces[p][eArt.setName] = eArt;
       if (eArt.score > (bestPieces[p]["any"]?.score || 0)) bestPieces[p]["any"] = eArt;
@@ -570,6 +576,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
 
     const isOrnament = gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄");
     const art = generateArtifact(gameId, p, subPool, scoreWeights, currentPool, isOrnament);
+    if (art.score >= 58) godPieces.push(art);
     
     const isMainMatch = art.main === mainStats[p] || 
       p.includes("花") || p.includes("羽") || 
@@ -591,6 +598,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? dungeonB : dungeonA;
 
       const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament);
+      if (sart.score >= 58) godPieces.push(sart);
       const isSMainMatch = sart.main === mainStats[sp] || 
         sp.includes("花") || sp.includes("羽") || 
         sp === "頭部" || sp === "手部" || 
@@ -606,7 +614,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
     }
   }
-  return { score: finalResult.substatTotal, pieces: finalResult.pieces };
+  return { score: finalResult.substatTotal, pieces: finalResult.pieces, godPieces };
 }
 
 // --- リサイクル効率比較シミュレーション ---

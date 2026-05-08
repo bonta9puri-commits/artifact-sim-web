@@ -114,6 +114,10 @@ export default function Home() {
   const [talentCurrentLevel, setTalentCurrentLevel] = useState<number>(8);
   const [talentTargetLevel, setTalentTargetLevel] = useState<number>(10);
 
+  // God pieces
+  const [latestGodPiece, setLatestGodPiece] = useState<any>(null);
+  const [allGodPieces, setAllGodPieces] = useState<any[]>([]);
+
   const cardRef = useRef<HTMLDivElement>(null);
 
   // 設定のロード
@@ -216,6 +220,8 @@ export default function Home() {
     setIsSimulating(true);
     setSimProgress(0);
     setResult(null);
+    setLatestGodPiece(null);
+    setAllGodPieces([]);
     
     const staminaCost = gameId === "genshin" ? 20 : 40;
     const trials = 500;
@@ -232,7 +238,8 @@ export default function Home() {
         sub1: elixirSub1,
         sub2: elixirSub2
       };
-      const results: {attempts: number, pieces: any}[] = [];
+      let collectedGods: any[] = [];
+      const results: {attempts: number, pieces: any, godPieces?: any[]}[] = [];
       for (let i = 0; i < trials; i++) {
         if (i % 10 === 0) {
           setSimProgress(Math.floor((i / trials) * 100));
@@ -240,8 +247,14 @@ export default function Home() {
         }
         const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig);
         results.push(res);
+        if (res.godPieces && res.godPieces.length > 0) {
+          collectedGods.push(...res.godPieces);
+          setLatestGodPiece(res.godPieces[res.godPieces.length - 1]);
+        }
       }
       results.sort((a, b) => a.attempts - b.attempts);
+      collectedGods.sort((a, b) => b.score - a.score);
+      setAllGodPieces(collectedGods.slice(0, 10));
       
       const medianRes = results[Math.floor(trials / 2)];
       const top10Res = results[Math.floor(trials * 0.1)];
@@ -278,7 +291,8 @@ export default function Home() {
         sub1: elixirSub1,
         sub2: elixirSub2
       };
-      const results: {score: number, pieces: any}[] = [];
+      let collectedGods: any[] = [];
+      const results: {score: number, pieces: any, godPieces?: any[]}[] = [];
       for (let i = 0; i < trials; i++) {
         if (i % 10 === 0) {
           setSimProgress(Math.floor((i / trials) * 100));
@@ -286,8 +300,14 @@ export default function Home() {
         }
         const res = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig);
         results.push(res);
+        if (res.godPieces && res.godPieces.length > 0) {
+          collectedGods.push(...res.godPieces);
+          setLatestGodPiece(res.godPieces[res.godPieces.length - 1]);
+        }
       }
       results.sort((a, b) => a.score - b.score);
+      collectedGods.sort((a, b) => b.score - a.score);
+      setAllGodPieces(collectedGods.slice(0, 10));
       
       if (simMode === "period") {
         const medianRes = results[Math.floor(trials / 2)];
@@ -491,11 +511,12 @@ export default function Home() {
                   <label className="block text-sm font-medium text-slate-400 mb-3">狙いのセット (ダンジョン別)</label>
                   <div className="grid grid-cols-2 gap-2">
                     {targetSets.map((setName, idx) => {
-                      const isMain = idx < 2;
-                      const label = gameId === "starrail" ? (isMain ? "遺物" : "オーナメント") : (isMain ? "メイン" : "サブ");
+                      const label = gameId === "starrail" 
+                        ? (idx === 0 ? "遺物1 (大本命)" : idx === 1 ? "遺物2 (副産物)" : idx === 2 ? "オーナメント1 (大本命)" : "オーナメント2 (副産物)") 
+                        : (idx === 0 ? "セット1 (大本命)" : idx === 1 ? "セット2 (副産物)" : idx === 2 ? "別秘境セット1" : "別秘境セット2");
                       return (
                         <div key={idx} className="space-y-1">
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{label} {isMain ? idx + 1 : idx - 1}</p>
+                          <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">{label}</p>
                           <select 
                             value={setName} 
                             onChange={e => {
@@ -512,7 +533,7 @@ export default function Home() {
                       );
                     })}
                   </div>
-                  <p className="text-[9px] text-slate-500 mt-2 italic">※1&2(A)と3&4(B)は別ダンジョンとして計算します</p>
+                  <p className="text-[9px] text-emerald-400 mt-2 italic">※「大本命」に設定したセットを最優先で装備するように計算します。<br/><span className="text-slate-500">※1&2(A)と3&4(B)は別ダンジョンとして計算します</span></p>
                 </div>
 
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
@@ -939,8 +960,18 @@ export default function Home() {
                             style={{ width: `${simProgress}%` }}
                           ></div>
                         </div>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-widest">Running 2,500 trials per mode</p>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest">Running 500 trials</p>
                       </div>
+
+                      {latestGodPiece && (
+                        <div className="mt-2 p-4 bg-yellow-500/10 border border-yellow-500/40 rounded-2xl w-full text-center animate-in zoom-in slide-in-from-bottom-4 duration-300 shadow-[0_0_40px_rgba(234,179,8,0.15)] relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-t from-yellow-500/10 to-transparent"></div>
+                          <p className="text-xs text-yellow-400 font-bold mb-1 relative z-10">✨ 神聖遺物ドロップ！ ✨</p>
+                          <p className="text-2xl font-black text-white relative z-10 drop-shadow-md">{latestGodPiece.score.toFixed(1)} <span className="text-[10px] text-slate-400">pt</span></p>
+                          <p className="text-[10px] font-bold text-slate-300 mt-1 relative z-10 truncate">{latestGodPiece.setName}</p>
+                          <p className="text-[9px] text-slate-400 relative z-10">{latestGodPiece.part} / {latestGodPiece.main}</p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1131,6 +1162,24 @@ export default function Home() {
                       <p className="text-[9px] text-slate-500 mt-4 font-medium italic">※入力された基礎ステータスと、全6部位のメイン・サブステータスを合算して算出</p>
                     </div>
                   </div>
+
+                  {/* God Pieces List */}
+                  {allGodPieces.length > 0 && (
+                    <div className="w-full max-w-4xl mx-auto mt-8 bg-yellow-500/5 border border-yellow-500/20 rounded-3xl p-6">
+                      <h4 className="text-sm font-bold text-yellow-500 flex items-center gap-2 mb-4">✨ 🏆 並行世界でドロップした奇跡の神聖遺物 (スコア58以上)</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                        {allGodPieces.map((art, idx) => (
+                          <div key={idx} className="bg-slate-900/80 border border-yellow-500/30 p-3 rounded-2xl relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <p className="text-[10px] text-yellow-500 font-bold mb-1 truncate">{art.setName}</p>
+                            <p className="text-xl font-black text-white">{art.score.toFixed(1)} <span className="text-[9px] text-slate-500">pt</span></p>
+                            <p className="text-[9px] text-slate-400 mt-1">{art.part}</p>
+                            <p className="text-[9px] text-slate-400 truncate">{art.main}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Piece Breakdown (Common for all modes) */}
                   {result && result.pieces && (
