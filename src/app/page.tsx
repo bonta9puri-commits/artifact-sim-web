@@ -1348,10 +1348,14 @@ export default function Home() {
       {/* --- Footer --- */}
         <footer className="mt-20 pb-12 border-t border-slate-800/50 pt-12 text-center">
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-            <Link href="/blog/usage" className="hover:text-emerald-400 transition-colors">Usage Guide / 使い方</Link>
+            <Link href="/blog/how-to-use" className="hover:text-emerald-400 transition-colors">使い方ガイド</Link>
+            <Link href="/blog/artifact-probability" className="hover:text-emerald-400 transition-colors">厳選の沼を数値で見る</Link>
+            <Link href="/blog/artifact-score-guide" className="hover:text-emerald-400 transition-colors">聖遺物スコアとは？</Link>
+            <Link href="/blog/furina-artifact-guide" className="hover:text-emerald-400 transition-colors">フリーナ厳選ガイド</Link>
+            <Link href="/blog/talent-vs-artifact" className="hover:text-emerald-400 transition-colors">天賦か聖遺物か</Link>
             <Link href="/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link>
             <a href="https://github.com/bonta9puri-commits/artifact-sim-web/" target="_blank" rel="noopener" className="hover:text-white transition-colors">GitHub</a>
-            <a href="https://twitter.com" target="_blank" rel="noopener" className="hover:text-sky-400 transition-colors">Twitter (X)</a>
+            <a href="https://x.com/pouwa06" target="_blank" rel="noopener" className="hover:text-sky-400 transition-colors">Twitter (X)</a>
           </div>
           <div className="space-y-2">
             <p className="text-[9px] text-slate-600 font-medium">© 2026 artifact-sim.com. All Rights Reserved.</p>
