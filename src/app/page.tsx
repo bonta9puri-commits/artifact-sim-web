@@ -604,6 +604,26 @@ export default function Home() {
                       <p className="text-[8px] text-blue-500/80 font-bold truncate w-full text-center mt-2 leading-none">{art.main}</p>
                     </div>
                   ))}
+                  {/* Genshin: Add Target Score in the 6th slot */}
+                  {gameId === "genshin" && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center shadow-lg shadow-emerald-500/5">
+                      <p className="text-[8px] text-emerald-600 font-black mb-2 uppercase tracking-widest">Target Score</p>
+                      <p className="text-lg font-black text-emerald-400">{targetScore}</p>
+                      <p className="text-[8px] text-slate-600 font-bold mt-2 uppercase">GOAL</p>
+                    </div>
+                  )}
+                  {/* StarRail/ZZZ: Add Target Score in the 9th slot (by adding spacers) */}
+                  {gameId !== "genshin" && (
+                    <>
+                      <div className="invisible"></div>
+                      <div className="invisible"></div>
+                      <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center shadow-lg shadow-emerald-500/5">
+                        <p className="text-[8px] text-emerald-600 font-black mb-2 uppercase tracking-widest">Target Score</p>
+                        <p className="text-lg font-black text-emerald-400">{targetScore}</p>
+                        <p className="text-[8px] text-slate-600 font-bold mt-2 uppercase">GOAL</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -1267,7 +1287,7 @@ export default function Home() {
                             </div>
                           </div>
 
-                          <div className={`grid grid-cols-1 ${gameId === "genshin" ? "md:grid-cols-2" : "md:grid-cols-3"} gap-4`}>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5">
                               <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Your Current Build</p>
                               <p className="text-5xl font-black text-white text-center tracking-tighter">{result.userScore} <span className="text-sm text-slate-600 uppercase">Score</span></p>
@@ -1275,10 +1295,6 @@ export default function Home() {
                             <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5">
                               <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Average for {days} Days</p>
                               <p className="text-5xl font-black text-white text-center tracking-tighter">{result.median.toFixed(1)} <span className="text-sm text-slate-600 uppercase">Score</span></p>
-                            </div>
-                            <div className={`bg-slate-800/30 p-6 rounded-[32px] border border-emerald-500/20 ${gameId === "genshin" ? "md:col-span-2" : ""}`}>
-                              <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest mb-2 text-center">Target Score</p>
-                              <p className="text-5xl font-black text-white text-center tracking-tighter">{targetScore} <span className="text-sm text-slate-600 uppercase">Score</span></p>
                             </div>
                           </div>
                         </div>
