@@ -755,7 +755,11 @@ export default function Home() {
                     ))}
                   </div>
                   <select value={characterName} onChange={e => setCharacterName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all">
-                    {config.characters.filter(c => elementFilter === "ALL" || c.element === elementFilter).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                    {config.characters.filter(c => elementFilter === "ALL" || c.element === elementFilter).map(c => (
+                      <option key={c.name} value={c.name}>
+                        {c.defaults ? `✨ ${c.name}` : c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
