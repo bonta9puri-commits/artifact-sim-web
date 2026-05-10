@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { GAME_CONFIGS, GameId, GameConfig } from '@/lib/game_data';
 import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, MAIN_PROBS } from '@/lib/simulator';
 import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effects';
+import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis } from 'recharts';
 import { Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, X } from 'lucide-react';
@@ -776,8 +777,17 @@ export default function Home() {
                           <select 
                             value={setName} 
                             onChange={e => {
+                              const val = e.target.value;
                               const newSets = [...targetSets];
-                              newSets[idx] = e.target.value;
+                              newSets[idx] = val;
+                              
+                              // セット1ならセット2を、セット3ならセット4を自動入力
+                              const pair = SET_PAIRS[gameId][val];
+                              if (pair) {
+                                if (idx === 0 && !newSets[1]) newSets[1] = pair;
+                                if (idx === 2 && !newSets[3]) newSets[3] = pair;
+                              }
+                              
                               setTargetSets(newSets);
                             }}
                             className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none"
