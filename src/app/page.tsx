@@ -66,7 +66,36 @@ export default function Home() {
       if (Object.keys(buildB).length === 0) setBuildB(initial);
     }
   }, [simMode, config]);
-  const [characterName, setCharacterName] = useState(config.characters[1] || "未選択");
+  const [characterName, setCharacterName] = useState<string>("ヌヴィレット");
+  const [elementFilter, setElementFilter] = useState<string>("ALL");
+
+  // キャラクター変更時にデフォルト値を適用
+  useEffect(() => {
+    const charData = config.characters.find(c => c.name === characterName);
+    if (charData && charData.defaults) {
+      const d = charData.defaults;
+      if (d.weights) setScoreWeights(d.weights);
+      if (d.mainStats) setMainStats(d.mainStats);
+      if (d.targetSets) setTargetSets(d.targetSets);
+      if (d.baseStats) {
+        if (d.baseStats.rate !== undefined) setBaseRate(d.baseStats.rate);
+        if (d.baseStats.dmg !== undefined) setBaseDmg(d.baseStats.dmg);
+        if (d.baseStats.atk !== undefined) setBaseAtk(d.baseStats.atk);
+        if (d.baseStats.hp !== undefined) setBaseHp(d.baseStats.hp);
+        if (d.baseStats.def !== undefined) setBaseDef(d.baseStats.def);
+        if (d.baseStats.er !== undefined) setBaseEr(d.baseStats.er);
+        if (d.baseStats.em !== undefined) setBaseEm(d.baseStats.em);
+        if (d.baseStats.scalingMode) setScalingMode(d.baseStats.scalingMode);
+      }
+    }
+  }, [characterName, gameId]);
+
+  // ゲーム変更時にフィルターとキャラをリセット
+  useEffect(() => {
+    setElementFilter("ALL");
+    const firstChar = config.characters[0]?.name || "未選択";
+    setCharacterName(firstChar);
+  }, [gameId]);
   
   // Settings
   const [targetScore, setTargetScore] = useState(180);
@@ -97,7 +126,7 @@ export default function Home() {
   const [baseHp, setBaseHp] = useState(100.0);
   const [baseDef, setBaseDef] = useState(100.0);
   const [baseEr, setBaseEr] = useState(100.0);
-  const [scalingMode, setScalingMode] = useState<"atk" | "hp" | "def" | "er">("atk");
+  const [scalingMode, setScalingMode] = useState<"atk" | "hp" | "def" | "er" | "em">("atk");
   const [useReaction, setUseReaction] = useState(true);
   const [targetSets, setTargetSets] = useState<string[]>(["", "", "", ""]);
 
@@ -481,6 +510,7 @@ export default function Home() {
     else if (scalingMode === "hp") statMult = finalHp * 0.2;
     else if (scalingMode === "def") statMult = finalDef * 2.0;
     else if (scalingMode === "er") statMult = (finalAtk * 0.7 + totalEr * 0.4) * 2.0;
+    else if (scalingMode === "em") statMult = totalEm * 5.0;
     
     let emMult = 1;
     if (useReaction) {
@@ -707,8 +737,25 @@ export default function Home() {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">キャラクター</label>
-                  <select value={characterName} onChange={e => setCharacterName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none">
-                    {config.characters.map(c => <option key={c} value={c}>{c}</option>)}
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    <button 
+                      onClick={() => setElementFilter("ALL")}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${elementFilter === "ALL" ? 'bg-slate-700 text-white shadow-lg shadow-white/5' : 'bg-slate-950 text-slate-600 border border-slate-800'}`}
+                    >
+                      ALL
+                    </button>
+                    {Array.from(new Set(config.characters.map(c => c.element))).filter(e => e !== "無" && e !== "その他").map(el => (
+                      <button
+                        key={el}
+                        onClick={() => setElementFilter(el)}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${elementFilter === el ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-950 text-slate-600 border border-slate-800 hover:border-slate-600'}`}
+                      >
+                        {el}
+                      </button>
+                    ))}
+                  </div>
+                  <select value={characterName} onChange={e => setCharacterName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all">
+                    {config.characters.filter(c => elementFilter === "ALL" || c.element === elementFilter).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
 
@@ -1018,6 +1065,7 @@ export default function Home() {
                         <option value="hp">HP型</option>
                         <option value="def">防御型</option>
                         <option value="er">チャージ型</option>
+                        <option value="em">熟知・撃破型</option>
                       </select>
                     </div>
                   </div>

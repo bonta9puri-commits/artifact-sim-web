@@ -5,6 +5,26 @@ import { ZZZ_CHARACTERS, ZZZ_SETS, ZZZ_SLOTS, ZZZ_MAIN_STATS, ZZZ_SUB_STATS } fr
 
 export type GameId = "genshin" | "starrail" | "zzz";
 
+export interface CharacterData {
+  name: string;
+  element: string; // 元素 / 属性
+  defaults?: {
+    weights: Record<string, number>;
+    mainStats: Record<string, string>;
+    targetSets: string[];
+    baseStats?: {
+      rate?: number;
+      dmg?: number;
+      atk?: number;
+      hp?: number;
+      def?: number;
+      er?: number;
+      em?: number;
+      scalingMode?: "atk" | "hp" | "def" | "er" | "em";
+    };
+  };
+}
+
 export type GameConfig = {
   id: GameId;
   name: string;
@@ -15,7 +35,7 @@ export type GameConfig = {
   mainStats: string[];
   subStats: string[];
   sets: string[];
-  characters: string[];
+  characters: CharacterData[];
   storageKey: string;
 };
 

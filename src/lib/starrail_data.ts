@@ -1,11 +1,48 @@
-// 崩壊：スターレイル専用データ
-export const STARRAIL_CHARACTERS = [
-  "開拓者", "三月なのか", "丹恒", "姫子", "ヴェルト", "ブローニャ",
-  "クラーラ", "ゼーレ", "景元", "白露", "銀狼", "羅刹", "カフカ",
-  "刃", "符玄", "鏡流", "飲月", "花火", "黄泉", "アベンチュリン",
-  "ブートヒル", "ジェイド", "雲璃", "飛霄", "霊砂", "ラッパ",
-  "トパーズ", "ルアン・メェイ", "Dr.レイシオ", "ブラックスワン",
-  "ギャラガー", "ロビン", "ホタル", "ジェパード", "その他"
+import { CharacterData } from './game_data';
+
+export const STARRAIL_CHARACTERS: CharacterData[] = [
+  { 
+    name: "黄泉", 
+    element: "雷", 
+    defaults: {
+      weights: { "会心率": 1, "会心ダメージ": 1, "攻撃力%": 1, "速度": 0.3 },
+      mainStats: { "胴体": "会心ダメージ", "脚部": "攻撃力%", "次元界オーブ": "攻撃力%", "連結縄": "攻撃力%" },
+      targetSets: ["死水に潜る先駆者", "出雲顕神と高天原"],
+      baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "ホタル", 
+    element: "炎", 
+    defaults: {
+      weights: { "撃破特効": 1, "速度": 1, "攻撃力%": 0.5 },
+      mainStats: { "胴体": "攻撃力%", "脚部": "速度", "次元界オーブ": "攻撃力%", "連結縄": "撃破特効" },
+      targetSets: ["機心と戦う風雲児", "劫火と蓮灯の鋳煉宮"],
+      baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 200, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "飛霄", 
+    element: "風", 
+    defaults: {
+      weights: { "会心率": 1, "会心ダメージ": 1, "攻撃力%": 0.8, "速度": 0.8 },
+      mainStats: { "胴体": "会心率", "脚部": "速度", "次元界オーブ": "風ダメージ", "連結縄": "攻撃力%" },
+      targetSets: ["風雲を薙ぎ払う勇烈", "奔狼の都藍王朝"],
+      baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { name: "ブローニャ", element: "風" },
+  { name: "ゼーレ", element: "量子" },
+  { name: "鏡流", element: "氷" },
+  { name: "飲月", element: "虚数" },
+  { name: "花火", element: "量子" },
+  { name: "アベンチュリン", element: "虚数" },
+  { name: "ロビン", element: "物理" },
+  { name: "雲璃", element: "物理" },
+  { name: "カフカ", element: "雷" },
+  { name: "ブラックスワン", element: "風" },
+  { name: "ルアン・メェイ", element: "氷" },
+  { name: "その他", element: "無" }
 ];
 
 export const STARRAIL_SETS = [

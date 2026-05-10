@@ -229,7 +229,7 @@ export default function ChronicleForm({ config }: { config: GameConfig }) {
               <label className="text-xs font-bold text-slate-500">装備キャラ</label>
               <select value={character} onChange={e => setCharacter(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm text-slate-200 outline-none focus:border-purple-500">
-                {config.characters.map(c => <option key={c} value={c}>{c}</option>)}
+                {config.characters.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
               </select>
             </div>
           </div>

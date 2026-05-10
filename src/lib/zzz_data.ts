@@ -1,9 +1,46 @@
-// ゼンレスゾーンゼロ専用データ
-export const ZZZ_CHARACTERS = [
-  "アンビー", "ニコ", "ビリー", "猫宮又奈", "エレン・ジョー",
-  "フォン・ライカン", "グレース", "リナ", "ジェーン・ドゥ",
-  "セス", "蒼角", "星見雅", "青衣", "月城柳",
-  "朱鳶", "バーニス", "11号", "パイパー", "ルーシー", "カリン", "クレタ", "本多", "ベン", "その他"
+import { CharacterData } from './game_data';
+
+export const ZZZ_CHARACTERS: CharacterData[] = [
+  { 
+    name: "エレン", 
+    element: "氷", 
+    defaults: {
+      weights: { "会心率": 1, "会心ダメージ": 1, "攻撃力%": 0.8, "貫通値": 0.5 },
+      mainStats: { "スロット4": "会心ダメージ", "スロット5": "氷属性ダメージ", "スロット6": "攻撃力%" },
+      targetSets: ["ウッドペッカー・エレクトロ", "極地ヘヴィメタル"],
+      baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "朱鳶", 
+    element: "エーテル", 
+    defaults: {
+      weights: { "会心率": 1, "会心ダメージ": 1, "攻撃力%": 0.8, "貫通値": 0.5 },
+      mainStats: { "スロット4": "会心ダメージ", "スロット5": "エーテル属性ダメージ", "スロット6": "攻撃力%" },
+      targetSets: ["ウッドペッカー・エレクトロ", "カオス・ジャズ"],
+      baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "ジェーン", 
+    element: "物理", 
+    defaults: {
+      weights: { "異常マスタリー": 1, "異常掌握": 1, "攻撃力%": 0.8, "貫通値": 0.5 },
+      mainStats: { "スロット4": "異常マスタリー", "スロット5": "物理属性ダメージ", "スロット6": "異常掌握" },
+      targetSets: ["フリーダム・ブルース", "牙を持つソウル"],
+      baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 300, scalingMode: "em" as any }
+    }
+  },
+  { name: "猫又", element: "物理" },
+  { name: "アンビー", element: "雷" },
+  { name: "ニコ", element: "エーテル" },
+  { name: "クレタ", element: "炎" },
+  { name: "カリン", element: "物理" },
+  { name: "リナ", element: "雷" },
+  { name: "ライカン", element: "氷" },
+  { name: "バーニス", element: "炎" },
+  { name: "シーザー", element: "物理" },
+  { name: "その他", element: "無" }
 ];
 
 export const ZZZ_SETS = [
