@@ -618,7 +618,10 @@ export default function Home() {
                           <p className="text-[8px] text-slate-500 font-bold mb-0.5">{shortMain}</p>
                           <p className="text-xl font-black text-white tracking-tighter">{art.score.toFixed(1)}</p>
                         </div>
-                        <p className="text-[7px] text-blue-500/80 font-bold truncate w-full text-center leading-none">{art.main}</p>
+                        <div className="w-full text-center">
+                          <p className="text-[6px] text-blue-400/50 font-black truncate leading-tight">{art.setName}</p>
+                          <p className="text-[7px] text-blue-500/80 font-bold truncate w-full leading-none">{art.main}</p>
+                        </div>
                       </div>
                     );
                   })}
@@ -1486,7 +1489,29 @@ export default function Home() {
                   {result && result.pieces && (
                     <div className="mt-10 pt-8 border-t border-slate-700/50 w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
                       <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
-                        <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">構成の内訳 (期待値の例)</h4>
+                        <div className="flex flex-col gap-2">
+                          <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">構成の内訳 (期待値の例)</h4>
+                          
+                          {/* Set Bonus Summary Badge */}
+                          {result && result.pieces && (
+                            <div className="flex flex-wrap gap-2">
+                              {(() => {
+                                const counts: {[key: string]: number} = {};
+                                Object.values(result.pieces).forEach((p: any) => {
+                                  if (p?.setName) counts[p.setName] = (counts[p.setName] || 0) + 1;
+                                });
+                                return Object.entries(counts).map(([name, count]) => {
+                                  if (count < 2) return null;
+                                  return (
+                                    <span key={name} className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-black rounded-md">
+                                      {name} {count >= 4 ? "4" : "2"}
+                                    </span>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          )}
+                        </div>
                         
                         {/* Tab Switcher for Period Mode */}
                         {result.top10Pieces && (
@@ -1543,8 +1568,9 @@ export default function Home() {
                                 <span className="text-2xl font-black text-white group-hover:text-blue-400 transition-colors">{art?.score ? art.score.toFixed(1) : "0.0"}</span>
                               </div>
                               
-                              {/* Main Stat Full Name */}
+                              {/* Set and Main Stat Full Name */}
                               <div className="w-full bg-slate-800/30 py-1 px-2 rounded mt-2 text-center border border-white/5">
+                                <p className="text-[8px] text-slate-500 font-bold truncate opacity-60">{art?.setName || "N/A"}</p>
                                 <p className="text-[9px] text-blue-300 font-black truncate">
                                   {art?.main || "N/A"}
                                 </p>
