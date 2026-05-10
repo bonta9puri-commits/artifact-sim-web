@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { GAME_CONFIGS, GameId, GameConfig } from '@/lib/game_data';
 import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, MAIN_PROBS } from '@/lib/simulator';
+import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effects';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis } from 'recharts';
 import { Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, X } from 'lucide-react';
@@ -357,6 +358,7 @@ export default function Home() {
     let totalDef = baseDef;
     let totalEr = baseEr;
     let totalEm = baseEm;
+    let totalDmgBonus = 0;
 
     // 武器ステータスの加算
     const weapon = WEAPONS[gameId].find((w: any) => w.id === selectedWeapon);
@@ -392,11 +394,22 @@ export default function Home() {
           if (main === "元素熟知") totalEm += mVal;
         }
 
-        // スコアからサブステ配分 (会心:攻撃 = 2:1 などの比率で配分)
-        // 1スコア ≒ 会心ダメ1.0% または 攻撃%1.0% と想定
-        totalRate += (score * 0.4) / 2; // スコアの40%を率に (2.0重み)
-        totalDmg += (score * 0.4);      // スコアの40%をダメに (1.0重み)
-        totalAtk += (score * 0.2);      // 残り20%を攻撃に
+        // スコアからサブステ配分 (ユーザー設定の重みに基づいて動的に分配)
+        const activeWeightEntries = Object.entries(scoreWeights).filter(([_, w]) => w > 0);
+        if (activeWeightEntries.length > 0) {
+          // 各ステータスにスコアを均等に割り振る（重みの合計で割って値を逆算）
+          const scorePerStat = score / activeWeightEntries.length;
+          activeWeightEntries.forEach(([statName, weight]) => {
+            const val = scorePerStat / weight;
+            if (statName === "会心率") totalRate += val;
+            else if (statName === "会心ダメージ") totalDmg += val;
+            else if (statName === "攻撃力%") totalAtk += val;
+            else if (statName === "HP%") totalHp += val;
+            else if (statName === "防御力%") totalDef += val;
+            else if (statName === "元素チャージ効率" || statName === "EP回復効率") totalEr += val;
+            else if (statName === "元素熟知" || statName === "撃破特効") totalEm += val;
+          });
+        }
       });
     } else {
       Object.values(res.pieces).forEach((art: any) => {
@@ -424,12 +437,50 @@ export default function Home() {
       });
     }
 
+    // セット効果加算 (res.pieces が存在する場合のみ)
+    if (res && res.pieces) {
+      const activeSets = getActiveSets(res.pieces);
+      Object.entries(activeSets).forEach(([setName, count]) => {
+        const stats = SET_BONUS_STATS[setName];
+        if (!stats) return;
+        const addStats = (obj: Record<string, number> | undefined) => {
+          if (!obj) return;
+          if (obj["会心率"]) totalRate += obj["会心率"];
+          if (obj["会心ダメージ"]) totalDmg += obj["会心ダメージ"];
+          if (obj["攻撃力%"]) totalAtk += obj["攻撃力%"];
+          if (obj["HP%"]) totalHp += obj["HP%"];
+          if (obj["防御力%"]) totalDef += obj["防御力%"];
+          if (obj["元素チャージ効率"]) totalEr += obj["元素チャージ効率"];
+          if (obj["ダメージバフ"]) totalDmgBonus += obj["ダメージバフ"];
+        };
+        if (count >= 2) addStats(stats["2pc"]);
+        if (count >= 4) addStats(stats["4pc"]);
+      });
+    }
+
+    // 一律の基礎ステータスを想定 (Lv90星5キャラ＋星4〜5武器の平均的な値)
+    const REAL_BASE_ATK = gameId === "starrail" ? 1000 : 850;
+    const REAL_BASE_HP = gameId === "starrail" ? 3500 : 13000;
+    const REAL_BASE_DEF = gameId === "starrail" ? 450 : 750;
+
+    // 花・羽などの固定値加算を想定
+    const FLAT_ATK = gameId === "starrail" ? 352 : gameId === "zzz" ? 300 : 311;
+    const FLAT_HP = gameId === "starrail" ? 705 : gameId === "zzz" ? 2000 : 4780;
+    const FLAT_DEF = gameId === "zzz" ? 200 : 0;
+
+    // 最終ステータス = 基礎ステ × (1 + 〇〇%) + 固定値
+    const finalAtk = REAL_BASE_ATK * (totalAtk / 100) + FLAT_ATK;
+    const finalHp = REAL_BASE_HP * (totalHp / 100) + FLAT_HP;
+    const finalDef = REAL_BASE_DEF * (totalDef / 100) + FLAT_DEF;
+
     const critMult = 1 + (Math.min(100, totalRate) / 100) * (totalDmg / 100);
     let statMult = 1;
-    if (scalingMode === "atk") statMult = totalAtk / 100;
-    else if (scalingMode === "hp") statMult = totalHp / 100;
-    else if (scalingMode === "def") statMult = totalDef / 100;
-    else if (scalingMode === "er") statMult = (totalAtk * 0.7 + totalEr * 0.4) / 100;
+    
+    // 天賦倍率の想定（攻撃などは200%、HPは値が大きいため20%として計算）
+    if (scalingMode === "atk") statMult = finalAtk * 2.0;
+    else if (scalingMode === "hp") statMult = finalHp * 0.2;
+    else if (scalingMode === "def") statMult = finalDef * 2.0;
+    else if (scalingMode === "er") statMult = (finalAtk * 0.7 + totalEr * 0.4) * 2.0;
     
     let emMult = 1;
     if (useReaction) {
@@ -441,7 +492,10 @@ export default function Home() {
     const enemy = ENEMIES[gameId].find((e: any) => e.id === selectedEnemy);
     const enemyMult = (enemy?.def || 0.5) * (enemy?.res || 0.9);
 
-    return critMult * statMult * emMult * enemyMult * 1000; // 桁を見やすく
+    const dmgBonusMult = 1 + (totalDmgBonus / 100);
+
+    // よりリアルなダメージ表記にするため補正
+    return critMult * statMult * emMult * enemyMult * dmgBonusMult;
   };
 
   const downloadImage = useCallback(() => {
@@ -878,7 +932,7 @@ export default function Home() {
 
           {/* Results Panel */}
           <div className="lg:col-span-8">
-            <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 min-h-[600px] flex flex-col items-center justify-center relative overflow-hidden">
+            <div ref={cardRef} className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 min-h-[600px] flex flex-col items-center justify-center relative overflow-hidden">
               {simMode === "comparison" ? (
                 <div className="w-full space-y-12 animate-in fade-in duration-500">
                   <div className="text-center space-y-2">
@@ -1120,33 +1174,86 @@ export default function Home() {
                       )}
                       {/* Talent Comparison Card */}
                       {gameId === "genshin" && talentCurrentLevel < 10 && (result.type === "target" || result.type === "period") && (
-                        <div className="bg-blue-500/5 border border-blue-500/20 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 w-full animate-in fade-in slide-in-from-bottom-4 duration-700 mt-8 mb-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400">
-                              <Zap size={24} />
+                        (() => {
+                          const dmg0 = calcDamageIndex(result, { "生の花": 0, "死の羽": 0, "時の砂": 0, "空の杯": 0, "理の冠": 0 });
+                          const dmg130 = calcDamageIndex(result, { "生の花": 26, "死の羽": 26, "時の砂": 26, "空の杯": 26, "理の冠": 26 });
+                          const dmgTarget = calcDamageIndex(result);
+                          const inc0 = dmg0 > 0 ? ((dmgTarget / dmg0) - 1) * 100 : 0;
+                          const inc130 = dmg130 > 0 ? ((dmgTarget / dmg130) - 1) * 100 : 0;
+                          const talentInc = ((TALENT_MULTIPLIERS[talentTargetLevel] / TALENT_MULTIPLIERS[talentCurrentLevel]) - 1) * 100;
+                          const reqResin = result.type === "target" ? (result.median * staminaPerDay) : (days * staminaPerDay);
+                          const talentResin = TALENT_CUMULATIVE_RESIN[talentTargetLevel] - TALENT_CUMULATIVE_RESIN[talentCurrentLevel];
+
+                          // 樹脂1000あたりのコスパ（効率）を計算
+                          const effTalent = talentResin > 0 ? (talentInc / talentResin) * 1000 : 0;
+                          const eff0 = reqResin > 0 ? (inc0 / reqResin) * 1000 : 0;
+                          const eff130 = reqResin > 0 ? (inc130 / reqResin) * 1000 : 0;
+
+                          return (
+                            <div className="bg-blue-500/5 border border-blue-500/20 rounded-3xl p-6 flex flex-col items-start w-full animate-in fade-in slide-in-from-bottom-4 duration-700 mt-8 mb-4">
+                              <div className="flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 shrink-0">
+                                  <Zap size={24} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-blue-400">💡 天賦育成との優先度比較 <span className="text-[10px] text-slate-500 font-normal ml-2">(樹脂1000あたりの効率で比較)</span></p>
+                                  <p className="text-[11px] text-slate-400 mt-1">
+                                    天賦Lv.{talentCurrentLevel} → {talentTargetLevel} の強化に必要な樹脂は <span className="font-bold text-white">約{talentResin}</span> です。<br/>
+                                    ダメージが <span className="font-bold text-emerald-400">約{talentInc.toFixed(1)}%</span> 上昇します 
+                                    <span className="text-[10px] text-emerald-500/70 ml-2 border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 rounded">効率: +{effTalent.toFixed(1)}% / 1000樹脂</span>
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="w-full bg-slate-900/50 rounded-2xl p-4 border border-slate-800">
+                                <p className="text-xs font-bold text-slate-300 mb-2">VS. 聖遺物厳選（目標到達時のダメージ上昇量）</p>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between items-center bg-slate-800/30 p-2 rounded-lg">
+                                    <p className="text-[10px] text-slate-400">① <span className="text-white font-bold">スコア0</span> (メイン一致のみ) からの乗り換え</p>
+                                    <div className="text-right">
+                                      <p className={`text-[11px] font-bold ${inc0 >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>
+                                        {inc0 >= 0 ? '+' : ''}{inc0.toFixed(1)}%
+                                      </p>
+                                      <p className={`text-[9px] mt-0.5 border px-1.5 py-0.5 rounded inline-block ${eff0 >= 0 ? 'text-blue-500/70 border-blue-500/20 bg-blue-500/10' : 'text-rose-500/70 border-rose-500/20 bg-rose-500/10'}`}>
+                                        効率: {eff0 >= 0 ? '+' : ''}{eff0.toFixed(1)}% / 1000樹脂
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between items-center bg-slate-800/30 p-2 rounded-lg">
+                                    <p className="text-[10px] text-slate-400">② <span className="text-white font-bold">スコア130</span> (妥協ライン) からの乗り換え</p>
+                                    <div className="text-right">
+                                      <p className={`text-[11px] font-bold ${inc130 >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>
+                                        {inc130 >= 0 ? '+' : ''}{inc130.toFixed(1)}%
+                                      </p>
+                                      <p className={`text-[9px] mt-0.5 border px-1.5 py-0.5 rounded inline-block ${eff130 >= 0 ? 'text-blue-500/70 border-blue-500/20 bg-blue-500/10' : 'text-rose-500/70 border-rose-500/20 bg-rose-500/10'}`}>
+                                        効率: {eff130 >= 0 ? '+' : ''}{eff130.toFixed(1)}% / 1000樹脂
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right pt-2">
+                                    <p className="text-[10px] text-slate-500">※目標達成にかかる樹脂: <span className="text-white">{Math.round(reqResin)}</span></p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="w-full mt-4 text-center">
+                                {eff130 < effTalent ? (
+                                  <p className="text-[11px] font-bold text-yellow-400 bg-yellow-400/10 px-4 py-2 rounded-xl inline-block border border-yellow-400/20 w-full sm:w-auto">
+                                    ⚠️ スコア130程度あるなら、先に天賦を上げた方がコスパが良いです
+                                  </p>
+                                ) : eff0 < effTalent ? (
+                                  <p className="text-[11px] font-bold text-yellow-400 bg-yellow-400/10 px-4 py-2 rounded-xl inline-block border border-yellow-400/20 w-full sm:w-auto">
+                                    ⚠️ 天賦育成の方が確実で効率的かもしれません
+                                  </p>
+                                ) : (
+                                  <p className="text-[11px] font-bold text-emerald-400 bg-emerald-400/10 px-4 py-2 rounded-xl inline-block border border-emerald-400/20 w-full sm:w-auto">
+                                    ✓ 聖遺物厳選で大幅なダメージアップが期待できます！
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-bold text-blue-400">💡 天賦育成との比較</p>
-                              <p className="text-[11px] text-slate-400 mt-1">
-                                天賦Lv.{talentCurrentLevel} → {talentTargetLevel} に必要な樹脂は <span className="font-bold text-white">約{TALENT_CUMULATIVE_RESIN[talentTargetLevel] - TALENT_CUMULATIVE_RESIN[talentCurrentLevel]}</span>（約{((TALENT_CUMULATIVE_RESIN[talentTargetLevel] - TALENT_CUMULATIVE_RESIN[talentCurrentLevel])/180).toFixed(1)}日分）です。
-                              </p>
-                              <p className="text-[10px] text-slate-500 mt-0.5">
-                                確実に対象スキルのダメージが <span className="font-bold text-white">約{(((TALENT_MULTIPLIERS[talentTargetLevel] / TALENT_MULTIPLIERS[talentCurrentLevel]) - 1) * 100).toFixed(1)}%</span> 上昇します！
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-center md:text-right mt-4 md:mt-0 flex-shrink-0">
-                            {((result.type === "target" ? (result.median * staminaPerDay) : (days * staminaPerDay)) > (TALENT_CUMULATIVE_RESIN[talentTargetLevel] - TALENT_CUMULATIVE_RESIN[talentCurrentLevel])) ? (
-                              <p className="text-[11px] font-bold text-yellow-400 bg-yellow-400/10 px-3 py-1.5 rounded-lg inline-block whitespace-nowrap border border-yellow-400/20">
-                                ⚠️ 先に天賦を上げた方がコスパが良いかもしれません
-                              </p>
-                            ) : (
-                              <p className="text-[11px] font-bold text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-lg inline-block whitespace-nowrap border border-emerald-400/20">
-                                ✓ 聖遺物厳選を優先してもOKなラインです
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                          );
+                        })()
                       )}
 
                       <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-8 border-t border-slate-800">
@@ -1175,7 +1282,19 @@ export default function Home() {
                           {((calcDamageIndex(result) / calcDamageIndex(compareResult) - 1) * 100).toFixed(1)}% <span className="opacity-50 font-bold ml-1">vs Past Build</span>
                         </div>
                       )}
-                      <p className="text-[9px] text-slate-500 mt-4 font-medium italic">※入力された基礎ステータスと、全6部位のメイン・サブステータスを合算して算出</p>
+                      <div className="mt-4 text-center">
+                        <p className="text-[10px] text-blue-300/80 font-bold tracking-wider mb-1">
+                          [想定天賦倍率: {
+                            scalingMode === 'hp' ? '最大HPの20%' : 
+                            scalingMode === 'def' ? '防御力の200%' : 
+                            scalingMode === 'er' ? '混合ステータスの200%' : 
+                            '攻撃力の200%'
+                          }]
+                        </p>
+                        <p className="text-[9px] text-slate-500 font-medium italic">
+                          ※全6部位のステータスとバフを合算した仮想ダメージ値です
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -1193,6 +1312,27 @@ export default function Home() {
                             <p className="text-[9px] text-slate-400 truncate">{art.main}</p>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Set Effects Display */}
+                  {result && result.pieces && Object.keys(getActiveSets(result.pieces)).length > 0 && (
+                    <div className="w-full max-w-4xl mx-auto mt-8 bg-slate-800/20 border border-slate-700/50 rounded-3xl p-6">
+                      <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-4"><Sword size={16} className="text-emerald-400" /> 発動中のセット効果</h4>
+                      <div className="space-y-3">
+                        {Object.entries(getActiveSets(result.pieces)).map(([setName, count]) => {
+                          const text = SET_EFFECTS_TEXT[setName];
+                          if (!text && count < 2) return null;
+                          return (
+                            <div key={setName} className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                              <p className="text-sm font-black text-emerald-400 mb-2">{setName} <span className="text-xs font-normal text-slate-500 ml-2">({count}セット装備)</span></p>
+                              {count >= 2 && text?.["2pc"] && <p className="text-xs text-slate-300 mb-1"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">2セット</span>{text["2pc"]}</p>}
+                              {count >= 4 && text?.["4pc"] && <p className="text-xs text-slate-300"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">4セット</span>{text["4pc"]}</p>}
+                              {count >= 2 && !text && <p className="text-xs text-slate-500 italic">※セット効果の詳細は準備中です</p>}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
