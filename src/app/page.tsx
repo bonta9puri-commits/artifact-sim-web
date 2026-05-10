@@ -498,21 +498,113 @@ export default function Home() {
     return critMult * statMult * emMult * enemyMult * dmgBonusMult;
   };
 
+  const snsCardRef = useRef<HTMLDivElement>(null);
+
   const downloadImage = useCallback(() => {
-    if (cardRef.current === null) return;
-    toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 })
+    // SNS専用カードがあればそちらを優先、なければ現在の表示パネルをキャプチャ
+    const target = (snsCardRef.current?.style.display !== 'none' ? snsCardRef.current : cardRef.current) || cardRef.current;
+    if (target === null) return;
+    
+    // 非表示カードをキャプチャするために一時的に表示状態にする必要がある場合はここで行う
+    // 今回は表示状態を制御するコンポーネント側で対応するため、ここではシンプルに
+    toPng(target, { cacheBust: true, pixelRatio: 3, backgroundColor: '#020617' })
       .then((dataUrl) => {
         const link = document.createElement('a');
-        link.download = `${gameId}_${characterName}_診断.png`;
+        link.download = `${gameId}_${characterName}_診断結果.png`;
         link.href = dataUrl;
         link.click();
       });
-  }, [cardRef, characterName, gameId]);
+  }, [cardRef, snsCardRef, characterName, gameId]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 flex justify-center">
       <div className="w-full max-w-6xl space-y-6">
         
+        {/* --- SNS SHARE CARD (Capture Target) --- */}
+        <div className="fixed -left-[9999px] top-0 pointer-events-none">
+          <div ref={snsCardRef} className="w-[480px] min-h-[850px] bg-slate-950 p-10 flex flex-col items-center relative overflow-hidden font-sans border-[12px] border-slate-900 shadow-2xl">
+            {/* Background Decorations */}
+            <div className={`absolute top-[-100px] right-[-100px] w-64 h-64 rounded-full blur-[100px] opacity-30 bg-gradient-to-br ${config.gradient}`}></div>
+            <div className={`absolute bottom-[-100px] left-[-100px] w-80 h-80 rounded-full blur-[120px] opacity-20 bg-gradient-to-br ${config.gradient}`}></div>
+            
+            {/* Header */}
+            <div className="z-10 w-full text-center mb-12">
+              <p className={`text-[10px] font-black tracking-[0.4em] uppercase mb-2 bg-clip-text text-transparent bg-gradient-to-r ${config.gradient}`}>
+                {config.name} Artifact Simulator
+              </p>
+              <h2 className="text-4xl font-black text-white tracking-tighter italic">{characterName}</h2>
+              <div className="h-1.5 w-16 bg-white/20 mx-auto mt-6 rounded-full"></div>
+            </div>
+
+            {/* Main Result Area */}
+            {result && (
+              <div className="z-10 w-full flex flex-col items-center mb-12">
+                <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[50px] p-10 w-full flex flex-col items-center shadow-2xl relative ring-1 ring-white/5">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">
+                    {result.type === "target" ? "Expected Days to Reach Target" : result.type === "period" ? `${days} Days Farm Result` : "Build Performance Rank"}
+                  </p>
+                  
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-8xl font-black text-white tracking-tighter drop-shadow-2xl">
+                      {result.type === "rank" ? result.percentile.toFixed(1) : result.median}
+                    </span>
+                    <span className="text-2xl font-black text-slate-500 uppercase tracking-widest">
+                      {result.type === "rank" ? "%" : result.type === "target" ? "Days" : "Score"}
+                    </span>
+                  </div>
+
+                  <p className="text-sm font-black text-blue-400 mb-8 tracking-wider">
+                    {result.type === "rank" ? "TOP PERCENTILE" : "ESTIMATED AVERAGE"}
+                  </p>
+
+                  {/* Range (Top/Bottom 10%) */}
+                  {(result.type === "target" || result.type === "period") && (
+                    <div className="w-full grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
+                      <div className="text-center">
+                        <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mb-2">LUCK: TOP 10%</p>
+                        <p className="text-2xl font-black text-white leading-none">{result.top10}{result.type === "target" ? "日" : ""}</p>
+                      </div>
+                      <div className="text-center border-l border-white/10">
+                        <p className="text-[9px] text-rose-400 font-black uppercase tracking-widest mb-2">LUCK: BOTTOM 10%</p>
+                        <p className="text-2xl font-black text-white leading-none">{result.bottom10}{result.type === "target" ? "日" : ""}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Piece Breakdown (Compact Cards) */}
+            {result && result.pieces && (
+              <div className="z-10 w-full mb-12">
+                <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] text-center mb-6">Equipped Pieces Summary</p>
+                <div className="grid grid-cols-3 gap-4">
+                  {Object.entries(result.pieces).map(([slot, art]: [string, any]) => (
+                    <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center">
+                      <p className="text-[8px] text-slate-600 font-black mb-2 truncate w-full text-center uppercase">{slot.replace("スロット", "S")}</p>
+                      <p className="text-lg font-black text-white">{art.score.toFixed(1)}</p>
+                      <p className="text-[8px] text-blue-500/80 font-bold truncate w-full text-center mt-2 leading-none">{art.main}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="z-10 mt-auto w-full flex items-center justify-between border-t border-white/10 pt-10">
+              <div className="text-left">
+                <p className="text-[10px] text-slate-600 font-black tracking-widest mb-1">PRODUCED BY</p>
+                <p className={`text-xl font-black italic tracking-tighter bg-clip-text text-transparent bg-gradient-to-r ${config.gradient}`}>ARTIFACT-SIM.COM</p>
+              </div>
+              <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
+                <div className="w-10 h-10 border-2 border-white/20 rounded-lg flex items-center justify-center">
+                   <div className="w-4 h-4 bg-white/40 rounded-sm"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Game Switcher Tab */}
         <div className="flex justify-center mb-8">
           <div className="bg-slate-900 p-1 rounded-2xl flex gap-1 border border-slate-800 shadow-2xl">
