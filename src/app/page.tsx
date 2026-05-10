@@ -634,10 +634,7 @@ export default function Home() {
                           type="number" 
                           step="0.1"
                           value={scoreWeights[sub] || 0} 
-                          onChange={e => {
-                            const val = parseFloat(e.target.value);
-                            setScoreWeights({...scoreWeights, [sub]: isNaN(val) ? 0 : val});
-                          }}
+                          onChange={e => setScoreWeights({...scoreWeights, [sub]: e.target.value === "" ? 0 : Number(e.target.value)})}
                           className="bg-slate-800 text-xs p-1.5 rounded border border-slate-700 outline-none text-white w-full"
                         />
                       </div>
@@ -649,14 +646,14 @@ export default function Home() {
                 {simMode === "target" && (
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-2">目標合計スコア</label>
-                    <input type="number" value={targetScore} onChange={e => setTargetScore(Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white"/>
+                    <input type="number" value={targetScore} onChange={e => setTargetScore(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white"/>
                   </div>
                 )}
 
                 {(simMode === "period" || simMode === "rank") && (
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-2">厳選日数</label>
-                    <input type="number" value={days} onChange={e => setDays(Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white"/>
+                    <input type="number" value={days} onChange={e => setDays(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white"/>
                   </div>
                 )}
 
@@ -665,7 +662,7 @@ export default function Home() {
                     {config.slots.filter(s => s !== "未選択").map(slot => (
                       <div key={slot}>
                         <label className="block text-[10px] text-slate-500 mb-1">{slot}</label>
-                        <input type="number" value={userPartScores[slot] || 0} onChange={e => setUserPartScores({...userPartScores, [slot]: Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"/>
+                        <input type="number" value={userPartScores[slot] || 0} onChange={e => setUserPartScores({...userPartScores, [slot]: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"/>
                       </div>
                     ))}
                   </div>
@@ -687,11 +684,11 @@ export default function Home() {
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <p className="text-[10px] text-slate-500 font-bold mb-1">初期所持数</p>
-                            <input type="number" value={elixirInitialCount} onChange={e => setElixirInitialCount(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
+                            <input type="number" value={elixirInitialCount} onChange={e => setElixirInitialCount(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
                           </div>
                           <div>
                             <p className="text-[10px] text-slate-500 font-bold mb-1">1Ver(42日)の獲得数</p>
-                            <input type="number" value={elixirPerVersion} onChange={e => setElixirPerVersion(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
+                            <input type="number" value={elixirPerVersion} onChange={e => setElixirPerVersion(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -833,31 +830,31 @@ export default function Home() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="space-y-1">
                       <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base Rate</p>
-                      <input type="number" value={baseRate} onChange={e => setBaseRate(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
+                      <input type="number" value={baseRate} onChange={e => setBaseRate(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base Dmg</p>
-                      <input type="number" value={baseDmg} onChange={e => setBaseDmg(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
+                      <input type="number" value={baseDmg} onChange={e => setBaseDmg(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base Atk%</p>
-                      <input type="number" value={baseAtk} onChange={e => setBaseAtk(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
+                      <input type="number" value={baseAtk} onChange={e => setBaseAtk(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base HP%</p>
-                      <input type="number" value={baseHp} onChange={e => setBaseHp(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
+                      <input type="number" value={baseHp} onChange={e => setBaseHp(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base Def%</p>
-                      <input type="number" value={baseDef} onChange={e => setBaseDef(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
+                      <input type="number" value={baseDef} onChange={e => setBaseDef(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base ER%</p>
-                      <input type="number" value={baseEr} onChange={e => setBaseEr(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
+                      <input type="number" value={baseEr} onChange={e => setBaseEr(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{gameId === "genshin" ? "Base EM" : gameId === "starrail" ? "Base Break" : "Base Anomaly"}</p>
-                      <input type="number" value={baseEm} onChange={e => setBaseEm(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
+                      <input type="number" value={baseEm} onChange={e => setBaseEm(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
                     </div>
                     <div className="space-y-1 col-span-1">
                       <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest">Scaling Mode</p>
