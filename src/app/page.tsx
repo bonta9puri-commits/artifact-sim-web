@@ -557,7 +557,7 @@ export default function Home() {
                     {result.type === "rank" ? "TOP PERCENTILE" : "ESTIMATED AVERAGE"}
                   </p>
 
-                  {/* Range (Top/Bottom 10%) */}
+                  {/* Range (Top/Bottom 10%) for Target/Period */}
                   {(result.type === "target" || result.type === "period") && (
                     <div className="w-full grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
                       <div className="text-center">
@@ -567,6 +567,24 @@ export default function Home() {
                       <div className="text-center border-l border-white/10">
                         <p className="text-[9px] text-rose-400 font-black uppercase tracking-widest mb-2">LUCK: BOTTOM 10%</p>
                         <p className="text-2xl font-black text-white leading-none">{result.bottom10}{result.type === "target" ? "日" : ""}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3-Way Comparison for Rank Diagnosis */}
+                  {result.type === "rank" && (
+                    <div className="w-full grid grid-cols-3 gap-2 pt-8 border-t border-white/10">
+                      <div className="text-center">
+                        <p className="text-[7px] text-slate-500 font-black uppercase mb-2">Current</p>
+                        <p className="text-lg font-black text-white">{result.userScore}</p>
+                      </div>
+                      <div className="text-center border-l border-white/10">
+                        <p className="text-[7px] text-slate-500 font-black uppercase mb-2">Average</p>
+                        <p className="text-lg font-black text-white">{result.median.toFixed(0)}</p>
+                      </div>
+                      <div className="text-center border-l border-white/10">
+                        <p className="text-[7px] text-emerald-500 font-black uppercase mb-2">Target</p>
+                        <p className="text-lg font-black text-emerald-400">{targetScore}</p>
                       </div>
                     </div>
                   )}
@@ -1249,7 +1267,7 @@ export default function Home() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className={`grid grid-cols-1 ${gameId === "genshin" ? "md:grid-cols-2" : "md:grid-cols-3"} gap-4`}>
                             <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5">
                               <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Your Current Build</p>
                               <p className="text-5xl font-black text-white text-center tracking-tighter">{result.userScore} <span className="text-sm text-slate-600 uppercase">Score</span></p>
@@ -1257,6 +1275,10 @@ export default function Home() {
                             <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5">
                               <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Average for {days} Days</p>
                               <p className="text-5xl font-black text-white text-center tracking-tighter">{result.median.toFixed(1)} <span className="text-sm text-slate-600 uppercase">Score</span></p>
+                            </div>
+                            <div className={`bg-slate-800/30 p-6 rounded-[32px] border border-emerald-500/20 ${gameId === "genshin" ? "md:col-span-2" : ""}`}>
+                              <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest mb-2 text-center">Target Score</p>
+                              <p className="text-5xl font-black text-white text-center tracking-tighter">{targetScore} <span className="text-sm text-slate-600 uppercase">Score</span></p>
                             </div>
                           </div>
                         </div>
