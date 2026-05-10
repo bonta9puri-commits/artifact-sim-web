@@ -597,30 +597,48 @@ export default function Home() {
               <div className="z-10 w-full mb-12">
                 <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] text-center mb-6">Equipped Pieces Summary</p>
                 <div className="grid grid-cols-3 gap-4">
-                  {Object.entries(result.pieces).map(([slot, art]: [string, any]) => (
-                    <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center">
-                      <p className="text-[8px] text-slate-600 font-black mb-2 truncate w-full text-center uppercase">{slot.replace("スロット", "S")}</p>
-                      <p className="text-lg font-black text-white">{art.score.toFixed(1)}</p>
-                      <p className="text-[8px] text-blue-500/80 font-bold truncate w-full text-center mt-2 leading-none">{art.main}</p>
-                    </div>
-                  ))}
-                  {/* Genshin: Add Target Score in the 6th slot */}
+                  {Object.entries(result.pieces).map(([slot, art]: [string, any]) => {
+                    // 案B用のメインステ略称マッピング
+                    const shortMain = art.main
+                      .replace("会心率", "率")
+                      .replace("会心ダメージ", "ダメ")
+                      .replace("攻撃力%", "攻撃%")
+                      .replace("HP%", "HP%")
+                      .replace("防御力%", "防御%")
+                      .replace("元素熟知", "熟知")
+                      .replace("元素チャージ効率", "チャージ")
+                      .replace("元素ダメ", "ダメ")
+                      .replace("物理ダメージ", "物理")
+                      .replace("与える治療効果", "治療");
+
+                    return (
+                      <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px]">
+                        <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{slot}</p>
+                        <div className="flex flex-col items-center -my-1">
+                          <p className="text-[8px] text-slate-500 font-bold mb-0.5">{shortMain}</p>
+                          <p className="text-xl font-black text-white tracking-tighter">{art.score.toFixed(1)}</p>
+                        </div>
+                        <p className="text-[7px] text-blue-500/80 font-bold truncate w-full text-center leading-none">{art.main}</p>
+                      </div>
+                    );
+                  })}
+                  {/* Genshin: Add Target Score card in Plan B style */}
                   {gameId === "genshin" && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center shadow-lg shadow-emerald-500/5">
-                      <p className="text-[8px] text-emerald-600 font-black mb-2 uppercase tracking-widest">Target Score</p>
-                      <p className="text-lg font-black text-emerald-400">{targetScore}</p>
-                      <p className="text-[8px] text-slate-600 font-bold mt-2 uppercase">GOAL</p>
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px] shadow-lg shadow-emerald-500/5">
+                      <p className="text-[7px] text-emerald-700 font-black uppercase tracking-widest">TARGET</p>
+                      <p className="text-2xl font-black text-emerald-400 tracking-tighter">{targetScore}</p>
+                      <p className="text-[7px] text-emerald-600/80 font-bold uppercase">GOAL</p>
                     </div>
                   )}
-                  {/* StarRail/ZZZ: Add Target Score in the 9th slot (by adding spacers) */}
+                  {/* StarRail/ZZZ: Add Target Score card in Plan B style with spacers */}
                   {gameId !== "genshin" && (
                     <>
                       <div className="invisible"></div>
                       <div className="invisible"></div>
-                      <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center shadow-lg shadow-emerald-500/5">
-                        <p className="text-[8px] text-emerald-600 font-black mb-2 uppercase tracking-widest">Target Score</p>
-                        <p className="text-lg font-black text-emerald-400">{targetScore}</p>
-                        <p className="text-[8px] text-slate-600 font-bold mt-2 uppercase">GOAL</p>
+                      <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px] shadow-lg shadow-emerald-500/5">
+                        <p className="text-[7px] text-emerald-700 font-black uppercase tracking-widest">TARGET</p>
+                        <p className="text-2xl font-black text-emerald-400 tracking-tighter">{targetScore}</p>
+                        <p className="text-[7px] text-emerald-600/80 font-bold uppercase">GOAL</p>
                       </div>
                     </>
                   )}
@@ -1501,34 +1519,50 @@ export default function Home() {
                           breakdownView === "top10" && result.top10Pieces ? result.top10Pieces :
                           breakdownView === "bottom10" && result.bottom10Pieces ? result.bottom10Pieces :
                           result.pieces
-                        ).map(([slot, art]: [string, any]) => (
-                          <div key={slot} className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 flex flex-col items-center group hover:border-slate-700 transition-all min-h-[140px]">
-                            <span className="text-[10px] text-slate-500 mb-1 font-bold truncate w-full text-center">{slot}</span>
-                            <span className="text-xl font-black text-white group-hover:text-blue-400 transition-colors mb-2">{art?.score ? art.score.toFixed(1) : "0.0"}</span>
-                            
-                            {/* Main Stat */}
-                            {art?.main && (
-                              <div className="w-full bg-slate-800/50 py-1 px-2 rounded mb-2 text-center">
-                                <p className="text-[9px] text-slate-500 font-bold leading-none mb-0.5">MAIN</p>
-                                <p className="text-[10px] text-blue-300 font-black truncate">
-                                  {art.main}
+                        ).map(([slot, art]: [string, any]) => {
+                          const shortMain = art?.main
+                            ? art.main
+                                .replace("会心率", "率")
+                                .replace("会心ダメージ", "ダメ")
+                                .replace("攻撃力%", "攻撃%")
+                                .replace("HP%", "HP%")
+                                .replace("防御力%", "防御%")
+                                .replace("元素熟知", "熟知")
+                                .replace("元素チャージ効率", "チャージ")
+                                .replace("元素ダメ", "ダメ")
+                                .replace("物理ダメージ", "物理")
+                                .replace("与える治療効果", "治療")
+                            : "-";
+
+                          return (
+                            <div key={slot} className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 flex flex-col items-center justify-between group hover:border-slate-700 transition-all min-h-[140px]">
+                              <span className="text-[10px] text-slate-500 font-bold truncate w-full text-center uppercase tracking-widest">{slot}</span>
+                              
+                              <div className="flex flex-col items-center">
+                                <p className="text-[10px] text-slate-500 font-bold mb-0.5">{shortMain}</p>
+                                <span className="text-2xl font-black text-white group-hover:text-blue-400 transition-colors">{art?.score ? art.score.toFixed(1) : "0.0"}</span>
+                              </div>
+                              
+                              {/* Main Stat Full Name */}
+                              <div className="w-full bg-slate-800/30 py-1 px-2 rounded mt-2 text-center border border-white/5">
+                                <p className="text-[9px] text-blue-300 font-black truncate">
+                                  {art?.main || "N/A"}
                                 </p>
                               </div>
-                            )}
-
-                            {/* Substats List */}
-                            <div className="w-full space-y-1">
-                              {art?.substats && Object.entries(art.substats).map(([s, v]: [string, any]) => (
-                                <div key={s} className="flex justify-between text-[9px] leading-tight">
-                                  <span className="text-slate-500">{s}</span>
-                                  <span className="text-slate-300 font-medium">
-                                    {v.toFixed(1)}{s.includes("%") || s.includes("率") || s.includes("ダメージ") || s.includes("効率") || s.includes("特効") || s.includes("命中") || s.includes("掌握") ? "%" : ""}
-                                  </span>
-                                </div>
-                              ))}
                             </div>
+                          );
+                        })}
+                        {/* Add Target Score Card to Grid */}
+                        <div className="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/20 flex flex-col items-center justify-between min-h-[140px] shadow-lg shadow-emerald-500/5">
+                          <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-widest">TARGET</span>
+                          <div className="flex flex-col items-center">
+                            <p className="text-[10px] text-emerald-600 font-bold mb-0.5">GOAL</p>
+                            <span className="text-3xl font-black text-emerald-400 tracking-tighter">{targetScore}</span>
                           </div>
-                        ))}
+                          <div className="w-full bg-emerald-500/10 py-1 px-2 rounded mt-2 text-center border border-emerald-500/10">
+                            <p className="text-[9px] text-emerald-500 font-black tracking-widest">達成目標</p>
+                          </div>
+                        </div>
                       </div>
                       <p className="text-[10px] text-center text-slate-600 mt-6 italic">
                         {breakdownView === "top10" ? "※ 運がかなり良かった（上位10%）場合の結果例です" :
