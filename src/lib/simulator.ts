@@ -410,27 +410,61 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
   const dungeonA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
   const dungeonB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
 
-  let craftedElixirs = 0;
+  let usedElixirCount = 0;
   const godPieces: any[] = [];
 
   while (attempts < 100000) {
     attempts++;
 
-    if (gameId === "genshin" && elixirConfig?.enabled && elixirConfig.targetPart) {
+    if (gameId === "genshin" && elixirConfig?.enabled) {
       const days = attempts / (defaults.dailyStamina / defaults.staminaCost);
       const totalElixirs = elixirConfig.initialCount + Math.floor(days / 42) * elixirConfig.perVersion;
-      const cost = ELIXIR_COST[elixirConfig.targetPart] || 1;
-      const craftCount = Math.floor(totalElixirs / cost);
       
-      if (craftCount > craftedElixirs) {
-        for (let i = 0; i < craftCount - craftedElixirs; i++) {
-          const eArt = generateElixirArtifact(elixirConfig, subPool, scoreWeights);
-          if (eArt.score >= 58) godPieces.push(eArt);
-          const p = eArt.part;
-          if (eArt.score > (bestPieces[p][eArt.setName]?.score || 0)) bestPieces[p][eArt.setName] = eArt;
-          if (eArt.score > (bestPieces[p]["any"]?.score || 0)) bestPieces[p]["any"] = eArt;
+      if (totalElixirs > usedElixirCount) {
+        let currentAvailable = totalElixirs - usedElixirCount;
+        
+        while (currentAvailable > 0) {
+          const currentPieces = Object.entries(finalResult.pieces as Record<string, any>)
+            .map(([slot, art]) => ({ slot, score: art?.score || 0 }))
+            .sort((a, b) => a.score - b.score);
+
+          let loopImproved = false;
+          for (const { slot } of currentPieces) {
+            const cost = ELIXIR_COST[slot] || 1;
+            if (currentAvailable >= cost) {
+              const isTargetPart = slot === elixirConfig.targetPart;
+              const targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || "攻撃力%");
+              const sortedSubs = Object.entries(scoreWeights)
+                .filter(([s]) => s !== targetMain && s !== "未選択")
+                .sort((a, b) => b[1] - a[1])
+                .map(e => e[0]);
+              
+              const s1 = isTargetPart ? elixirConfig.sub1 : sortedSubs[0];
+              const s2 = isTargetPart ? elixirConfig.sub2 : sortedSubs[1];
+
+              const tempConfig = { ...elixirConfig, targetPart: slot, targetMain, sub1: s1, sub2: s2 };
+              const eArt = generateElixirArtifact(tempConfig, subPool, scoreWeights);
+              if (eArt.score >= 58) godPieces.push(eArt);
+              
+              const currentEquippedSet = (finalResult.pieces as any)[slot]?.setName || targetSets[0];
+              const finalSet = currentEquippedSet !== "その他" ? currentEquippedSet : targetSets[0];
+              eArt.setName = finalSet;
+
+              const currentBest = (bestPieces[slot][finalSet]?.score || 0);
+              if (eArt.score > currentBest) {
+                bestPieces[slot][finalSet] = eArt;
+                if (eArt.score > (bestPieces[slot]["any"]?.score || 0)) bestPieces[slot]["any"] = eArt;
+                loopImproved = true;
+              }
+              
+              currentAvailable -= cost;
+              usedElixirCount += cost;
+              finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
+              if (loopImproved) break;
+            }
+          }
+          if (!loopImproved) break; 
         }
-        craftedElixirs = craftCount;
       }
     }
     
@@ -534,23 +568,8 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
 
   let finalResult = { total: 0, substatTotal: 0, pieces: {} };
 
-  if (gameId === "genshin" && elixirConfig?.enabled && elixirConfig.targetPart) {
-    const days = totalAttempts / (staminaPerDay / defaults.staminaCost);
-    const totalElixirs = elixirConfig.initialCount + Math.floor(days / 42) * elixirConfig.perVersion;
-    const cost = ELIXIR_COST[elixirConfig.targetPart] || 1;
-    const craftCount = Math.floor(totalElixirs / cost);
-
-    for (let i = 0; i < craftCount; i++) {
-      const eArt = generateElixirArtifact(elixirConfig, subPool, scoreWeights);
-      if (eArt.score >= 58) godPieces.push(eArt);
-      const p = eArt.part;
-      if (eArt.score > (bestPieces[p][eArt.setName]?.score || 0)) bestPieces[p][eArt.setName] = eArt;
-      if (eArt.score > (bestPieces[p]["any"]?.score || 0)) bestPieces[p]["any"] = eArt;
-    }
-  }
-
+  // 1. 通常の厳選ループ
   for (let i = 0; i < totalAttempts; i++) {
-    // どのダンジョンを回すか動的に最適化
     let currentPool = dungeonA;
     const pieces = finalResult.pieces as any;
     
@@ -573,7 +592,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
         currentPool = avgA < avgB ? dungeonA : dungeonB;
       }
     } else {
-      currentPool = dungeonA; // Bが未設定なら絶対にA
+      currentPool = dungeonA;
     }
 
     let p = parts[Math.floor(Math.random() * parts.length)];
@@ -617,11 +636,68 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
         if (sart.score > (bestPieces[sp]["any"]?.score || 0)) bestPieces[sp]["any"] = sart;
       }
     }
-    // 戦略を更新するためにコンボを計算
-    if (i % 10 === 0 || i === totalAttempts - 1) {
+    
+    if (i % 20 === 0 || i === totalAttempts - 1) {
       finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
     }
   }
+
+  // 2. 厳選終了後のエリクシル投入 (最適化処理)
+  if (gameId === "genshin" && elixirConfig?.enabled) {
+    const days = totalAttempts / (staminaPerDay / defaults.staminaCost);
+    let totalElixirs = elixirConfig.initialCount + Math.floor(days / 42) * elixirConfig.perVersion;
+    
+    // スコアの低い部位から順にエリクシルを試す
+    // 何回かループして、エリクシルが尽きるまで改善を試みる
+    let improved = true;
+    while (improved && totalElixirs > 0) {
+      improved = false;
+      const currentPieces = Object.entries(finalResult.pieces as Record<string, any>)
+        .map(([slot, art]) => ({ slot, score: art?.score || 0 }))
+        .sort((a, b) => a.score - b.score);
+
+      for (const { slot } of currentPieces) {
+        const cost = ELIXIR_COST[slot] || 1;
+        if (totalElixirs >= cost) {
+          // ユーザー設定の部位なら設定通りのメイン・サブを使用、そうでなければ自動最適化
+          const isTargetPart = slot === elixirConfig.targetPart;
+          const targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || "攻撃力%");
+          
+          // サブステは重い順に自動選択
+          const sortedSubs = Object.entries(scoreWeights)
+            .filter(([s]) => s !== targetMain && s !== "未選択")
+            .sort((a, b) => b[1] - a[1])
+            .map(e => e[0]);
+          
+          const s1 = isTargetPart ? elixirConfig.sub1 : sortedSubs[0];
+          const s2 = isTargetPart ? elixirConfig.sub2 : sortedSubs[1];
+
+          const tempConfig = { ...elixirConfig, targetPart: slot, targetMain, sub1: s1, sub2: s2 };
+          const eArt = generateElixirArtifact(tempConfig, subPool, scoreWeights);
+          
+          if (eArt.score >= 58) godPieces.push(eArt);
+          
+          // セット効果を維持するため、現在装備中のセット名で生成
+          const currentEquippedSet = (finalResult.pieces as any)[slot]?.setName || targetSets[0];
+          const finalSet = currentEquippedSet !== "その他" ? currentEquippedSet : targetSets[0];
+          eArt.setName = finalSet;
+
+          const currentBest = (bestPieces[slot][finalSet]?.score || 0);
+          if (eArt.score > currentBest) {
+            bestPieces[slot][finalSet] = eArt;
+            if (eArt.score > (bestPieces[slot]["any"]?.score || 0)) bestPieces[slot]["any"] = eArt;
+            improved = true;
+          }
+          
+          totalElixirs -= cost;
+          // 1回使ったらコンボを再計算して次の「最弱部位」を探す
+          finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
+          if (improved) break; 
+        }
+      }
+    }
+  }
+
   return { score: finalResult.substatTotal, pieces: finalResult.pieces, godPieces };
 }
 
