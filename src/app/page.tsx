@@ -594,11 +594,21 @@ export default function Home() {
                     <div className="w-full grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
                       <div className="text-center">
                         <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mb-2">LUCK: TOP 10%</p>
-                        <p className="text-2xl font-black text-white leading-none">{result.top10}{result.type === "target" ? "日" : ""}</p>
+                        <p className="text-3xl font-black text-white leading-none tracking-tighter">
+                          {result.type === "target" 
+                            ? `+${((1 - result.top10 / result.median) * 100).toFixed(0)}% 得`
+                            : `+${((result.top10 / result.median - 1) * 100).toFixed(0)}% 強`
+                          }
+                        </p>
                       </div>
                       <div className="text-center border-l border-white/10">
                         <p className="text-[9px] text-rose-400 font-black uppercase tracking-widest mb-2">LUCK: BOTTOM 10%</p>
-                        <p className="text-2xl font-black text-white leading-none">{result.bottom10}{result.type === "target" ? "日" : ""}</p>
+                        <p className="text-3xl font-black text-white leading-none tracking-tighter">
+                          {result.type === "target"
+                            ? `-${((result.bottom10 / result.median - 1) * 100).toFixed(0)}% 損`
+                            : `-${((1 - result.bottom10 / result.median) * 100).toFixed(0)}% 弱`
+                          }
+                        </p>
                       </div>
                     </div>
                   )}
@@ -1281,22 +1291,27 @@ export default function Home() {
                               <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
                                 <Zap size={24} className="text-blue-400" />
                               </div>
-                              <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">Luck: Top 10%</p>
-                              <p className="text-4xl font-black text-white">{result.top10} <span className="text-sm font-bold text-slate-500">日</span></p>
-                              <p className="text-[10px] text-slate-500 mt-2">非常に運が良い場合</p>
+                              <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">Fortune: Profit Piece</p>
+                              <div className="space-y-1">
+                                <p className="text-2xl font-black text-emerald-400">樹脂 {( (1 - result.top10 / result.median) * 100 ).toFixed(1)}% お得</p>
+                                <p className="text-[10px] font-bold text-slate-500">（上位10%より良い豪運）</p>
+                              </div>
                             </div>
                             <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 p-8 rounded-[40px] border border-white/10 text-center shadow-2xl relative overflow-hidden ring-1 ring-white/10">
-                              <p className="text-[10px] text-purple-400 font-black uppercase tracking-widest mb-1">Average Expectation</p>
-                              <p className="text-6xl font-black text-white tracking-tighter">{result.median} <span className="text-xl font-bold text-slate-500">日</span></p>
-                              <p className="text-xs text-slate-400 mt-3 font-medium">中央値（平均的な運勢）</p>
+                              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div>
+                              <p className="text-[10px] text-purple-400 font-black uppercase tracking-widest mb-1">Standard Expectation</p>
+                              <p className="text-6xl font-black text-white tracking-tighter">{result.median} <span className="text-xl font-bold text-slate-500 uppercase">Days</span></p>
+                              <p className="text-xs text-slate-400 mt-3 font-medium italic">平均的な運勢（中央値）</p>
                             </div>
                             <div className="bg-slate-800/50 p-6 rounded-[32px] border border-red-500/20 text-center relative overflow-hidden group">
                               <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
                                 <Shield size={24} className="text-red-400" />
                               </div>
-                              <p className="text-[10px] text-red-400 font-black uppercase tracking-widest mb-1">Luck: Bottom 10%</p>
-                              <p className="text-4xl font-black text-white">{result.bottom10} <span className="text-sm font-bold text-slate-500">日</span></p>
-                              <p className="text-[10px] text-slate-500 mt-2">運が悪い（沼った）場合</p>
+                              <p className="text-[10px] text-red-400 font-black uppercase tracking-widest mb-1">Fortune: Loss Piece</p>
+                              <div className="space-y-1">
+                                <p className="text-2xl font-black text-rose-400">樹脂 {( (result.bottom10 / result.median - 1) * 100 ).toFixed(1)}% の損</p>
+                                <p className="text-[10px] font-bold text-slate-500">（下位10%より悪い悲運）</p>
+                              </div>
                             </div>
                           </div>
 
@@ -1329,6 +1344,17 @@ export default function Home() {
                                     <Sword size={14} />
                                     <span>DMG Index: {calcDamageIndex({pieces: breakdownView === "median" ? result.pieces : breakdownView === "top10" ? result.top10Pieces : result.bottom10Pieces}).toFixed(0)}</span>
                                   </div>
+                                  {breakdownView !== "median" && (
+                                    <div className={`flex items-center gap-1 ${breakdownView === "top10" ? "text-emerald-400" : "text-rose-400"}`}>
+                                      {breakdownView === "top10" ? <Zap size={14} /> : <Shield size={14} />}
+                                      <span>
+                                        {breakdownView === "top10" 
+                                          ? `+${((result.top10 / result.median - 1) * 100).toFixed(1)}% より強い運势`
+                                          : `-${((1 - result.bottom10 / result.median) * 100).toFixed(1)}% の不運`
+                                        }
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
