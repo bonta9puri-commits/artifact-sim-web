@@ -115,6 +115,8 @@ export default function Home() {
   const [simProgress, setSimProgress] = useState(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
+  const [luckPercentile, setLuckPercentile] = useState(50);
+  const [sortedResults, setSortedResults] = useState<any[]>([]);
   const [result, setResult] = useState<any>(null);
   const [compareResult, setCompareResult] = useState<any>(null);
   const [recycleComparison, setRecycleComparison] = useState<any>(null);
@@ -254,6 +256,7 @@ export default function Home() {
     setResult(null);
     setLatestGodPiece(null);
     setAllGodPieces([]);
+    setSortedResults([]);
     
     const staminaCost = gameId === "genshin" ? 20 : 40;
     const trials = 500;
@@ -285,6 +288,8 @@ export default function Home() {
         }
       }
       results.sort((a, b) => a.attempts - b.attempts);
+      setSortedResults(results);
+      setLuckPercentile(50);
       collectedGods.sort((a, b) => b.score - a.score);
       setAllGodPieces(collectedGods.slice(0, 10));
       
@@ -299,7 +304,7 @@ export default function Home() {
         withRecycle: Math.ceil((comparison.withRecycle.stamina) / staminaPerDay),
         withoutRecycle: Math.ceil((comparison.withoutRecycle.stamina) / staminaPerDay)
       });
- 
+  
       const finalRes = {
         type: "target",
         median: Math.ceil((medianRes.attempts * staminaCost) / staminaPerDay),
@@ -337,14 +342,16 @@ export default function Home() {
           setLatestGodPiece(res.godPieces[res.godPieces.length - 1]);
         }
       }
-      results.sort((a, b) => a.score - b.score);
+      results.sort((a, b) => b.score - a.score);
+      setSortedResults(results);
+      setLuckPercentile(50);
       collectedGods.sort((a, b) => b.score - a.score);
       setAllGodPieces(collectedGods.slice(0, 10));
       
       if (simMode === "period") {
         const medianRes = results[Math.floor(trials / 2)];
-        const top10Res = results[Math.floor(trials * 0.9)];
-        const bottom10Res = results[Math.floor(trials * 0.1)];
+        const top10Res = results[Math.floor(trials * 0.1)];
+        const bottom10Res = results[Math.floor(trials * 0.9)];
         const finalRes = {
           type: "period",
           median: medianRes.score,
@@ -443,7 +450,7 @@ export default function Home() {
         }
       });
     } else {
-      Object.values(res.pieces).forEach((art: any) => {
+      Object.values(res.pieces || {}).forEach((art: any) => {
         if (!art) return;
         const mVal = mainValues[gameId][art.main];
         if (mVal) {
@@ -537,8 +544,6 @@ export default function Home() {
     const target = (snsCardRef.current?.style.display !== 'none' ? snsCardRef.current : cardRef.current) || cardRef.current;
     if (target === null) return;
     
-    // 非表示カードをキャプチャするために一時的に表示状態にする必要がある場合はここで行う
-    // 今回は表示状態を制御するコンポーネント側で対応するため、ここではシンプルに
     toPng(target, { cacheBust: true, pixelRatio: 3, backgroundColor: '#020617' })
       .then((dataUrl) => {
         const link = document.createElement('a');
@@ -640,7 +645,6 @@ export default function Home() {
                 <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] text-center mb-6">Equipped Pieces Summary</p>
                 <div className="grid grid-cols-3 gap-4">
                   {Object.entries(result.pieces).map(([slot, art]: [string, any]) => {
-                    // 案B用のメインステ略称マッピング
                     const shortMain = art.main
                       .replace("会心率", "率")
                       .replace("会心ダメージ", "ダメ")
@@ -657,7 +661,7 @@ export default function Home() {
                       <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px]">
                         <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{slot}</p>
                         <div className="flex flex-col items-center -my-1">
-                          <p className="text-[8px] text-slate-500 font-bold mb-0.5">{shortMain}</p>
+                           <p className="text-[8px] text-slate-500 font-bold mb-0.5">{shortMain}</p>
                           <p className="text-xl font-black text-white tracking-tighter">{art.score.toFixed(1)}</p>
                         </div>
                         <div className="w-full text-center">
@@ -667,7 +671,6 @@ export default function Home() {
                       </div>
                     );
                   })}
-                  {/* Genshin: Add Target Score card in Plan B style */}
                   {gameId === "genshin" && (
                     <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px] shadow-lg shadow-emerald-500/5">
                       <p className="text-[7px] text-emerald-700 font-black uppercase tracking-widest">TARGET</p>
@@ -675,7 +678,6 @@ export default function Home() {
                       <p className="text-[7px] text-emerald-600/80 font-bold uppercase">GOAL</p>
                     </div>
                   )}
-                  {/* StarRail/ZZZ: Add Target Score card in Plan B style with spacers */}
                   {gameId !== "genshin" && (
                     <>
                       <div className="invisible"></div>
@@ -744,7 +746,6 @@ export default function Home() {
             
             {/* The Panel Content */}
             <div className={`bg-slate-900 border border-slate-800 rounded-t-[40px] lg:rounded-3xl p-6 shadow-2xl backdrop-blur-md transition-all duration-300 relative z-50 h-[85vh] lg:h-auto overflow-y-auto custom-scrollbar ${isMobileSettingsOpen ? 'translate-y-0 bottom-0 fixed w-full' : 'translate-y-full lg:translate-y-0 lg:static w-full'}`}>
-              {/* Drag Handle for Mobile */}
               <div className="lg:hidden w-12 h-1.5 bg-slate-800 rounded-full mx-auto mb-6"></div>
               
               <div className="flex justify-between items-center mb-5">
@@ -806,14 +807,11 @@ export default function Home() {
                               const val = e.target.value;
                               const newSets = [...targetSets];
                               newSets[idx] = val;
-                              
-                              // セット1ならセット2を、セット3ならセット4を自動入力
                               const pair = SET_PAIRS[gameId][val];
                               if (pair) {
                                 if (idx === 0 && !newSets[1]) newSets[1] = pair;
                                 if (idx === 2 && !newSets[3]) newSets[3] = pair;
                               }
-                              
                               setTargetSets(newSets);
                             }}
                             className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none"
@@ -1177,10 +1175,8 @@ export default function Home() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
-                    {/* Divider with VS */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-slate-950 rounded-full border border-slate-800 flex items-center justify-center z-10 hidden md:flex font-black text-xs text-slate-600">VS</div>
                     
-                    {/* Build A Card */}
                     <div className={`p-8 rounded-[40px] border transition-all ${calcDamageIndex(null, buildA) >= calcDamageIndex(null, buildB) ? 'bg-blue-600/10 border-blue-500/50 shadow-2xl shadow-blue-500/10' : 'bg-slate-900/50 border-slate-800'}`}>
                       <div className="flex justify-between items-center mb-6">
                         <span className="px-3 py-1 bg-blue-600 text-[10px] font-black rounded-full">BUILD A</span>
@@ -1202,7 +1198,6 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Build B Card */}
                     <div className={`p-8 rounded-[40px] border transition-all ${calcDamageIndex(null, buildB) > calcDamageIndex(null, buildA) ? 'bg-emerald-600/10 border-emerald-500/50 shadow-2xl shadow-emerald-500/10' : 'bg-slate-900/50 border-slate-800'}`}>
                       <div className="flex justify-between items-center mb-6">
                         <span className="px-3 py-1 bg-emerald-600 text-[10px] font-black rounded-full">BUILD B</span>
@@ -1225,7 +1220,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Relative Gap Bar */}
                   <div className="max-w-2xl mx-auto w-full space-y-4">
                     <div className="flex justify-between items-end">
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Relative Performance Gap</p>
@@ -1233,30 +1227,19 @@ export default function Home() {
                         {Math.abs((calcDamageIndex(null, buildA) / calcDamageIndex(null, buildB) - 1) * 100).toFixed(1)}% <span className="text-xs text-slate-500 font-bold">{calcDamageIndex(null, buildA) > calcDamageIndex(null, buildB) ? 'A is Stronger' : 'B is Stronger'}</span>
                       </p>
                     </div>
-                    <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700 flex">
-                      <div 
-                        className="h-full bg-blue-500 transition-all duration-500" 
-                        style={{ width: `${(calcDamageIndex(null, buildA) / (calcDamageIndex(null, buildA) + calcDamageIndex(null, buildB))) * 100}%` }}
-                      ></div>
-                      <div 
-                        className="h-full bg-emerald-500 transition-all duration-500" 
-                        style={{ width: `${(calcDamageIndex(null, buildB) / (calcDamageIndex(null, buildA) + calcDamageIndex(null, buildB))) * 100}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-center text-[10px] text-slate-600 italic">※スコアから統計的にサブステ配分を推測して計算しています。厳密な比較にはサブステ入力を検討中。</p>
                   </div>
                 </div>
               ) : (
-                <React.Fragment>
+                <div className="w-full flex flex-col items-center">
                   {!result && !isSimulating && (
-                    <div className="text-center space-y-4 opacity-50">
+                    <div className="text-center space-y-4 opacity-50 py-20">
                       <div className="text-8xl">🎲</div>
                       <p className="text-xl font-bold">条件を入力して実行してください</p>
                     </div>
                   )}
 
                   {isSimulating && (
-                    <div className="flex flex-col items-center gap-6 w-full max-w-md">
+                    <div className="flex flex-col items-center gap-6 w-full max-w-md py-10">
                       <div className={`w-16 h-16 border-4 border-t-transparent rounded-full animate-spin border-blue-500`}></div>
                       <div className="w-full space-y-2 text-center">
                         <p className="font-bold text-lg animate-pulse">確率の海を探索中... {simProgress}%</p>
@@ -1283,38 +1266,77 @@ export default function Home() {
 
                   {result && !isSimulating && (
                     <div className="w-full space-y-8 animate-in zoom-in-95 duration-300">
+                      <div className="bg-slate-900/30 p-6 rounded-[32px] border border-slate-800 mb-8">
+                        <div className="flex justify-between items-center mb-6">
+                          <div>
+                            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                              <Zap size={14} className="text-blue-400" /> Luck Distribution Slider
+                            </h3>
+                            <p className="text-[10px] text-slate-500 mt-1">スライダーを動かして運勢ごとの結果を確認</p>
+                          </div>
+                          <div className={`px-4 py-1.5 rounded-full text-xs font-black shadow-lg ${luckPercentile <= 25 ? 'bg-emerald-600 text-white shadow-emerald-500/20' : luckPercentile <= 50 ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-rose-600 text-white shadow-rose-500/20'}`}>
+                            上位 {luckPercentile}% の運勢
+                          </div>
+                        </div>
+
+                        <div className="relative px-2 pt-8 pb-4">
+                          <input 
+                            type="range" min="10" max="90" step="1" 
+                            value={luckPercentile} 
+                            onChange={e => setLuckPercentile(Number(e.target.value))}
+                            className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          />
+                          <div className="absolute top-0 left-0 right-0 h-8 text-[9px] font-bold text-slate-600">
+                            <span className="absolute left-0 -translate-x-1/2 flex flex-col items-center">豪運<span>(10%)</span></span>
+                            <span className="absolute left-[18.75%] -translate-x-1/2 flex flex-col items-center text-emerald-500">現実的目標<span>(25%)</span></span>
+                            <span className="absolute left-[50%] -translate-x-1/2 flex flex-col items-center">中央値<span>(50%)</span></span>
+                            <span className="absolute left-[81.25%] -translate-x-1/2 flex flex-col items-center text-rose-400">下位25%<span>(75%)</span></span>
+                            <span className="absolute left-[100%] -translate-x-1/2 flex flex-col items-center">悲運<span>(90%)</span></span>
+                          </div>
+                          {/* Markers */}
+                          <div className="absolute top-8 left-[18.75%] w-0.5 h-4 bg-emerald-500/50 -translate-x-1/2"></div>
+                          <div className="absolute top-8 left-[81.25%] w-0.5 h-4 bg-rose-500/50 -translate-x-1/2"></div>
+                        </div>
+                      </div>
+
                       {result.type === "target" && (
                         <div className="space-y-6">
-                          <h3 className="text-center text-xl font-bold">目標スコア {targetScore} 到達までにかかる日数</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="bg-slate-800/50 p-6 rounded-[32px] border border-blue-500/30 text-center relative overflow-hidden group">
-                              <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
-                                <Zap size={24} className="text-blue-400" />
-                              </div>
-                              <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">Fortune: Profit Piece</p>
-                              <div className="space-y-1">
-                                <p className="text-2xl font-black text-emerald-400">樹脂 {( (1 - result.top10 / result.median) * 100 ).toFixed(1)}% お得</p>
-                                <p className="text-[10px] font-bold text-slate-500">（上位10%より良い豪運）</p>
-                              </div>
-                            </div>
-                            <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 p-8 rounded-[40px] border border-white/10 text-center shadow-2xl relative overflow-hidden ring-1 ring-white/10">
-                              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div>
-                              <p className="text-[10px] text-purple-400 font-black uppercase tracking-widest mb-1">Standard Expectation</p>
-                              <p className="text-6xl font-black text-white tracking-tighter">{result.median} <span className="text-xl font-bold text-slate-500 uppercase">Days</span></p>
+                          <h3 className="text-center text-xl font-bold flex items-center justify-center gap-3">
+                            目標スコア <span className={`px-4 py-1 rounded-full bg-gradient-to-r ${config.gradient} text-white`}>{targetScore}</span> 到達までの日数
+                          </h3>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[40px] text-center relative overflow-hidden group">
+                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Standard Expectation</p>
+                              <p className="text-6xl font-black text-white tracking-tighter">{result.median} <span className="text-xl font-bold text-slate-600 uppercase">Days</span></p>
                               <p className="text-xs text-slate-400 mt-3 font-medium italic">平均的な運勢（中央値）</p>
                             </div>
-                            <div className="bg-slate-800/50 p-6 rounded-[32px] border border-red-500/20 text-center relative overflow-hidden group">
-                              <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
-                                <Shield size={24} className="text-red-400" />
-                              </div>
-                              <p className="text-[10px] text-red-400 font-black uppercase tracking-widest mb-1">Fortune: Loss Piece</p>
-                              <div className="space-y-1">
-                                <p className="text-2xl font-black text-rose-400">樹脂 {( (result.bottom10 / result.median - 1) * 100 ).toFixed(1)}% の損</p>
-                                <p className="text-[10px] font-bold text-slate-500">（下位10%より悪い悲運）</p>
-                              </div>
-                            </div>
-                          </div>
 
+                            {(() => {
+                              const staminaCost = gameId === "genshin" ? 20 : 40;
+                              const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+                              const currentDays = Math.ceil((currentLuckRes?.attempts * staminaCost) / staminaPerDay);
+                              const isProfit = currentDays < result.median;
+                              const diffPercent = Math.abs((1 - currentDays / result.median) * 100).toFixed(1);
+
+                              return (
+                                <div className={`p-8 rounded-[40px] border-2 transition-all duration-500 text-center relative overflow-hidden ${
+                                  luckPercentile <= 25 ? "bg-emerald-500/5 border-emerald-500/30 shadow-lg shadow-emerald-500/5" :
+                                  luckPercentile <= 50 ? "bg-blue-500/5 border-blue-500/30 shadow-lg shadow-blue-500/5" :
+                                  "bg-rose-500/5 border-rose-500/30 shadow-lg shadow-rose-500/5"
+                                }`}>
+                                  <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${luckPercentile <= 50 ? "text-emerald-400" : "text-rose-400"}`}>
+                                    {luckPercentile}% Luck Outcome
+                                  </p>
+                                  <p className="text-6xl font-black text-white tracking-tighter mb-2">{currentDays} <span className="text-xl font-bold text-slate-600 uppercase">Days</span></p>
+                                  <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black ${isProfit ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
+                                    {isProfit ? <Zap size={14} fill="currentColor" /> : <Shield size={14} fill="currentColor" />}
+                                    <span>樹脂 {diffPercent}% {isProfit ? "お得 (早まる)" : "の損 (沼る)"}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </div>
                       )}
 
@@ -1322,77 +1344,46 @@ export default function Home() {
                         <div className="space-y-12">
                           <div className="text-center space-y-4">
                             <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{days}日間の厳選期待値</h3>
-                            <div className="flex justify-center gap-2">
-                              <button onClick={() => setBreakdownView("median")} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all ${breakdownView === "median" ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800 text-slate-500'}`}>AVERAGE</button>
-                              <button onClick={() => setBreakdownView("top10")} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all ${breakdownView === "top10" ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-800 text-slate-500'}`}>TOP 10%</button>
-                              <button onClick={() => setBreakdownView("bottom10")} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all ${breakdownView === "bottom10" ? 'bg-red-600 text-white shadow-lg' : 'bg-slate-800 text-slate-500'}`}>BOTTOM 10%</button>
-                            </div>
-                          </div>
+                            {(() => {
+                              const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+                              const currentScore = currentLuckRes?.score;
+                              const isHigher = currentScore > result.median;
+                              const diffPercent = Math.abs((currentScore / result.median - 1) * 100).toFixed(1);
 
-                          <div className="flex flex-col lg:flex-row gap-8 items-center">
-                            <div className="w-full lg:w-1/2 space-y-6">
-                              <div className="bg-slate-800/30 p-8 rounded-[40px] border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all">
-                                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-all transform group-hover:scale-110">
-                                  <Target size={120} />
-                                </div>
-                                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] mb-2">Estimated Build Score</p>
-                                <p className="text-7xl font-black text-white tracking-tighter mb-4">
-                                  {result[breakdownView].toFixed(1)} <span className="text-xl font-bold text-slate-600 uppercase">Score</span>
-                                </p>
-                                <div className="flex items-center gap-4 text-xs font-bold">
-                                  <div className="flex items-center gap-1.5 text-blue-400">
-                                    <Sword size={14} />
-                                    <span>DMG Index: {calcDamageIndex({pieces: breakdownView === "median" ? result.pieces : breakdownView === "top10" ? result.top10Pieces : result.bottom10Pieces}).toFixed(0)}</span>
+                              return (
+                                <div className="space-y-8">
+                                  <div className="bg-slate-900/50 p-8 rounded-[40px] border border-slate-800 shadow-xl max-w-2xl mx-auto">
+                                    <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${luckPercentile <= 50 ? "text-emerald-400" : "text-rose-400"}`}>
+                                      {luckPercentile}% Luck Result
+                                    </p>
+                                    <p className="text-7xl font-black text-white tracking-tighter mb-4">
+                                      {currentScore.toFixed(1)} <span className="text-xl font-bold text-slate-600 uppercase">Score</span>
+                                    </p>
+                                    <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-full text-sm font-black ${isHigher ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
+                                      {isHigher ? <Zap size={16} fill="currentColor" /> : <Shield size={16} fill="currentColor" />}
+                                      <span>期待値より {diffPercent}% {isHigher ? "高いスコア" : "低いスコア"}</span>
+                                    </div>
                                   </div>
-                                  {breakdownView !== "median" && (
-                                    <div className={`flex items-center gap-1 ${breakdownView === "top10" ? "text-emerald-400" : "text-rose-400"}`}>
-                                      {breakdownView === "top10" ? <Zap size={14} /> : <Shield size={14} />}
-                                      <span>
-                                        {breakdownView === "top10" 
-                                          ? `+${((result.top10 / result.median - 1) * 100).toFixed(1)}% より強い運势`
-                                          : `-${((1 - result.bottom10 / result.median) * 100).toFixed(1)}% の不運`
-                                        }
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
 
-                              <div className="h-48 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <BarChart data={result.rawScores.slice(0, 50).map((s: number, i: number) => ({id: i, score: s}))}>
-                                    <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                                      {result.rawScores.slice(0, 50).map((_: any, index: number) => (
-                                        <Cell key={`cell-${index}`} fill={index === Math.floor(breakdownView === "median" ? 25 : breakdownView === "top10" ? 45 : 5) ? '#3b82f6' : '#1e293b'} />
-                                      ))}
-                                    </Bar>
-                                    <XAxis hide />
-                                    <Tooltip 
-                                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                                      labelStyle={{ display: 'none' }}
-                                    />
-                                  </BarChart>
-                                </ResponsiveContainer>
-                                <p className="text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-2">Score Distribution (Sample 50)</p>
-                              </div>
-                            </div>
-
-                            <div className="w-full lg:w-1/2 grid grid-cols-2 md:grid-cols-3 gap-3">
-                              {Object.entries((breakdownView === "median" ? result.pieces : breakdownView === "top10" ? result.top10Pieces : result.bottom10Pieces) || {}).map(([slot, art]: [string, any]) => (
-                                <div key={slot} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-3xl group hover:border-blue-500/30 transition-all">
-                                  <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{slot}</p>
-                                  {art ? (
-                                    <div className="space-y-1">
-                                      <p className="text-sm font-black text-white">{art.score.toFixed(1)} <span className="text-[10px] text-slate-500">pt</span></p>
-                                      <p className="text-[9px] text-blue-400 font-bold truncate">{art.setName}</p>
-                                      <p className="text-[8px] text-slate-600 truncate">{art.main}</p>
-                                    </div>
-                                  ) : (
-                                    <p className="text-[10px] text-slate-700 font-bold">N/A</p>
-                                  )}
+                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                    {Object.entries(currentLuckRes?.pieces || {}).map(([slot, art]: [string, any]) => (
+                                      <div key={slot} className="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl group hover:border-blue-500/30 transition-all">
+                                        <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{slot}</p>
+                                        {art ? (
+                                          <div className="space-y-1">
+                                            <p className="text-sm font-black text-white">{art.score.toFixed(1)} <span className="text-[10px] text-slate-500">pt</span></p>
+                                            <p className="text-[9px] text-blue-400 font-bold truncate">{art.setName}</p>
+                                            <p className="text-[8px] text-slate-600 truncate">{art.main}</p>
+                                          </div>
+                                        ) : (
+                                          <p className="text-[10px] text-slate-700 font-bold">N/A</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       )}
@@ -1424,19 +1415,18 @@ export default function Home() {
                           </div>
                         </div>
                       )}
-                      {/* Talent Comparison Card */}
+
                       {gameId === "genshin" && talentCurrentLevel < 10 && (result.type === "target" || result.type === "period") && (
                         (() => {
+                          const dmgTarget = calcDamageIndex(result);
                           const dmg0 = calcDamageIndex(result, { "生の花": 0, "死の羽": 0, "時の砂": 0, "空の杯": 0, "理の冠": 0 });
                           const dmg130 = calcDamageIndex(result, { "生の花": 26, "死の羽": 26, "時の砂": 26, "空の杯": 26, "理の冠": 26 });
-                          const dmgTarget = calcDamageIndex(result);
                           const inc0 = dmg0 > 0 ? ((dmgTarget / dmg0) - 1) * 100 : 0;
                           const inc130 = dmg130 > 0 ? ((dmgTarget / dmg130) - 1) * 100 : 0;
                           const talentInc = ((TALENT_MULTIPLIERS[talentTargetLevel] / TALENT_MULTIPLIERS[talentCurrentLevel]) - 1) * 100;
                           const reqResin = result.type === "target" ? (result.median * staminaPerDay) : (days * staminaPerDay);
                           const talentResin = TALENT_CUMULATIVE_RESIN[talentTargetLevel] - TALENT_CUMULATIVE_RESIN[talentCurrentLevel];
 
-                          // 樹脂1000あたりのコスパ（効率）を計算
                           const effTalent = talentResin > 0 ? (talentInc / talentResin) * 1000 : 0;
                           const eff0 = reqResin > 0 ? (inc0 / reqResin) * 1000 : 0;
                           const eff130 = reqResin > 0 ? (inc130 / reqResin) * 1000 : 0;
@@ -1513,270 +1503,73 @@ export default function Home() {
                           <span>SNSで結果をシェア</span>
                         </button>
                       </div>
-                    </div>
-                  )}
-                  
-                  {/* Damage Index Display (Unified) */}
-                  <div className="w-full max-w-2xl mx-auto mt-8">
-                    <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/10 border border-blue-500/30 rounded-3xl p-6 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl">
-                      <p className="text-[10px] font-black text-blue-400 tracking-[0.3em] uppercase mb-1">Expected Damage Index</p>
-                      <p className="text-5xl font-black text-white tracking-tighter">
-                        {calcDamageIndex(result).toFixed(2)}<span className="text-xl text-slate-500 ml-1">x</span>
-                      </p>
-                      {compareResult && (
-                        <div className={`mt-3 px-4 py-1.5 rounded-full text-xs font-black flex items-center gap-2 border ${
-                          (calcDamageIndex(result) / calcDamageIndex(compareResult)) >= 1 
-                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
-                            : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
-                        }`}>
-                          <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
-                          {((calcDamageIndex(result) / calcDamageIndex(compareResult) - 1) * 100) >= 0 ? '+' : ''}
-                          {((calcDamageIndex(result) / calcDamageIndex(compareResult) - 1) * 100).toFixed(1)}% <span className="opacity-50 font-bold ml-1">vs Past Build</span>
+
+                      <div className="w-full max-w-2xl mx-auto mt-8">
+                        <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/10 border border-blue-500/30 rounded-3xl p-6 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl">
+                          <p className="text-[10px] font-black text-blue-400 tracking-[0.3em] uppercase mb-1">Expected Damage Index</p>
+                          <p className="text-5xl font-black text-white tracking-tighter">
+                            {calcDamageIndex(result).toFixed(2)}<span className="text-xl text-slate-500 ml-1">x</span>
+                          </p>
+                          <div className="mt-4 text-center">
+                            <p className="text-[10px] text-blue-300/80 font-bold tracking-wider mb-1">
+                              [想定天賦倍率: {
+                                scalingMode === 'hp' ? '最大HPの20%' : 
+                                scalingMode === 'def' ? '防御力の200%' : 
+                                scalingMode === 'er' ? '混合ステータスの200%' : 
+                                '攻撃力の200%'
+                              }]
+                            </p>
+                            <p className="text-[9px] text-slate-500 font-medium italic">
+                              ※全6部位のステータスとバフを合算した仮想ダメージ値です
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {allGodPieces.length > 0 && (
+                        <div className="w-full max-w-4xl mx-auto mt-8 bg-yellow-500/5 border border-yellow-500/20 rounded-3xl p-6">
+                          <h4 className="text-sm font-bold text-yellow-500 flex items-center gap-2 mb-4">✨ 🏆 並行世界でドロップした奇跡の神聖遺物 (スコア58以上)</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                            {allGodPieces.map((art, idx) => (
+                              <div key={idx} className="bg-slate-900/80 border border-yellow-500/30 p-3 rounded-2xl relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <p className="text-[10px] text-yellow-500 font-bold mb-1 truncate">{art.setName}</p>
+                                <p className="text-xl font-black text-white">{art.score.toFixed(1)} <span className="text-[9px] text-slate-500">pt</span></p>
+                                <p className="text-[9px] text-slate-400 mt-1">{art.part}</p>
+                                <p className="text-[9px] text-slate-400 truncate">{art.main}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
-                      <div className="mt-4 text-center">
-                        <p className="text-[10px] text-blue-300/80 font-bold tracking-wider mb-1">
-                          [想定天賦倍率: {
-                            scalingMode === 'hp' ? '最大HPの20%' : 
-                            scalingMode === 'def' ? '防御力の200%' : 
-                            scalingMode === 'er' ? '混合ステータスの200%' : 
-                            '攻撃力の200%'
-                          }]
-                        </p>
-                        <p className="text-[9px] text-slate-500 font-medium italic">
-                          ※全6部位のステータスとバフを合算した仮想ダメージ値です
-                        </p>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* God Pieces List */}
-                  {allGodPieces.length > 0 && (
-                    <div className="w-full max-w-4xl mx-auto mt-8 bg-yellow-500/5 border border-yellow-500/20 rounded-3xl p-6">
-                      <h4 className="text-sm font-bold text-yellow-500 flex items-center gap-2 mb-4">✨ 🏆 並行世界でドロップした奇跡の神聖遺物 (スコア58以上)</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                        {allGodPieces.map((art, idx) => (
-                          <div key={idx} className="bg-slate-900/80 border border-yellow-500/30 p-3 rounded-2xl relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <p className="text-[10px] text-yellow-500 font-bold mb-1 truncate">{art.setName}</p>
-                            <p className="text-xl font-black text-white">{art.score.toFixed(1)} <span className="text-[9px] text-slate-500">pt</span></p>
-                            <p className="text-[9px] text-slate-400 mt-1">{art.part}</p>
-                            <p className="text-[9px] text-slate-400 truncate">{art.main}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Set Effects Display */}
-                  {result && result.pieces && Object.keys(getActiveSets(result.pieces)).length > 0 && (
-                    <div className="w-full max-w-4xl mx-auto mt-8 bg-slate-800/20 border border-slate-700/50 rounded-3xl p-6">
-                      <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-4"><Sword size={16} className="text-emerald-400" /> 発動中のセット効果</h4>
-                      <div className="space-y-3">
-                        {Object.entries(getActiveSets(result.pieces)).map(([setName, count]) => {
-                          const text = SET_EFFECTS_TEXT[setName];
-                          if (!text && count < 2) return null;
-                          return (
-                            <div key={setName} className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                              <p className="text-sm font-black text-emerald-400 mb-2">{setName} <span className="text-xs font-normal text-slate-500 ml-2">({count}セット装備)</span></p>
-                              {count >= 2 && text?.["2pc"] && <p className="text-xs text-slate-300 mb-1"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">2セット</span>{text["2pc"]}</p>}
-                              {count >= 4 && text?.["4pc"] && <p className="text-xs text-slate-300"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">4セット</span>{text["4pc"]}</p>}
-                              {count >= 2 && !text && <p className="text-xs text-slate-500 italic">※セット効果の詳細は準備中です</p>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Piece Breakdown (Common for all modes) */}
-                  {result && result.pieces && (
-                    <div className="mt-10 pt-8 border-t border-slate-700/50 w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
-                      <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
-                        <div className="flex flex-col gap-2">
-                          <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">構成の内訳 (期待値の例)</h4>
-                          
-                          {/* Set Bonus Summary Badge */}
-                          {result && result.pieces && (
-                            <div className="flex flex-wrap gap-2">
-                              {(() => {
-                                const counts: {[key: string]: number} = {};
-                                Object.values(result.pieces).forEach((p: any) => {
-                                  if (p?.setName) counts[p.setName] = (counts[p.setName] || 0) + 1;
-                                });
-                                return Object.entries(counts).map(([name, count]) => {
-                                  if (count < 2) return null;
-                                  return (
-                                    <span key={name} className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-black rounded-md">
-                                      {name} {count >= 4 ? "4" : "2"}
-                                    </span>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Tab Switcher for Period Mode */}
-                        {result.top10Pieces && (
-                          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 text-[10px]">
-                            <button 
-                              onClick={() => setBreakdownView("bottom10")}
-                              className={`px-3 py-1.5 rounded-lg transition-all ${breakdownView === "bottom10" ? "bg-slate-700 text-white font-bold" : "text-slate-500 hover:text-slate-300"}`}
-                            >
-                              不運 (下位10%)
-                            </button>
-                            <button 
-                              onClick={() => setBreakdownView("median")}
-                              className={`px-3 py-1.5 rounded-lg transition-all ${breakdownView === "median" ? "bg-slate-700 text-white font-bold" : "text-slate-500 hover:text-slate-300"}`}
-                            >
-                              中央値 (平均)
-                            </button>
-                            <button 
-                              onClick={() => setBreakdownView("top10")}
-                              className={`px-3 py-1.5 rounded-lg transition-all ${breakdownView === "top10" ? "bg-slate-700 text-white font-bold" : "text-slate-500 hover:text-slate-300"}`}
-                            >
-                              幸運 (上位10%)
-                            </button>
-                          </div>
-                        )}
-                        {!result.top10Pieces && <div className="h-px flex-1 mx-4 bg-slate-800 hidden sm:block"></div>}
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {Object.entries(
-                          breakdownView === "top10" && result.top10Pieces ? result.top10Pieces :
-                          breakdownView === "bottom10" && result.bottom10Pieces ? result.bottom10Pieces :
-                          result.pieces
-                        ).map(([slot, art]: [string, any]) => {
-                          const shortMain = art?.main
-                            ? art.main
-                                .replace("会心率", "率")
-                                .replace("会心ダメージ", "ダメ")
-                                .replace("攻撃力%", "攻撃%")
-                                .replace("HP%", "HP%")
-                                .replace("防御力%", "防御%")
-                                .replace("元素熟知", "熟知")
-                                .replace("元素チャージ効率", "チャージ")
-                                .replace("元素ダメ", "ダメ")
-                                .replace("物理ダメージ", "物理")
-                                .replace("与える治療効果", "治療")
-                            : "-";
-
-                          return (
-                            <div key={slot} className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 flex flex-col items-center justify-between group hover:border-slate-700 transition-all min-h-[140px]">
-                              <span className="text-[10px] text-slate-500 font-bold truncate w-full text-center uppercase tracking-widest">{slot}</span>
-                              
-                              <div className="flex flex-col items-center">
-                                <p className="text-[10px] text-slate-500 font-bold mb-0.5">{shortMain}</p>
-                                <span className="text-2xl font-black text-white group-hover:text-blue-400 transition-colors">{art?.score ? art.score.toFixed(1) : "0.0"}</span>
-                              </div>
-                              
-                              {/* Set and Main Stat Full Name */}
-                              <div className="w-full bg-slate-800/30 py-1 px-2 rounded mt-2 text-center border border-white/5">
-                                <p className="text-[8px] text-slate-500 font-bold truncate opacity-60">{art?.setName || "N/A"}</p>
-                                <p className="text-[9px] text-blue-300 font-black truncate">
-                                  {art?.main || "N/A"}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {/* Add Target Score Card to Grid */}
-                        <div className="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/20 flex flex-col items-center justify-between min-h-[140px] shadow-lg shadow-emerald-500/5">
-                          <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-widest">TARGET</span>
-                          <div className="flex flex-col items-center">
-                            <p className="text-[10px] text-emerald-600 font-bold mb-0.5">GOAL</p>
-                            <span className="text-3xl font-black text-emerald-400 tracking-tighter">{targetScore}</span>
-                          </div>
-                          <div className="w-full bg-emerald-500/10 py-1 px-2 rounded mt-2 text-center border border-emerald-500/10">
-                            <p className="text-[9px] text-emerald-500 font-black tracking-widest">達成目標</p>
+                      {result && result.pieces && Object.keys(getActiveSets(result.pieces)).length > 0 && (
+                        <div className="w-full max-w-4xl mx-auto mt-8 bg-slate-800/20 border border-slate-700/50 rounded-3xl p-6">
+                          <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-4"><Sword size={16} className="text-emerald-400" /> 発動中のセット効果</h4>
+                          <div className="space-y-3">
+                            {Object.entries(getActiveSets(result.pieces)).map(([setName, count]) => {
+                              const text = SET_EFFECTS_TEXT[setName];
+                              if (!text && count < 2) return null;
+                              return (
+                                <div key={setName} className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                                  <p className="text-sm font-black text-emerald-400 mb-2">{setName} <span className="text-xs font-normal text-slate-500 ml-2">({count}セット装備)</span></p>
+                                  {count >= 2 && text?.["2pc"] && <p className="text-xs text-slate-300 mb-1"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">2セット</span>{text["2pc"]}</p>}
+                                  {count >= 4 && text?.["4pc"] && <p className="text-xs text-slate-300"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">4セット</span>{text["4pc"]}</p>}
+                                  {count >= 2 && !text && <p className="text-xs text-slate-500 italic">※セット効果の詳細は準備中です</p>}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      </div>
-                      <p className="text-[10px] text-center text-slate-600 mt-6 italic">
-                        {breakdownView === "top10" ? "※ 運がかなり良かった（上位10%）場合の結果例です" :
-                         breakdownView === "bottom10" ? "※ 運が悪かった（下位10%）場合の結果例です" :
-                         "※ セット効果を最大化（原神:4+1, スタレ:4+2, ZZZ:4+2）した際の各部位スコアです"}
-                      </p>
+                      )}
                     </div>
                   )}
-                </React.Fragment>
+                </div>
               )}
             </div>
           </div>
-
-            {/* --- COMPARISON RESULT (Optional) --- */}
-            {compareResult && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-700 opacity-80 hover:opacity-100 transition-opacity">
-                <div className="bg-slate-700/50 text-slate-400 py-1 px-4 rounded-full text-[10px] font-black w-fit border border-slate-600/30">
-                  PAST / A (比較対象)
-                </div>
-
-                {compareResult.type === "score" ? (
-                  <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 text-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-slate-500/5 to-transparent pointer-events-none" />
-                    <p className="text-slate-500 text-xs font-bold tracking-widest mb-4">目標スコア達成までの期待値</p>
-                    <div className="flex justify-center items-baseline gap-4 mb-6">
-                      <p className="text-7xl font-black text-white tracking-tighter">{Math.floor(compareResult.stamina / 240)}</p>
-                      <p className="text-2xl font-black text-slate-500 uppercase tracking-widest">Days</p>
-                    </div>
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900/50 rounded-full border border-slate-700/50 text-slate-400 text-sm font-bold">
-                      <Zap size={16} className="text-slate-500" />
-                      合計消費スタミナ: {compareResult.stamina.toLocaleString()}
-                    </div>
-                  </div>
-                ) : compareResult.type === "period" ? (
-                  <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 text-center">
-                    <p className="text-slate-500 text-xs font-bold tracking-widest mb-6 uppercase">{compareResult.activeDays}日間の厳選で期待できるスコア</p>
-                    <div className="grid grid-cols-3 gap-4 mb-8">
-                      <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-700/30">
-                        <p className="text-[10px] text-slate-500 font-bold mb-2">下位10%</p>
-                        <p className="text-2xl font-black text-slate-400">{compareResult.bottom10.toFixed(1)}</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-slate-700/30 border border-slate-600/50 ring-1 ring-slate-500/30">
-                        <p className="text-[10px] text-slate-300 font-bold mb-2">中央値 (平均)</p>
-                        <p className="text-4xl font-black text-white">{compareResult.median.toFixed(1)}</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-700/30">
-                        <p className="text-[10px] text-slate-500 font-bold mb-2">上位10%</p>
-                        <p className="text-2xl font-black text-emerald-500/70">{compareResult.top10.toFixed(1)}</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* Damage Index for Comparison */}
-                <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 flex flex-col items-center">
-                  <p className="text-[9px] font-bold text-slate-500 tracking-widest uppercase mb-1">Comparison Damage Index</p>
-                  <p className="text-2xl font-black text-slate-300">
-                    {calcDamageIndex(compareResult).toFixed(2)}<span className="text-xs text-slate-600 font-bold">x</span>
-                  </p>
-                </div>
-
-                {/* Breakdown for Comparison */}
-                <div className="bg-slate-800/30 backdrop-blur-xl border border-slate-700/30 rounded-3xl p-6">
-                  <h3 className="text-xs font-black text-slate-500 tracking-widest uppercase mb-6 flex items-center gap-2">
-                    <LayoutGrid size={14} />
-                    構成の内訳 (比較対象)
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {compareResult.pieces && Object.entries(compareResult.pieces).map(([slot, art]: [string, any]) => (
-                      <div key={slot} className="bg-slate-900/30 border border-slate-800 rounded-xl p-3 flex flex-col items-center opacity-60">
-                        <span className="text-[9px] text-slate-600 mb-1 font-bold truncate w-full text-center">{slot}</span>
-                        <span className="text-lg font-black text-slate-500 mb-1">{art?.score ? art.score.toFixed(1) : "0.0"}</span>
-                        {art?.main && (
-                          <p className="text-[8px] text-slate-600 font-black truncate bg-slate-950/50 px-1 rounded">{art.main}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
         </div>
 
-      {/* --- Footer --- */}
         <footer className="mt-20 pb-12 border-t border-slate-800/50 pt-12 text-center">
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
             <Link href="/blog/how-to-use" className="hover:text-emerald-400 transition-colors">使い方ガイド</Link>
@@ -1798,7 +1591,6 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* Mobile Sticky Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-slate-950/80 backdrop-blur-xl border-t border-white/10 z-40 flex gap-3 animate-in fade-in slide-in-from-bottom duration-500">
         <button 
           onClick={() => setIsMobileSettingsOpen(true)}
@@ -1827,7 +1619,6 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Drawer */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)}></div>
