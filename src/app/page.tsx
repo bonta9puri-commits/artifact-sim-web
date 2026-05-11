@@ -14,9 +14,7 @@ export default function Home() {
   const [gameId, setGameId] = useState<GameId>("genshin");
   const config = GAME_CONFIGS[gameId];
   
-  const [simMode, setSimMode] = useState<"target" | "period" | "rank" | "comparison">("target");
-  const [buildA, setBuildA] = useState<Record<string, number>>({});
-  const [buildB, setBuildB] = useState<Record<string, number>>({});
+  const [simMode, setSimMode] = useState<"target" | "period" | "rank" | "upgrade">("target");
   const [selectedWeapon, setSelectedWeapon] = useState<string>("none");
   const [selectedEnemy, setSelectedEnemy] = useState<string>("standard");
 
@@ -58,13 +56,12 @@ export default function Home() {
   const TALENT_CUMULATIVE_RESIN = [0, 0, 15, 35, 70, 120, 180, 320, 520, 850, 1300];
   const TALENT_MULTIPLIERS = [0, 1.00, 1.075, 1.15, 1.25, 1.35, 1.45, 1.55, 1.65, 1.75, 1.85];
 
-  // 比較モード用スコア入力UIの更新
+  // 診断モード用スコア入力UIの更新
   useEffect(() => {
-    if (simMode === "comparison") {
+    if (simMode === "upgrade") {
       const initial: any = {};
       config.slots.forEach(s => { if(s !== "未選択") initial[s] = 30; });
-      if (Object.keys(buildA).length === 0) setBuildA(initial);
-      if (Object.keys(buildB).length === 0) setBuildB(initial);
+      if (Object.keys(userPartScores).length === 0) setUserPartScores(initial);
     }
   }, [simMode, config]);
   const [characterName, setCharacterName] = useState<string>("ヌヴィレット");
@@ -118,7 +115,7 @@ export default function Home() {
   const [luckPercentile, setLuckPercentile] = useState(50);
   const [sortedResults, setSortedResults] = useState<any[]>([]);
   const [result, setResult] = useState<any>(null);
-  const [compareResult, setCompareResult] = useState<any>(null);
+  const [upgradeResult, setUpgradeResult] = useState<any>(null);
   const [recycleComparison, setRecycleComparison] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   
@@ -262,6 +259,45 @@ export default function Home() {
     const trials = 500;
     const subPool = config.subStats.filter(s => s !== "未選択");
 
+    if (simMode === "upgrade") {
+      const upgradeStats: Record<string, { count: number, totalIncrease: number }> = {};
+      config.slots.forEach(s => { if(s !== "未選択") upgradeStats[s] = { count: 0, totalIncrease: 0 }; });
+      let overallUpgraded = 0;
+      const attempts = Math.ceil((days * staminaPerDay) / staminaCost);
+
+      for (let i = 0; i < trials; i++) {
+        if (i % 10 === 0) {
+          setSimProgress(Math.floor((i / trials) * 100));
+          await new Promise(r => setTimeout(r, 1));
+        }
+        const res = simulateFixedAttempts(gameId, attempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats, targetSets);
+        
+        let upgradedAny = false;
+        Object.entries(res.pieces).forEach(([slot, piece]: [string, any]) => {
+          const current = userPartScores[slot] || 0;
+          if (piece && piece.score > current) {
+            upgradeStats[slot].count++;
+            upgradeStats[slot].totalIncrease += (piece.score - current);
+            upgradedAny = true;
+          }
+        });
+        if (upgradedAny) overallUpgraded++;
+      }
+
+      const overallProb = (overallUpgraded / trials) * 100;
+      const slotResults = Object.entries(upgradeStats).map(([slot, stat]) => ({
+        slot,
+        prob: (stat.count / trials) * 100,
+        avgIncrease: stat.count > 0 ? stat.totalIncrease / stat.count : 0
+      })).sort((a, b) => b.prob - a.prob);
+
+      setUpgradeResult({ overallProb, slotResults, trials, days });
+      setResult({ type: "upgrade" });
+      setSimProgress(100);
+      setIsSimulating(false);
+      return;
+    }
+
     if (simMode === "target") {
       const elixirConfig = {
         enabled: elixirEnabled,
@@ -386,157 +422,6 @@ export default function Home() {
     setIsSimulating(false);
   };
 
-  const calcDamageIndex = (res: any, buildOverride?: Record<string, number>) => {
-    if (!res && !buildOverride) return 0;
-    
-    let totalRate = baseRate;
-    let totalDmg = baseDmg;
-    let totalAtk = baseAtk;
-    let totalHp = baseHp;
-    let totalDef = baseDef;
-    let totalEr = baseEr;
-    let totalEm = baseEm;
-    let totalDmgBonus = 0;
-
-    // 武器ステータスの加算
-    const weapon = WEAPONS[gameId].find((w: any) => w.id === selectedWeapon);
-    if (weapon && weapon.stats) {
-      Object.entries(weapon.stats).forEach(([s, v]: [string, any]) => {
-        if (s === "会心率") totalRate += v;
-        if (s === "会心ダメージ") totalDmg += v;
-        if (s === "攻撃力%") totalAtk += v;
-        if (s === "HP%") totalHp += v;
-        if (s === "防御力%") totalDef += v;
-        if (s === "元素熟知") totalEm += v;
-      });
-    }
-
-    const mainValues: any = {
-      genshin: { "会心率": 31.1, "会心ダメージ": 62.2, "攻撃力%": 46.6, "HP%": 46.6, "防御力%": 58.3, "元素チャージ効率": 51.8, "元素熟知": 187 },
-      starrail: { "会心率": 32.4, "会心ダメージ": 64.8, "攻撃力%": 43.2, "HP%": 43.2, "防御力%": 54.0, "EP回復効率": 19.4, "撃破特効": 64.8 },
-      zzz: { "会心率": 24.0, "会心ダメージ": 48.0, "攻撃力%": 30.0, "HP%": 30.0, "防御力%": 40.0, "エネルギー自動回復": 60, "異常マスタリー": 30 }
-    };
-
-    if (buildOverride) {
-      // 部位スコアから統計的にサブステータスを逆算
-      Object.entries(buildOverride).forEach(([slot, score]) => {
-        // メインステータス加算 (簡易的に現在設定されているメインを使用)
-        const main = mainStats[slot];
-        const mVal = mainValues[gameId][main];
-        if (mVal) {
-          if (main === "会心率") totalRate += mVal;
-          if (main === "会心ダメージ") totalDmg += mVal;
-          if (main === "攻撃力%") totalAtk += mVal;
-          if (main === "HP%") totalHp += mVal;
-          if (main === "防御力%") totalDef += mVal;
-          if (main === "元素熟知") totalEm += mVal;
-        }
-
-        // スコアからサブステ配分 (ユーザー設定の重みに基づいて動的に分配)
-        const activeWeightEntries = Object.entries(scoreWeights).filter(([_, w]) => w > 0);
-        if (activeWeightEntries.length > 0) {
-          // 各ステータスにスコアを均等に割り振る（重みの合計で割って値を逆算）
-          const scorePerStat = score / activeWeightEntries.length;
-          activeWeightEntries.forEach(([statName, weight]) => {
-            const val = scorePerStat / weight;
-            if (statName === "会心率") totalRate += val;
-            else if (statName === "会心ダメージ") totalDmg += val;
-            else if (statName === "攻撃力%") totalAtk += val;
-            else if (statName === "HP%") totalHp += val;
-            else if (statName === "防御力%") totalDef += val;
-            else if (statName === "元素チャージ効率" || statName === "EP回復効率") totalEr += val;
-            else if (statName === "元素熟知" || statName === "撃破特効") totalEm += val;
-          });
-        }
-      });
-    } else {
-      Object.values(res.pieces || {}).forEach((art: any) => {
-        if (!art) return;
-        const mVal = mainValues[gameId][art.main];
-        if (mVal) {
-          if (art.main === "会心率") totalRate += mVal;
-          if (art.main === "会心ダメージ") totalDmg += mVal;
-          if (art.main === "攻撃力%") totalAtk += mVal;
-          if (art.main === "HP%") totalHp += mVal;
-          if (art.main === "防御力%") totalDef += mVal;
-          if (art.main === "元素チャージ効率" || art.main === "EP回復効率" || art.main === "エネルギー自動回復") totalEr += mVal;
-          if (art.main === "元素熟知" || art.main === "撃破特効" || art.main === "異常マスタリー") totalEm += mVal;
-        }
-        if (art.substats) {
-          Object.entries(art.substats).forEach(([s, v]: [string, any]) => {
-            if (s === "会心率") totalRate += v;
-            if (s === "会心ダメージ") totalDmg += v;
-            if (s === "攻撃力%") totalAtk += v;
-            if (s === "HP%") totalHp += v;
-            if (s === "防御力%") totalDef += v;
-            if (s === "元素熟知" || s === "撃破特効" || s === "異常マスタリー") totalEm += v;
-          });
-        }
-      });
-    }
-
-    // セット効果加算 (res.pieces が存在する場合のみ)
-    if (res && res.pieces) {
-      const activeSets = getActiveSets(res.pieces);
-      Object.entries(activeSets).forEach(([setName, count]) => {
-        const stats = SET_BONUS_STATS[setName];
-        if (!stats) return;
-        const addStats = (obj: Record<string, number> | undefined) => {
-          if (!obj) return;
-          if (obj["会心率"]) totalRate += obj["会心率"];
-          if (obj["会心ダメージ"]) totalDmg += obj["会心ダメージ"];
-          if (obj["攻撃力%"]) totalAtk += obj["攻撃力%"];
-          if (obj["HP%"]) totalHp += obj["HP%"];
-          if (obj["防御力%"]) totalDef += obj["防御力%"];
-          if (obj["元素チャージ効率"]) totalEr += obj["元素チャージ効率"];
-          if (obj["ダメージバフ"]) totalDmgBonus += obj["ダメージバフ"];
-        };
-        if (count >= 2) addStats(stats["2pc"]);
-        if (count >= 4) addStats(stats["4pc"]);
-      });
-    }
-
-    // 一律の基礎ステータスを想定 (Lv90星5キャラ＋星4〜5武器の平均的な値)
-    const REAL_BASE_ATK = gameId === "starrail" ? 1000 : 850;
-    const REAL_BASE_HP = gameId === "starrail" ? 3500 : 13000;
-    const REAL_BASE_DEF = gameId === "starrail" ? 450 : 750;
-
-    // 花・羽などの固定値加算を想定
-    const FLAT_ATK = gameId === "starrail" ? 352 : gameId === "zzz" ? 300 : 311;
-    const FLAT_HP = gameId === "starrail" ? 705 : gameId === "zzz" ? 2000 : 4780;
-    const FLAT_DEF = gameId === "zzz" ? 200 : 0;
-
-    // 最終ステータス = 基礎ステ × (1 + 〇〇%) + 固定値
-    const finalAtk = REAL_BASE_ATK * (totalAtk / 100) + FLAT_ATK;
-    const finalHp = REAL_BASE_HP * (totalHp / 100) + FLAT_HP;
-    const finalDef = REAL_BASE_DEF * (totalDef / 100) + FLAT_DEF;
-
-    const critMult = 1 + (Math.min(100, totalRate) / 100) * (totalDmg / 100);
-    let statMult = 1;
-    
-    // 天賦倍率の想定（攻撃などは200%、HPは値が大きいため20%として計算）
-    if (scalingMode === "atk") statMult = finalAtk * 2.0;
-    else if (scalingMode === "hp") statMult = finalHp * 0.2;
-    else if (scalingMode === "def") statMult = finalDef * 2.0;
-    else if (scalingMode === "er") statMult = (finalAtk * 0.7 + totalEr * 0.4) * 2.0;
-    else if (scalingMode === "em") statMult = totalEm * 5.0;
-    
-    let emMult = 1;
-    if (useReaction) {
-      if (gameId === "genshin") emMult = 1 + (2.78 * totalEm) / (totalEm + 1400);
-      else emMult = 1 + (totalEm / 100);
-    }
-
-    // 敵の防御・耐性補正
-    const enemy = ENEMIES[gameId].find((e: any) => e.id === selectedEnemy);
-    const enemyMult = (enemy?.def || 0.5) * (enemy?.res || 0.9);
-
-    const dmgBonusMult = 1 + (totalDmgBonus / 100);
-
-    // よりリアルなダメージ表記にするため補正
-    return critMult * statMult * emMult * enemyMult * dmgBonusMult;
-  };
-
   const snsCardRef = useRef<HTMLDivElement>(null);
 
   const downloadImage = useCallback(() => {
@@ -578,20 +463,20 @@ export default function Home() {
               <div className="z-10 w-full flex flex-col items-center mb-12">
                 <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[50px] p-10 w-full flex flex-col items-center shadow-2xl relative ring-1 ring-white/5">
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">
-                    {result.type === "target" ? "Expected Days to Reach Target" : result.type === "period" ? `${days} Days Farm Result` : "Build Performance Rank"}
+                    {result.type === "target" ? "Expected Days to Reach Target" : result.type === "period" ? `${days} Days Farm Result` : result.type === "upgrade" ? `${days} Days Upgrade Prob.` : "Build Performance Rank"}
                   </p>
                   
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-8xl font-black text-white tracking-tighter drop-shadow-2xl">
-                      {result.type === "rank" ? result.percentile.toFixed(1) : result.median}
+                      {result.type === "rank" ? result.percentile.toFixed(1) : result.type === "upgrade" ? upgradeResult?.overallProb.toFixed(1) : result.median}
                     </span>
                     <span className="text-2xl font-black text-slate-500 uppercase tracking-widest">
-                      {result.type === "rank" ? "%" : result.type === "target" ? "Days" : "Score"}
+                      {result.type === "rank" || result.type === "upgrade" ? "%" : result.type === "target" ? "Days" : "Score"}
                     </span>
                   </div>
 
                   <p className="text-sm font-black text-blue-400 mb-8 tracking-wider">
-                    {result.type === "rank" ? "TOP PERCENTILE" : "ESTIMATED AVERAGE"}
+                    {result.type === "rank" ? "TOP PERCENTILE" : result.type === "upgrade" ? "UPGRADE CHANCE" : "ESTIMATED AVERAGE"}
                   </p>
 
                   {/* Range (Top/Bottom 10%) for Target/Period */}
@@ -615,6 +500,18 @@ export default function Home() {
                           }
                         </p>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Upgrade breakdown for SNS card */}
+                  {result.type === "upgrade" && upgradeResult && (
+                    <div className="w-full grid grid-cols-2 gap-4 pt-8 border-t border-white/10">
+                      {upgradeResult.slotResults.slice(0, 4).map((res: any) => (
+                        <div key={res.slot} className="text-center">
+                          <p className="text-[7px] text-slate-500 font-black uppercase mb-1 truncate">{res.slot}</p>
+                          <p className="text-xl font-black text-white tracking-tighter">{res.prob.toFixed(1)}%</p>
+                        </div>
+                      ))}
                     </div>
                   )}
 
@@ -645,6 +542,13 @@ export default function Home() {
                 <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] text-center mb-6">Equipped Pieces Summary</p>
                 <div className="grid grid-cols-3 gap-4">
                   {Object.entries(result.pieces).map(([slot, art]: [string, any]) => {
+                    if (!art) return (
+                      <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center justify-center min-h-[120px] opacity-30">
+                        <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{slot}</p>
+                        <p className="text-[10px] font-bold text-slate-500">N/A</p>
+                      </div>
+                    );
+
                     const shortMain = art.main
                       .replace("会心率", "率")
                       .replace("会心ダメージ", "ダメ")
@@ -760,7 +664,7 @@ export default function Home() {
                   <button onClick={() => setSimMode("target")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>🎯 目標スコア診断</button>
                   <button onClick={() => setSimMode("period")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>⏳ 期間シミュ</button>
                   <button onClick={() => setSimMode("rank")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>🏆 ランク診断</button>
-                  <button onClick={() => setSimMode("comparison")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "comparison" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>⚖️ ビルド比較</button>
+                  <button onClick={() => setSimMode("upgrade")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "upgrade" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>📈 更新確率診断</button>
                 </div>
 
                 <div>
@@ -886,15 +790,16 @@ export default function Home() {
                   </div>
                 )}
 
-                {(simMode === "period" || simMode === "rank") && (
+                {(simMode === "period" || simMode === "rank" || simMode === "upgrade") && (
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-2">厳選日数</label>
                     <input type="number" value={days} onChange={e => setDays(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white"/>
                   </div>
                 )}
 
-                {simMode === "rank" && (
-                  <div className="grid grid-cols-2 gap-2">
+                {(simMode === "rank" || simMode === "upgrade") && (
+                  <div className="grid grid-cols-2 gap-2 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/50">
+                    <p className="col-span-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">現在の部位別スコア</p>
                     {config.slots.filter(s => s !== "未選択").map(slot => (
                       <div key={slot}>
                         <label className="block text-[10px] text-slate-500 mb-1">{slot}</label>
@@ -1110,44 +1015,7 @@ export default function Home() {
                   <p className="text-[9px] text-slate-600 mt-2">※武器やキャラ突破分、セット効果を含めた数値を入力してください</p>
                 </div>
 
-                {simMode === "comparison" && (
-                  <div className="space-y-4 pt-4 border-t border-slate-800">
-                    <p className="text-xs font-bold text-slate-400 mb-2">ビルドA/B スコア調整</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-3">
-                        <p className="text-[9px] text-blue-400 font-black uppercase tracking-widest text-center">Build A</p>
-                        {config.slots.filter(s => s !== "未選択").map(slot => (
-                          <div key={slot}>
-                            <p className="text-[8px] text-slate-500 mb-1">{slot}</p>
-                            <input 
-                              type="range" min="0" max="60" step="1" 
-                              value={buildA[slot] || 0} 
-                              onChange={e => setBuildA({...buildA, [slot]: Number(e.target.value)})}
-                              className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                            />
-                            <p className="text-[8px] text-right text-slate-400">{buildA[slot]}pt</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="space-y-3">
-                        <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest text-center">Build B</p>
-                        {config.slots.filter(s => s !== "未選択").map(slot => (
-                          <div key={slot}>
-                            <p className="text-[8px] text-slate-500 mb-1">{slot}</p>
-                            <input 
-                              type="range" min="0" max="60" step="1" 
-                              value={buildB[slot] || 0} 
-                              onChange={e => setBuildB({...buildB, [slot]: Number(e.target.value)})}
-                              className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                            />
-                            <p className="text-[8px] text-right text-slate-400">{buildB[slot]}pt</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {simMode !== "comparison" && (
+                {simMode !== "upgrade" && (
                   <button 
                     onClick={() => handleSimulate()} 
                     disabled={isSimulating}
@@ -1160,6 +1028,19 @@ export default function Home() {
                     {isSimulating ? 'SIMULATING...' : 'RUN SIMULATION'}
                   </button>
                 )}
+                {simMode === "upgrade" && (
+                  <button 
+                    onClick={() => handleSimulate()} 
+                    disabled={isSimulating}
+                    className={`w-full py-4 rounded-2xl font-black text-sm shadow-2xl transition-all ${
+                      isSimulating 
+                        ? 'bg-slate-800 text-slate-600' 
+                        : `bg-gradient-to-r ${config.gradient} text-white hover:scale-[1.02] active:scale-[0.98]`
+                    }`}
+                  >
+                    {isSimulating ? 'SIMULATING...' : 'RUN UPGRADE DIAGNOSIS'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1167,64 +1048,51 @@ export default function Home() {
           {/* Results Panel */}
           <div className="lg:col-span-8">
             <div ref={cardRef} className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 min-h-[600px] flex flex-col items-center justify-center relative overflow-hidden">
-              {simMode === "comparison" ? (
+              {simMode === "upgrade" && result && result.type === "upgrade" && upgradeResult ? (
                 <div className="w-full space-y-12 animate-in fade-in duration-500">
                   <div className="text-center space-y-2">
-                    <h3 className="text-2xl font-black text-white italic tracking-tighter">BUILD COMPARISON</h3>
-                    <p className="text-xs text-slate-500 uppercase tracking-[0.3em]">Build A vs Build B Performance</p>
+                    <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">Upgrade Probability</h3>
+                    <p className="text-xs text-slate-500 uppercase tracking-[0.3em]">{days}日間の厳選による更新期待度</p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-slate-950 rounded-full border border-slate-800 flex items-center justify-center z-10 hidden md:flex font-black text-xs text-slate-600">VS</div>
-                    
-                    <div className={`p-8 rounded-[40px] border transition-all ${calcDamageIndex(null, buildA) >= calcDamageIndex(null, buildB) ? 'bg-blue-600/10 border-blue-500/50 shadow-2xl shadow-blue-500/10' : 'bg-slate-900/50 border-slate-800'}`}>
-                      <div className="flex justify-between items-center mb-6">
-                        <span className="px-3 py-1 bg-blue-600 text-[10px] font-black rounded-full">BUILD A</span>
-                        {calcDamageIndex(null, buildA) > calcDamageIndex(null, buildB) && <span className="text-blue-400 font-black italic">WINNER</span>}
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Damage Index</p>
-                      <p className="text-6xl font-black text-white mb-8 tracking-tighter">{calcDamageIndex(null, buildA).toFixed(0)}</p>
-                      
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-end border-b border-slate-800 pb-2">
-                          <span className="text-[10px] text-slate-500">Total Score</span>
-                          <span className="text-xl font-bold text-slate-300">{Object.values(buildA).reduce((a,b)=>a+b, 0)} <span className="text-[10px]">pt</span></span>
-                        </div>
-                        <div className="bg-slate-950/50 p-4 rounded-2xl space-y-1">
-                          <p className="text-[9px] text-slate-600 font-bold mb-2 uppercase tracking-widest">Estimated Stats</p>
-                          <div className="flex justify-between text-xs"><span className="text-slate-500">会心率</span><span className="text-slate-300">{(baseRate + (Object.values(buildA).reduce((a,b)=>a+b, 0) * 0.4 / 2) + 31).toFixed(1)}%</span></div>
-                          <div className="flex justify-between text-xs"><span className="text-slate-500">会心ダメ</span><span className="text-slate-300">{(baseDmg + (Object.values(buildA).reduce((a,b)=>a+b, 0) * 0.4) + 62).toFixed(1)}%</span></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={`p-8 rounded-[40px] border transition-all ${calcDamageIndex(null, buildB) > calcDamageIndex(null, buildA) ? 'bg-emerald-600/10 border-emerald-500/50 shadow-2xl shadow-emerald-500/10' : 'bg-slate-900/50 border-slate-800'}`}>
-                      <div className="flex justify-between items-center mb-6">
-                        <span className="px-3 py-1 bg-emerald-600 text-[10px] font-black rounded-full">BUILD B</span>
-                        {calcDamageIndex(null, buildB) > calcDamageIndex(null, buildA) && <span className="text-emerald-400 font-black italic">WINNER</span>}
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Damage Index</p>
-                      <p className="text-6xl font-black text-white mb-8 tracking-tighter">{calcDamageIndex(null, buildB).toFixed(0)}</p>
-                      
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-end border-b border-slate-800 pb-2">
-                          <span className="text-[10px] text-slate-500">Total Score</span>
-                          <span className="text-xl font-bold text-slate-300">{Object.values(buildB).reduce((a,b)=>a+b, 0)} <span className="text-[10px]">pt</span></span>
-                        </div>
-                        <div className="bg-slate-950/50 p-4 rounded-2xl space-y-1">
-                          <p className="text-[9px] text-slate-600 font-bold mb-2 uppercase tracking-widest">Estimated Stats</p>
-                          <div className="flex justify-between text-xs"><span className="text-slate-500">会心率</span><span className="text-slate-300">{(baseRate + (Object.values(buildB).reduce((a,b)=>a+b, 0) * 0.4 / 2) + 31).toFixed(1)}%</span></div>
-                          <div className="flex justify-between text-xs"><span className="text-slate-500">会心ダメ</span><span className="text-slate-300">{(baseDmg + (Object.values(buildB).reduce((a,b)=>a+b, 0) * 0.4) + 62).toFixed(1)}%</span></div>
-                        </div>
-                      </div>
+                  <div className="bg-slate-950/50 p-10 rounded-[50px] border border-slate-800 text-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-4">Overall Build Improvement Chance</p>
+                    <p className="text-8xl font-black text-white tracking-tighter mb-4">
+                      {(upgradeResult.overallProb || 0).toFixed(1)}<span className="text-2xl text-slate-500">%</span>
+                    </p>
+                    <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-blue-500/10 text-blue-400 text-sm font-black">
+                      <Target size={16} />
+                      <span>{(upgradeResult.trials || 0)}回のシミュレーション結果</span>
                     </div>
                   </div>
 
-                  <div className="max-w-2xl mx-auto w-full space-y-4">
-                    <div className="flex justify-between items-end">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Relative Performance Gap</p>
-                      <p className="text-lg font-black text-white">
-                        {Math.abs((calcDamageIndex(null, buildA) / calcDamageIndex(null, buildB) - 1) * 100).toFixed(1)}% <span className="text-xs text-slate-500 font-bold">{calcDamageIndex(null, buildA) > calcDamageIndex(null, buildB) ? 'A is Stronger' : 'B is Stronger'}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(upgradeResult.slotResults || []).map((res: any) => (
+                      <div key={res.slot} className="bg-slate-900/50 p-6 rounded-[32px] border border-slate-800 hover:border-blue-500/30 transition-all group">
+                        <div className="flex justify-between items-start mb-4">
+                          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest truncate">{res.slot}</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${(res.prob || 0) > 20 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-600'}`}>
+                            {(res.prob || 0) > 20 ? '狙い目' : '難関'}
+                          </span>
+                        </div>
+                        <p className="text-4xl font-black text-white tracking-tighter mb-2">{(res.prob || 0).toFixed(1)}%</p>
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800/50">
+                          <span className="text-[9px] text-slate-600 font-bold uppercase">Expected Gain</span>
+                          <span className="text-xs font-black text-blue-400">+{(res.avgIncrease || 0).toFixed(1)} pt</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-blue-500/5 border border-blue-500/20 p-6 rounded-[32px] flex items-start gap-4">
+                    <MessageSquare className="text-blue-400 shrink-0 mt-1" />
+                    <div>
+                      <p className="text-sm font-bold text-blue-300">シミュレーターのアドバイス</p>
+                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                        最も更新確率が高いのは <span className="text-white font-bold">{upgradeResult.slotResults[0]?.slot || "不明"}</span> です。
+                        {(upgradeResult.slotResults[0]?.prob || 0) < 5 ? " 現在の聖遺物が既に非常に強力なため、これ以上の更新は極めて困難です。" : " まずはここを重点的に狙うのが効率的です。"}
+                        全体の期待値としては、{days}日間で合計 <span className="text-white font-bold">{(upgradeResult.slotResults?.reduce((a:any,b:any)=>a+(b.avgIncrease||0)*(b.prob||0)/100, 0) || 0).toFixed(1)}pt</span> のスコアアップが見込まれます。
                       </p>
                     </div>
                   </div>
@@ -1346,9 +1214,9 @@ export default function Home() {
                             <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{days}日間の厳選期待値</h3>
                             {(() => {
                               const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
-                              const currentScore = currentLuckRes?.score;
-                              const isHigher = currentScore > result.median;
-                              const diffPercent = Math.abs((currentScore / result.median - 1) * 100).toFixed(1);
+                              const currentScore = currentLuckRes?.score || 0;
+                              const isHigher = currentScore > (result.median || 0);
+                              const diffPercent = result.median ? Math.abs((currentScore / result.median - 1) * 100).toFixed(1) : "0.0";
 
                               return (
                                 <div className="space-y-8">
@@ -1371,7 +1239,7 @@ export default function Home() {
                                         <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{slot}</p>
                                         {art ? (
                                           <div className="space-y-1">
-                                            <p className="text-sm font-black text-white">{art.score.toFixed(1)} <span className="text-[10px] text-slate-500">pt</span></p>
+                                            <p className="text-sm font-black text-white">{(art.score || 0).toFixed(1)} <span className="text-[10px] text-slate-500">pt</span></p>
                                             <p className="text-[9px] text-blue-400 font-bold truncate">{art.setName}</p>
                                             <p className="text-[8px] text-slate-600 truncate">{art.main}</p>
                                           </div>
@@ -1504,27 +1372,6 @@ export default function Home() {
                         </button>
                       </div>
 
-                      <div className="w-full max-w-2xl mx-auto mt-8">
-                        <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/10 border border-blue-500/30 rounded-3xl p-6 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl">
-                          <p className="text-[10px] font-black text-blue-400 tracking-[0.3em] uppercase mb-1">Expected Damage Index</p>
-                          <p className="text-5xl font-black text-white tracking-tighter">
-                            {calcDamageIndex(result).toFixed(2)}<span className="text-xl text-slate-500 ml-1">x</span>
-                          </p>
-                          <div className="mt-4 text-center">
-                            <p className="text-[10px] text-blue-300/80 font-bold tracking-wider mb-1">
-                              [想定天賦倍率: {
-                                scalingMode === 'hp' ? '最大HPの20%' : 
-                                scalingMode === 'def' ? '防御力の200%' : 
-                                scalingMode === 'er' ? '混合ステータスの200%' : 
-                                '攻撃力の200%'
-                              }]
-                            </p>
-                            <p className="text-[9px] text-slate-500 font-medium italic">
-                              ※全6部位のステータスとバフを合算した仮想ダメージ値です
-                            </p>
-                          </div>
-                        </div>
-                      </div>
 
                       {allGodPieces.length > 0 && (
                         <div className="w-full max-w-4xl mx-auto mt-8 bg-yellow-500/5 border border-yellow-500/20 rounded-3xl p-6">
