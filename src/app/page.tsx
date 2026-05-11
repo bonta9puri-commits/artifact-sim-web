@@ -114,6 +114,7 @@ export default function Home() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simProgress, setSimProgress] = useState(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [compareResult, setCompareResult] = useState<any>(null);
   const [recycleComparison, setRecycleComparison] = useState<any>(null);
@@ -722,18 +723,33 @@ export default function Home() {
           </button>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Settings Panel */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 shadow-xl backdrop-blur-md">
-              <h2 className="text-xl font-bold mb-5 flex items-center gap-2">⚙️ 設定</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24 lg:pb-0">
+          {/* Settings Panel (Mobile Bottom Sheet / Desktop Sidebar) */}
+          <div className={`lg:col-span-4 space-y-6 ${isMobileSettingsOpen ? 'fixed inset-0 z-40' : 'hidden lg:block'}`}>
+            {/* Backdrop for mobile */}
+            <div 
+              className={`lg:hidden fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ${isMobileSettingsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
+              onClick={() => setIsMobileSettingsOpen(false)}
+            ></div>
+            
+            {/* The Panel Content */}
+            <div className={`bg-slate-900 border border-slate-800 rounded-t-[40px] lg:rounded-3xl p-6 shadow-2xl backdrop-blur-md transition-all duration-300 relative z-50 h-[85vh] lg:h-auto overflow-y-auto custom-scrollbar ${isMobileSettingsOpen ? 'translate-y-0 bottom-0 fixed w-full' : 'translate-y-full lg:translate-y-0 lg:static w-full'}`}>
+              {/* Drag Handle for Mobile */}
+              <div className="lg:hidden w-12 h-1.5 bg-slate-800 rounded-full mx-auto mb-6"></div>
+              
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-xl font-bold flex items-center gap-2">⚙️ 設定</h2>
+                <button className="lg:hidden p-2 text-slate-500 hover:text-white transition-colors" onClick={() => setIsMobileSettingsOpen(false)}>
+                  <X size={24} />
+                </button>
+              </div>
               
               <div className="space-y-5">
                 <div className="flex flex-col gap-2">
-                  <button onClick={() => setSimMode("target")} className={`py-2 rounded-lg text-sm font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"}`}>🎯 目標スコア診断</button>
-                  <button onClick={() => setSimMode("period")} className={`py-2 rounded-lg text-sm font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"}`}>⏳ 期間シミュ</button>
-                  <button onClick={() => setSimMode("rank")} className={`py-2 rounded-lg text-sm font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"}`}>🏆 ランク診断</button>
-                  <button onClick={() => setSimMode("comparison")} className={`py-2 rounded-lg text-sm font-bold transition-all ${simMode === "comparison" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"}`}>⚖️ ビルド比較</button>
+                  <button onClick={() => setSimMode("target")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>🎯 目標スコア診断</button>
+                  <button onClick={() => setSimMode("period")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>⏳ 期間シミュ</button>
+                  <button onClick={() => setSimMode("rank")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>🏆 ランク診断</button>
+                  <button onClick={() => setSimMode("comparison")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "comparison" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>⚖️ ビルド比較</button>
                 </div>
 
                 <div>
@@ -1754,6 +1770,35 @@ export default function Home() {
             </p>
           </div>
         </footer>
+      </div>
+
+      {/* Mobile Sticky Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-slate-950/80 backdrop-blur-xl border-t border-white/10 z-40 flex gap-3 animate-in fade-in slide-in-from-bottom duration-500">
+        <button 
+          onClick={() => setIsMobileSettingsOpen(true)}
+          className="w-16 h-14 bg-slate-900 rounded-2xl border border-slate-800 flex items-center justify-center text-slate-400 active:scale-90 transition-all shadow-xl"
+        >
+          <LayoutGrid size={24} />
+        </button>
+        <button 
+          onClick={() => {
+            handleSimulate();
+            setIsMobileSettingsOpen(false);
+          }} 
+          disabled={isSimulating}
+          className={`flex-1 h-14 rounded-2xl font-black text-sm shadow-2xl transition-all flex items-center justify-center gap-3 ${
+            isSimulating 
+              ? 'bg-slate-800 text-slate-600' 
+              : `bg-gradient-to-r ${config.gradient} text-white active:scale-[0.98] shadow-lg shadow-blue-500/20`
+          }`}
+        >
+          {isSimulating ? (
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/20 border-t-white" />
+          ) : (
+            <Zap size={20} className="fill-current" />
+          )}
+          {isSimulating ? 'SIMULATING...' : 'RUN SIMULATION'}
+        </button>
       </div>
 
       {/* Drawer */}
