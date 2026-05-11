@@ -15,43 +15,6 @@ export default function Home() {
   const config = GAME_CONFIGS[gameId];
   
   const [simMode, setSimMode] = useState<"target" | "period" | "rank" | "upgrade">("target");
-  const [selectedWeapon, setSelectedWeapon] = useState<string>("none");
-  const [selectedEnemy, setSelectedEnemy] = useState<string>("standard");
-
-  // 武器・敵のデータ定義
-  const WEAPONS: any = {
-    genshin: [
-      { id: "none", name: "武器なし", stats: {} },
-      { id: "sign", name: "モチーフ(会心ダメ)", stats: { "会心ダメージ": 66.2, "攻撃力%": 20 } },
-      { id: "crit", name: "汎用星5(会心率)", stats: { "会心率": 33.1 } },
-      { id: "f2p", name: "星4配布(攻撃%)", stats: { "攻撃力%": 55.1 } }
-    ],
-    starrail: [
-      { id: "none", name: "光円錐なし", stats: {} },
-      { id: "sign", name: "モチーフ(会心ダメ)", stats: { "会心ダメージ": 36, "会心率": 18 } },
-      { id: "hertha", name: "星5ヘルタ(攻撃%)", stats: { "攻撃力%": 64 } },
-      { id: "f2p", name: "汎用星4", stats: { "攻撃力%": 32 } }
-    ],
-    zzz: [
-      { id: "none", name: "音動機なし", stats: {} },
-      { id: "sign", name: "モチーフ", stats: { "会心率": 24, "攻撃力%": 20 } },
-      { id: "rank_s", name: "汎用S級", stats: { "会心率": 19.2 } }
-    ]
-  };
-
-  const ENEMIES: any = {
-    genshin: [
-      { id: "standard", name: "一般(Lv.90 / 10%耐性)", def: 0.5, res: 0.9 },
-      { id: "boss", name: "精鋭(Lv.90 / 70%耐性)", def: 0.5, res: 0.3 }
-    ],
-    starrail: [
-      { id: "standard", name: "一般(Lv.80 / 弱点あり)", def: 0.5, res: 1.0 },
-      { id: "boss", name: "精鋭(Lv.80 / 弱点なし)", def: 0.5, res: 0.8 }
-    ],
-    zzz: [
-      { id: "standard", name: "一般(Lv.60)", def: 0.5, res: 1.0 }
-    ]
-  };
 
 
   // 診断モード用スコア入力UIの更新
@@ -81,7 +44,6 @@ export default function Home() {
         if (d.baseStats.def !== undefined) setBaseDef(d.baseStats.def);
         if (d.baseStats.er !== undefined) setBaseEr(d.baseStats.er);
         if (d.baseStats.em !== undefined) setBaseEm(d.baseStats.em);
-        if (d.baseStats.scalingMode) setScalingMode(d.baseStats.scalingMode);
       }
     }
   }, [characterName, gameId]);
@@ -116,14 +78,6 @@ export default function Home() {
   const [upgradeResult, setUpgradeResult] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   
-  // Base Stats for Damage Index
-  const [baseRate, setBaseRate] = useState(5.0);
-  const [baseDmg, setBaseDmg] = useState(50.0);
-  const [baseAtk, setBaseAtk] = useState(100.0); // 100% means base ATK
-  const [baseEm, setBaseEm] = useState(0.0);
-  const [baseHp, setBaseHp] = useState(100.0);
-  const [baseDef, setBaseDef] = useState(100.0);
-  const [baseEr, setBaseEr] = useState(100.0);
   const [targetSets, setTargetSets] = useState<string[]>(["", "", "", ""]);
 
   // Elixir Settings
@@ -325,13 +279,6 @@ export default function Home() {
       const top10Res = results[Math.floor(trials * 0.1)];
       const bottom10Res = results[Math.floor(trials * 0.9)];
   
-      const comparison = compareRecycleEfficiency(gameId, targetScore, scoreWeights, subPool, mainStats, targetSets);
-      setRecycleComparison({
-        staminaSaved: comparison.staminaSaved,
-        daysSaved: comparison.daysSaved,
-        withRecycle: Math.ceil((comparison.withRecycle.stamina) / staminaPerDay),
-        withoutRecycle: Math.ceil((comparison.withoutRecycle.stamina) / staminaPerDay)
-      });
   
       const finalRes = {
         type: "target",
@@ -885,127 +832,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {gameId === "genshin" && (
-                  <div className="bg-slate-950/50 p-4 rounded-2xl border border-blue-900/50">
-                    <div className="flex items-center justify-between mb-4">
-                      <label className="text-sm font-medium text-blue-400 flex items-center gap-2">💡 天賦育成との比較</label>
-                    </div>
-                    {talentCurrentLevel < 10 ? (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">現在の天賦レベル</p>
-                            <select value={talentCurrentLevel} onChange={e => {
-                                const newCurrent = Number(e.target.value);
-                                setTalentCurrentLevel(newCurrent);
-                                if (talentTargetLevel <= newCurrent) setTalentTargetLevel(Math.min(10, newCurrent + 1));
-                              }} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500">
-                              {[1,2,3,4,5,6,7,8,9,10].map(l => <option key={l} value={l}>Lv. {l}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">目標の天賦レベル</p>
-                            <select value={talentTargetLevel} onChange={e => setTalentTargetLevel(Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500">
-                              {[2,3,4,5,6,7,8,9,10].filter(l => l > talentCurrentLevel).map(l => <option key={l} value={l}>Lv. {l}</option>)}
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 text-center">
-                        <p className="text-sm font-bold text-blue-400">天賦は既に最大です！</p>
-                        <p className="text-[10px] text-slate-400 mt-1">あとは地獄の聖遺物厳選あるのみです🔥 頑張りましょう！</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="text-sm font-medium text-slate-400">仮想環境設定</label>
-                    <Sword size={16} className="text-slate-500" />
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">装備武器</p>
-                      <select 
-                        value={selectedWeapon} 
-                        onChange={e => setSelectedWeapon(e.target.value)}
-                        className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"
-                      >
-                        {WEAPONS[gameId].map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">ターゲット(仮想敵)</p>
-                      <select 
-                        value={selectedEnemy} 
-                        onChange={e => setSelectedEnemy(e.target.value)}
-                        className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"
-                      >
-                        {ENEMIES[gameId].map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-slate-400">基礎ステータス (火力計算用)</label>
-                    <button 
-                      onClick={() => setUseReaction(!useReaction)}
-                      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all ${useReaction ? 'bg-blue-600/20 border-blue-500 text-blue-300' : 'bg-slate-800 border-slate-700 text-slate-500'}`}
-                    >
-                      <Zap size={10} className={useReaction ? 'animate-pulse' : ''} />
-                      <span className="text-[10px] font-bold">{gameId === "genshin" ? "反応あり" : "特殊効果あり"}</span>
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base Rate</p>
-                      <input type="number" value={baseRate} onChange={e => setBaseRate(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base Dmg</p>
-                      <input type="number" value={baseDmg} onChange={e => setBaseDmg(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base Atk%</p>
-                      <input type="number" value={baseAtk} onChange={e => setBaseAtk(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base HP%</p>
-                      <input type="number" value={baseHp} onChange={e => setBaseHp(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base Def%</p>
-                      <input type="number" value={baseDef} onChange={e => setBaseDef(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Base ER%</p>
-                      <input type="number" value={baseEr} onChange={e => setBaseEr(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{gameId === "genshin" ? "Base EM" : gameId === "starrail" ? "Base Break" : "Base Anomaly"}</p>
-                      <input type="number" value={baseEm} onChange={e => setBaseEm(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-all"/>
-                    </div>
-                    <div className="space-y-1 col-span-1">
-                      <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest">Scaling Mode</p>
-                      <select 
-                        value={scalingMode} 
-                        onChange={e => setScalingMode(e.target.value as any)}
-                        className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-blue-500/30 text-blue-300 outline-none font-bold"
-                      >
-                        <option value="atk">攻撃型</option>
-                        <option value="hp">HP型</option>
-                        <option value="def">防御型</option>
-                        <option value="er">チャージ型</option>
-                        <option value="em">熟知・撃破型</option>
-                      </select>
-                    </div>
-                  </div>
-                  <p className="text-[9px] text-slate-600 mt-2">※武器やキャラ突破分、セット効果を含めた数値を入力してください</p>
-                </div>
 
                 {simMode !== "upgrade" && (
                   <button 
