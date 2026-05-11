@@ -36,15 +36,6 @@ export default function Home() {
       if (d.weights) setScoreWeights(d.weights);
       if (d.mainStats) setMainStats(d.mainStats);
       if (d.targetSets) setTargetSets(d.targetSets);
-      if (d.baseStats) {
-        if (d.baseStats.rate !== undefined) setBaseRate(d.baseStats.rate);
-        if (d.baseStats.dmg !== undefined) setBaseDmg(d.baseStats.dmg);
-        if (d.baseStats.atk !== undefined) setBaseAtk(d.baseStats.atk);
-        if (d.baseStats.hp !== undefined) setBaseHp(d.baseStats.hp);
-        if (d.baseStats.def !== undefined) setBaseDef(d.baseStats.def);
-        if (d.baseStats.er !== undefined) setBaseEr(d.baseStats.er);
-        if (d.baseStats.em !== undefined) setBaseEm(d.baseStats.em);
-      }
     }
   }, [characterName, gameId]);
 
