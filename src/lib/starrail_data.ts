@@ -5,7 +5,7 @@ export const STARRAIL_CHARACTERS: CharacterData[] = [
     name: "黄泉", 
     element: "雷", 
     defaults: {
-      weights: { "会心率": 1, "会心ダメージ": 1, "攻撃力%": 1, "速度": 0.3 },
+      weights: { "会心率": 2, "会心ダメージ": 1, "攻撃力%": 1, "速度": 0.3 },
       mainStats: { "胴体": "会心ダメージ", "脚部": "攻撃力%", "次元界オーブ": "攻撃力%", "連結縄": "攻撃力%" },
       targetSets: ["死水に潜る先駆者", "出雲顕神と高天原"],
       baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
@@ -25,7 +25,7 @@ export const STARRAIL_CHARACTERS: CharacterData[] = [
     name: "飛霄", 
     element: "風", 
     defaults: {
-      weights: { "会心率": 1, "会心ダメージ": 1, "攻撃力%": 0.8, "速度": 0.8 },
+      weights: { "会心率": 2, "会心ダメージ": 1, "攻撃力%": 0.8, "速度": 0.8 },
       mainStats: { "胴体": "会心率", "脚部": "速度", "次元界オーブ": "風ダメージ", "連結縄": "攻撃力%" },
       targetSets: ["風雲を薙ぎ払う勇烈", "奔狼の都藍王朝"],
       baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }

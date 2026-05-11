@@ -5,7 +5,7 @@ export const ZZZ_CHARACTERS: CharacterData[] = [
     name: "エレン", 
     element: "氷", 
     defaults: {
-      weights: { "会心率": 1, "会心ダメージ": 1, "攻撃力%": 0.8, "貫通値": 0.5 },
+      weights: { "会心率": 2, "会心ダメージ": 1, "攻撃力%": 0.8, "貫通値": 0.5 },
       mainStats: { "スロット4": "会心ダメージ", "スロット5": "氷属性ダメージ", "スロット6": "攻撃力%" },
       targetSets: ["ウッドペッカー・エレクトロ", "極地ヘヴィメタル"],
       baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
@@ -15,7 +15,7 @@ export const ZZZ_CHARACTERS: CharacterData[] = [
     name: "朱鳶", 
     element: "エーテル", 
     defaults: {
-      weights: { "会心率": 1, "会心ダメージ": 1, "攻撃力%": 0.8, "貫通値": 0.5 },
+      weights: { "会心率": 2, "会心ダメージ": 1, "攻撃力%": 0.8, "貫通値": 0.5 },
       mainStats: { "スロット4": "会心ダメージ", "スロット5": "エーテル属性ダメージ", "スロット6": "攻撃力%" },
       targetSets: ["ウッドペッカー・エレクトロ", "カオス・ジャズ"],
       baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
