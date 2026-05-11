@@ -53,8 +53,6 @@ export default function Home() {
     ]
   };
 
-  const TALENT_CUMULATIVE_RESIN = [0, 0, 15, 35, 70, 120, 180, 320, 520, 850, 1300];
-  const TALENT_MULTIPLIERS = [0, 1.00, 1.075, 1.15, 1.25, 1.35, 1.45, 1.55, 1.65, 1.75, 1.85];
 
   // 診断モード用スコア入力UIの更新
   useEffect(() => {
@@ -116,7 +114,6 @@ export default function Home() {
   const [sortedResults, setSortedResults] = useState<any[]>([]);
   const [result, setResult] = useState<any>(null);
   const [upgradeResult, setUpgradeResult] = useState<any>(null);
-  const [recycleComparison, setRecycleComparison] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   
   // Base Stats for Damage Index
@@ -127,8 +124,6 @@ export default function Home() {
   const [baseHp, setBaseHp] = useState(100.0);
   const [baseDef, setBaseDef] = useState(100.0);
   const [baseEr, setBaseEr] = useState(100.0);
-  const [scalingMode, setScalingMode] = useState<"atk" | "hp" | "def" | "er" | "em">("atk");
-  const [useReaction, setUseReaction] = useState(true);
   const [targetSets, setTargetSets] = useState<string[]>(["", "", "", ""]);
 
   // Elixir Settings
@@ -141,9 +136,6 @@ export default function Home() {
   const [elixirSub1, setElixirSub1] = useState("会心率");
   const [elixirSub2, setElixirSub2] = useState("会心ダメージ");
 
-  // Talent Comparison
-  const [talentCurrentLevel, setTalentCurrentLevel] = useState<number>(8);
-  const [talentTargetLevel, setTalentTargetLevel] = useState<number>(10);
 
   // God pieces
   const [latestGodPiece, setLatestGodPiece] = useState<any>(null);
@@ -1412,18 +1404,9 @@ export default function Home() {
                         setResult(item.result);
                         setIsDrawerOpen(false);
                       }}
-                      className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-[10px] font-bold transition-colors"
+                      className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-[10px] font-bold transition-colors"
                     >
                       復元
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setCompareResult(item.result);
-                        setIsDrawerOpen(false);
-                      }}
-                      className="flex-1 py-2 bg-blue-600/50 hover:bg-blue-600 rounded-lg text-[10px] font-bold transition-colors"
-                    >
-                      比較
                     </button>
                   </div>
                 </div>
