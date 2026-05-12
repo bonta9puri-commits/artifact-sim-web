@@ -11,11 +11,154 @@ import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell
 import { Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, X, Share2 } from 'lucide-react';
 
 export default function Home() {
+  const [lang, setLang] = useState<"ja" | "en">("ja");
+
+  const translations: any = {
+    ja: {
+      target: "目標スコア診断",
+      period: "期間シミュ",
+      rank: "ランク診断",
+      upgrade: "更新確率診断",
+      settings: "設定",
+      character: "キャラクター",
+      targetSets: "狙いのセット (ダンジョン別)",
+      mainStats: "メインステータス",
+      weights: "サブステータスの重み",
+      targetScore: "目標合計スコア",
+      farmingDays: "厳選日数",
+      currentScores: "現在の部位別スコア",
+      elixir: "祝聖のエリクシル",
+      strongbox: "聖遺物廻聖",
+      run: "シミュレーション開始",
+      simulating: "解析中...",
+      outcome: "解析結果",
+      share: "結果を画像でシェア",
+      back: "戻る",
+      luckSlider: "運勢分布スライダー",
+      luckDesc: "スライダーを動かして運勢ごとの結果を確認",
+      topLuck: (n: number) => `上位 ${n}% の運勢`,
+      luck10: "豪運",
+      luck25: "上位25%",
+      luck50: "中央値",
+      luck75: "下位25%",
+      luck90: "悲運",
+      elixirSaved: (n: number) => `エリクシルで ${n} 日短縮`,
+      superiority: "ビルド実力（勝率）",
+      yourScore: "あなたのスコア",
+      avgScore: (n: number) => `${n}日間の平均`,
+      godPieceList: "神聖遺物ドロップリスト",
+      days_unit: "日",
+      score_unit: "pt",
+      "会心率": "会心率",
+      "会心ダメージ": "会心ダメージ",
+      "攻撃力%": "攻撃力%",
+      "元素チャージ効率": "元素チャージ効率",
+      "元素熟知": "元素熟知",
+      "HP%": "HP%",
+      "防御力%": "防御力%",
+      "生の花": "生の花",
+      "死の羽": "死の羽",
+      "時の砂": "時の砂",
+      "空の杯": "空の杯",
+      "理の冠": "理の冠",
+      "時の砂 (2)": "時の砂 (2)",
+      "空の杯 (4)": "空の杯 (4)",
+      "理の冠 (3)": "理の冠 (3)",
+      "頭部": "頭部",
+      "手部": "手部",
+      "胴体": "胴体",
+      "脚部": "脚部",
+      "次元界オーブ": "次元界オーブ",
+      "連結縄": "連結縄",
+      "スロット1": "スロット1",
+      "スロット2": "スロット2",
+      "スロット3": "スロット3",
+      "スロット4": "スロット4",
+      "スロット5": "スロット5",
+      "スロット6": "スロット6",
+      "攻撃力(固定値)": "攻撃力(固定値)",
+      "HP(固定値)": "HP(固定値)",
+      "防御力(固定値)": "防御力(固定値)",
+      "元素ダメージ": "元素ダメージ"
+    },
+    en: {
+      target: "Target Score",
+      period: "Farming Sim",
+      rank: "Build Rank",
+      upgrade: "Upgrade Prob",
+      settings: "Settings",
+      character: "Character",
+      targetSets: "Target Sets (by Domain)",
+      mainStats: "Main Stats",
+      weights: "Substat Weights",
+      targetScore: "Target Total Score",
+      farmingDays: "Farming Days",
+      currentScores: "Current Part Scores",
+      elixir: "Sanctifying Elixir",
+      strongbox: "Strongbox",
+      run: "Start Simulation",
+      simulating: "Analyzing...",
+      outcome: "Outcome",
+      share: "Share Results as Image",
+      back: "Back",
+      luckSlider: "Luck Distribution",
+      luckDesc: "Adjust slider to see outcomes by luck",
+      topLuck: (n: number) => `Top ${n}% Luck`,
+      luck10: "Godly",
+      luck25: "Great",
+      luck50: "Median",
+      luck75: "Bad",
+      luck90: "Terrible",
+      elixirSaved: (n: number) => `${n} days saved by Elixir`,
+      superiority: "Build Superiority",
+      yourScore: "Your Score",
+      avgScore: (n: number) => `${n}d Average`,
+      godPieceList: "God Piece Drop List",
+      days_unit: "days",
+      score_unit: "pt",
+      "会心率": "CRIT Rate",
+      "会心ダメージ": "CRIT DMG",
+      "攻撃力%": "ATK%",
+      "元素チャージ効率": "Energy Recharge",
+      "元素熟知": "Elemental Mastery",
+      "HP%": "HP%",
+      "防御力%": "DEF%",
+      "生の花": "Flower",
+      "死の羽": "Plume",
+      "時の砂": "Sands",
+      "空の杯": "Goblet",
+      "理の冠": "Circlet",
+      "時の砂 (2)": "Sands (2)",
+      "空の杯 (4)": "Goblet (4)",
+      "理の冠 (3)": "Circlet (3)",
+      "頭部": "Head",
+      "手部": "Hands",
+      "胴体": "Body",
+      "脚部": "Feet",
+      "次元界オーブ": "Planar Sphere",
+      "連結縄": "Link Rope",
+      "スロット1": "Disk 1",
+      "スロット2": "Disk 2",
+      "スロット3": "Disk 3",
+      "スロット4": "Disk 4",
+      "スロット5": "Disk 5",
+      "スロット6": "Disk 6",
+      "攻撃力(固定値)": "ATK (Flat)",
+      "HP(固定値)": "HP (Flat)",
+      "防御力(固定値)": "DEF (Flat)",
+      "元素ダメージ": "Elemental DMG"
+    }
+  };
+
+  const t = (key: string, param?: any) => {
+    const entry = translations[lang][key] || key;
+    return typeof entry === 'function' ? entry(param) : entry;
+  };
+
   const [gameId, setGameId] = useState<GameId>("genshin");
   const config = GAME_CONFIGS[gameId];
   
   const [simMode, setSimMode] = useState<"target" | "period" | "rank" | "upgrade">("target");
-
 
   // 診断モード用スコア入力UIの更新
   useEffect(() => {
@@ -49,8 +192,8 @@ export default function Home() {
   // Settings
   const [targetScore, setTargetScore] = useState(180);
   const [days, setDays] = useState(30);
-  const [breakdownView, setBreakdownView] = useState<"median" | "top10" | "bottom10">("median");
   const [staminaPerDay, setStaminaPerDay] = useState(gameId === "genshin" ? 180 : 240);
+  const staminaCost = gameId === "genshin" ? 20 : 40;
   
   const [useStrongbox, setUseStrongbox] = useState(false);
   const [mainStats, setMainStats] = useState<Record<string, string>>({});
@@ -81,7 +224,6 @@ export default function Home() {
   const [elixirSub1, setElixirSub1] = useState("会心率");
   const [elixirSub2, setElixirSub2] = useState("会心ダメージ");
 
-
   // God pieces
   const [latestGodPiece, setLatestGodPiece] = useState<any>(null);
   const [allGodPieces, setAllGodPieces] = useState<any[]>([]);
@@ -102,7 +244,7 @@ export default function Home() {
         console.error("Failed to load settings", e);
       }
     } else {
-      // 初期値設定 (保存データがない場合のみ)
+      // 初期値設定
       const initialMain: Record<string, string> = {};
       config.slots.forEach(s => {
         if (s === "未選択") return;
@@ -125,31 +267,26 @@ export default function Home() {
       });
       setMainStats(initialMain);
       
-      // ターゲットスコアの初期化
       if (gameId === "genshin") {
         setTargetScore(180);
       } else {
-        setTargetScore(420); // スタレ・ゼンゼロは1部位平均70点 × 6部位 = 420点を目標にする
+        setTargetScore(420);
       }
       
       const initialWeights: Record<string, number> = {};
       config.subStats.forEach(s => {
-        if (s === "会心率") {
-          initialWeights[s] = (gameId === "zzz") ? 1.0 : 2.0;
-        }
+        if (s === "会心率") initialWeights[s] = (gameId === "zzz") ? 1.0 : 2.0;
         else if (s === "会心ダメージ" || s === "攻撃力%" || s === "異常マスタリー") initialWeights[s] = 1.0;
-        else if (s === "速度" && gameId === "starrail") initialWeights[s] = 1.0;
         else if (s === "速度") initialWeights[s] = 1.0;
         else initialWeights[s] = 0;
       });
       setScoreWeights(initialWeights);
 
-      // デフォルトの部位スコア設定
       const initialPartScores: Record<string, number> = {};
       config.slots.forEach(s => {
         if (s !== "未選択") {
           if (gameId === "genshin") initialPartScores[s] = 35;
-          else initialPartScores[s] = 70; // スタレ・ゼンゼロ共通で70点
+          else initialPartScores[s] = 70;
         }
       });
       setUserPartScores(initialPartScores);
@@ -192,7 +329,6 @@ export default function Home() {
     setAllGodPieces([]);
     setSortedResults([]);
     
-    const staminaCost = gameId === "genshin" ? 20 : 40;
     const trials = 500;
     const subPool = config.subStats.filter(s => s !== "未選択");
 
@@ -271,7 +407,7 @@ export default function Home() {
       results.sort((a, b) => a.attempts - b.attempts);
       baselineResults.sort((a, b) => a.attempts - b.attempts);
       setSortedResults(results);
-      setLuckPercentile(25); // 現実的目標 (上位25%) をデフォルトに
+      setLuckPercentile(25);
       collectedGods.sort((a, b) => b.score - a.score);
       setAllGodPieces(collectedGods.slice(0, 10));
       
@@ -305,7 +441,7 @@ export default function Home() {
         sub2: elixirSub2
       };
       let collectedGods: any[] = [];
-      const results: {score: number, pieces: any, godPieces?: any[]}[] = [];
+      const results: {score: number, pieces: any, godPieces?: any[], scoreBeforeElixir?: number}[] = [];
       for (let i = 0; i < trials; i++) {
         if (i % 10 === 0) {
           setSimProgress(Math.floor((i / trials) * 100));
@@ -320,7 +456,7 @@ export default function Home() {
       }
       results.sort((a, b) => b.score - a.score);
       setSortedResults(results);
-      setLuckPercentile(25); // 現実的目標 (上位25%) をデフォルトに
+      setLuckPercentile(25);
       collectedGods.sort((a, b) => b.score - a.score);
       setAllGodPieces(collectedGods.slice(0, 10));
       
@@ -328,9 +464,7 @@ export default function Home() {
         const medianRes = results[Math.floor(trials / 2)];
         const top10Res = results[Math.floor(trials * 0.1)];
         const bottom10Res = results[Math.floor(trials * 0.9)];
-        
-        // 平均的なエリクシルによる伸びを計算
-        const avgBonus = results.reduce((acc, r: any) => acc + (r.score - (r.scoreBeforeElixir || r.score)), 0) / trials;
+        const avgBonus = results.reduce((acc, r) => acc + (r.score - (r.scoreBeforeElixir || r.score)), 0) / trials;
 
         const finalRes = {
           type: "period",
@@ -370,7 +504,6 @@ export default function Home() {
   const snsCardRef = useRef<HTMLDivElement>(null);
 
   const downloadImage = useCallback(() => {
-    // SNS専用カードがあればそちらを優先、なければ現在の表示パネルをキャプチャ
     const target = (snsCardRef.current?.style.display !== 'none' ? snsCardRef.current : cardRef.current) || cardRef.current;
     if (target === null) return;
     
@@ -387,30 +520,24 @@ export default function Home() {
     <main className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 flex justify-center">
       <div className="w-full max-w-6xl space-y-6">
         
-        {/* --- SNS SHARE CARD (Capture Target) --- */}
+        {/* --- SNS SHARE CARD --- */}
         <div className="fixed -left-[9999px] top-0 pointer-events-none">
           <div ref={snsCardRef} className="w-[480px] min-h-[850px] bg-slate-950 p-10 flex flex-col items-center relative overflow-hidden font-sans border-[12px] border-slate-900 shadow-2xl">
-            {/* Background Decorations */}
             <div className={`absolute top-[-100px] right-[-100px] w-64 h-64 rounded-full blur-[100px] opacity-30 bg-gradient-to-br ${config.gradient}`}></div>
             <div className={`absolute bottom-[-100px] left-[-100px] w-80 h-80 rounded-full blur-[120px] opacity-20 bg-gradient-to-br ${config.gradient}`}></div>
-            
-            {/* Header */}
             <div className="z-10 w-full text-center mb-12">
               <p className={`text-[10px] font-black tracking-[0.4em] uppercase mb-2 bg-clip-text text-transparent bg-gradient-to-r ${config.gradient}`}>
-                {config.name} Artifact Simulator
+                {config.name} Simulator
               </p>
               <h2 className="text-4xl font-black text-white tracking-tighter italic">{characterName}</h2>
               <div className="h-1.5 w-16 bg-white/20 mx-auto mt-6 rounded-full"></div>
             </div>
-
-            {/* Main Result Area */}
             {result && (
               <div className="z-10 w-full flex flex-col items-center mb-12">
                 <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[50px] p-10 w-full flex flex-col items-center shadow-2xl relative ring-1 ring-white/5">
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">
                     {result.type === "target" ? "Expected Days to Reach Target" : result.type === "period" ? `${days} Days Farm Result` : result.type === "upgrade" ? `${days} Days Upgrade Prob.` : "Build Performance Rank"}
                   </p>
-                  
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-8xl font-black text-white tracking-tighter drop-shadow-2xl">
                       {result.type === "rank" ? result.percentile.toFixed(1) : result.type === "upgrade" ? upgradeResult?.overallProb.toFixed(1) : (result.type === "target" ? result.median.toFixed(0) : result.median.toFixed(2))}
@@ -419,27 +546,23 @@ export default function Home() {
                       {result.type === "rank" || result.type === "upgrade" ? "%" : result.type === "target" ? "Days" : "Score"}
                     </span>
                   </div>
-
                   {result.type === "target" && result.medianWithoutElixir && (
                     <p className="text-[10px] text-yellow-500/80 font-black mb-4 uppercase tracking-[0.15em] flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20">
                       <span className="animate-pulse">✨</span> 
                       {(result.medianWithoutElixir - result.median).toFixed(0)} DAYS SAVED BY ELIXIR
                     </p>
                   )}
-
                   <p className="text-sm font-black text-blue-400 mb-8 tracking-wider">
                     {result.type === "rank" ? "TOP PERCENTILE" : result.type === "upgrade" ? "UPGRADE CHANCE" : "ESTIMATED AVERAGE"}
                   </p>
-
-                  {/* Range (Top/Bottom 10%) for Target/Period */}
                   {(result.type === "target" || result.type === "period") && (
                     <div className="w-full grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
                       <div className="text-center">
                         <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mb-2">LUCK: TOP 10%</p>
                         <p className="text-3xl font-black text-white leading-none tracking-tighter">
                           {result.type === "target" 
-                            ? `+${((1 - result.top10 / result.median) * 100).toFixed(0)}% 得`
-                            : `+${((result.top10 / result.median - 1) * 100).toFixed(0)}% 強`
+                            ? `+${((1 - result.top10 / result.median) * 100).toFixed(0)}%`
+                            : `+${((result.top10 / result.median - 1) * 100).toFixed(0)}%`
                           }
                         </p>
                       </div>
@@ -447,27 +570,23 @@ export default function Home() {
                         <p className="text-[9px] text-rose-400 font-black uppercase tracking-widest mb-2">LUCK: BOTTOM 10%</p>
                         <p className="text-3xl font-black text-white leading-none tracking-tighter">
                           {result.type === "target"
-                            ? `-${((result.bottom10 / result.median - 1) * 100).toFixed(0)}% 損`
-                            : `-${((1 - result.bottom10 / result.median) * 100).toFixed(0)}% 弱`
+                            ? `-${((result.bottom10 / result.median - 1) * 100).toFixed(0)}%`
+                            : `-${((1 - result.bottom10 / result.median) * 100).toFixed(0)}%`
                           }
                         </p>
                       </div>
                     </div>
                   )}
-
-                  {/* Upgrade breakdown for SNS card */}
                   {result.type === "upgrade" && upgradeResult && (
                     <div className="w-full grid grid-cols-2 gap-4 pt-8 border-t border-white/10">
                       {upgradeResult.slotResults.slice(0, 4).map((res: any) => (
                         <div key={res.slot} className="text-center">
-                          <p className="text-[7px] text-slate-500 font-black uppercase mb-1 truncate">{res.slot}</p>
+                          <p className="text-[7px] text-slate-500 font-black uppercase mb-1 truncate">{t(res.slot)}</p>
                           <p className="text-xl font-black text-white tracking-tighter">{res.prob.toFixed(1)}%</p>
                         </div>
                       ))}
                     </div>
                   )}
-
-                  {/* 3-Way Comparison for Rank Diagnosis */}
                   {result.type === "rank" && (
                     <div className="w-full grid grid-cols-3 gap-2 pt-8 border-t border-white/10">
                       <div className="text-center">
@@ -487,8 +606,6 @@ export default function Home() {
                 </div>
               </div>
             )}
-
-            {/* Piece Breakdown (Compact Cards) */}
             {result && result.pieces && (
               <div className="z-10 w-full mb-12">
                 <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] text-center mb-6">Equipped Pieces Summary</p>
@@ -496,23 +613,10 @@ export default function Home() {
                   {Object.entries(result.pieces).map(([slot, art]: [string, any]) => {
                     if (!art) return (
                       <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center justify-center min-h-[120px] opacity-30">
-                        <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{slot}</p>
+                        <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{t(slot)}</p>
                         <p className="text-[10px] font-bold text-slate-500">N/A</p>
                       </div>
                     );
-
-                    const shortMain = art.main
-                      .replace("会心率", "率")
-                      .replace("会心ダメージ", "ダメ")
-                      .replace("攻撃力%", "攻撃%")
-                      .replace("HP%", "HP%")
-                      .replace("防御力%", "防御%")
-                      .replace("元素熟知", "熟知")
-                      .replace("元素チャージ効率", "チャージ")
-                      .replace("元素ダメ", "ダメ")
-                      .replace("物理ダメージ", "物理")
-                      .replace("与える治療効果", "治療");
-
                     return (
                       <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px] relative overflow-hidden group">
                         {art.isElixir && (
@@ -520,57 +624,35 @@ export default function Home() {
                             祝聖
                           </div>
                         )}
-                        <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{slot}</p>
+                        <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{t(slot)}</p>
                         <div className="flex flex-col items-center -my-1">
-                           <p className="text-[8px] text-slate-500 font-bold mb-0.5">{shortMain}</p>
                           <p className={`text-xl font-black tracking-tighter ${art.isElixir ? 'text-yellow-400' : 'text-white'}`}>{art.score.toFixed(2)}</p>
                         </div>
                         <div className="w-full text-center">
-                          <p className="text-[6px] text-blue-400/50 font-black truncate leading-tight">{art.setName}</p>
-                          <p className="text-[7px] text-blue-500/80 font-bold truncate w-full leading-none">{art.main}</p>
+                          <p className="text-[7px] text-blue-500/80 font-bold truncate w-full leading-none">{t(art.main)}</p>
                         </div>
                       </div>
                     );
                   })}
-                  {gameId === "genshin" && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px] shadow-lg shadow-emerald-500/5">
-                      <p className="text-[7px] text-emerald-700 font-black uppercase tracking-widest">TARGET</p>
-                      <p className="text-2xl font-black text-emerald-400 tracking-tighter">{targetScore}</p>
-                      <p className="text-[7px] text-emerald-600/80 font-bold uppercase">GOAL</p>
-                    </div>
-                  )}
-                  {gameId !== "genshin" && (
-                    <>
-                      <div className="invisible"></div>
-                      <div className="invisible"></div>
-                      <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px] shadow-lg shadow-emerald-500/5">
-                        <p className="text-[7px] text-emerald-700 font-black uppercase tracking-widest">TARGET</p>
-                        <p className="text-2xl font-black text-emerald-400 tracking-tighter">{targetScore}</p>
-                        <p className="text-[7px] text-emerald-600/80 font-bold uppercase">GOAL</p>
-                      </div>
-                    </>
-                  )}
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px] shadow-lg shadow-emerald-500/5">
+                    <p className="text-[7px] text-emerald-700 font-black uppercase tracking-widest">TARGET</p>
+                    <p className="text-2xl font-black text-emerald-400 tracking-tighter">{targetScore}</p>
+                    <p className="text-[7px] text-emerald-600/80 font-bold uppercase">GOAL</p>
+                  </div>
                 </div>
               </div>
             )}
-
-            {/* Footer */}
             <div className="z-10 mt-auto w-full flex items-center justify-between border-t border-white/10 pt-10">
               <div className="text-left">
                 <p className="text-[10px] text-slate-600 font-black tracking-widest mb-1">PRODUCED BY</p>
                 <p className={`text-xl font-black italic tracking-tighter bg-clip-text text-transparent bg-gradient-to-r ${config.gradient}`}>ARTIFACT-SIM.COM</p>
-              </div>
-              <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
-                <div className="w-10 h-10 border-2 border-white/20 rounded-lg flex items-center justify-center">
-                   <div className="w-4 h-4 bg-white/40 rounded-sm"></div>
-                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Game Switcher Tab */}
-        <div className="flex justify-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
           <div className="bg-slate-900 p-1 rounded-2xl flex gap-1 border border-slate-800 shadow-2xl">
             {(["genshin", "starrail", "zzz"] as const).map(id => (
               <button
@@ -582,6 +664,21 @@ export default function Home() {
               </button>
             ))}
           </div>
+
+          <div className="flex bg-slate-900/80 rounded-full p-1 border border-white/5">
+            <button 
+              onClick={() => setLang('ja')}
+              className={`px-4 py-1.5 rounded-full text-xs font-black transition-all ${lang === 'ja' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              JP
+            </button>
+            <button 
+              onClick={() => setLang('en')}
+              className={`px-4 py-1.5 rounded-full text-xs font-black transition-all ${lang === 'en' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              EN
+            </button>
+          </div>
         </div>
 
         <header className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 border-b border-white/10 mb-8 gap-4">
@@ -589,28 +686,24 @@ export default function Home() {
             <h1 className={`text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r ${config.gradient}`}>
               {config.name} {config.equipName}Sim
             </h1>
-            <p className="text-slate-400 mt-1 text-sm font-medium">目標到達までの{gameId === "genshin" ? "樹脂" : "スタミナ"}を徹底シミュレート</p>
+            <p className="text-slate-400 mt-1 text-sm font-medium">
+              {lang === 'ja' 
+                ? `目標到達までの${gameId === "genshin" ? "樹脂" : "スタミナ"}を徹底シミュレート` 
+                : `Thoroughly simulate ${gameId === "genshin" ? "Resin" : "Stamina"} to reach your target`}
+            </p>
           </div>
           <button onClick={() => setIsDrawerOpen(true)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            <LayoutGrid size={24} />
           </button>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24 lg:pb-0">
-          {/* Settings Panel (Mobile Bottom Sheet / Desktop Sidebar) */}
           <div className={`lg:col-span-4 space-y-6 ${isMobileSettingsOpen ? 'fixed inset-0 z-40' : 'hidden lg:block'}`}>
-            {/* Backdrop for mobile */}
-            <div 
-              className={`lg:hidden fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ${isMobileSettingsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
-              onClick={() => setIsMobileSettingsOpen(false)}
-            ></div>
-            
-            {/* The Panel Content */}
+            <div className={`lg:hidden fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ${isMobileSettingsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsMobileSettingsOpen(false)}></div>
             <div className={`bg-slate-900 border border-slate-800 rounded-t-[40px] lg:rounded-3xl p-6 shadow-2xl backdrop-blur-md transition-all duration-300 relative z-50 h-[85vh] lg:h-auto overflow-y-auto custom-scrollbar ${isMobileSettingsOpen ? 'translate-y-0 bottom-0 fixed w-full' : 'translate-y-full lg:translate-y-0 lg:static w-full'}`}>
               <div className="lg:hidden w-12 h-1.5 bg-slate-800 rounded-full mx-auto mb-6"></div>
-              
               <div className="flex justify-between items-center mb-5">
-                <h2 className="text-xl font-bold flex items-center gap-2">⚙️ 設定</h2>
+                <h2 className="text-xl font-bold flex items-center gap-2">⚙️ {t('settings')}</h2>
                 <button className="lg:hidden p-2 text-slate-500 hover:text-white transition-colors" onClick={() => setIsMobileSettingsOpen(false)}>
                   <X size={24} />
                 </button>
@@ -618,101 +711,71 @@ export default function Home() {
               
               <div className="space-y-5">
                 <div className="flex flex-col gap-2">
-                  <button onClick={() => setSimMode("target")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>🎯 目標スコア診断</button>
-                  <button onClick={() => setSimMode("period")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>⏳ 期間シミュ</button>
-                  <button onClick={() => setSimMode("rank")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>🏆 ランク診断</button>
-                  <button onClick={() => setSimMode("upgrade")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "upgrade" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>📈 更新確率診断</button>
+                  <button onClick={() => setSimMode("target")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>{t('target')}</button>
+                  <button onClick={() => setSimMode("period")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>{t('period')}</button>
+                  <button onClick={() => setSimMode("rank")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>{t('rank')}</button>
+                  <button onClick={() => setSimMode("upgrade")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "upgrade" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>{t('upgrade')}</button>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">キャラクター</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">{t('character')}</label>
                   <div className="flex flex-wrap gap-1 mb-3">
-                    <button 
-                      onClick={() => setElementFilter("ALL")}
-                      className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${elementFilter === "ALL" ? 'bg-slate-700 text-white shadow-lg shadow-white/5' : 'bg-slate-950 text-slate-600 border border-slate-800'}`}
-                    >
-                      ALL
-                    </button>
+                    <button onClick={() => setElementFilter("ALL")} className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${elementFilter === "ALL" ? 'bg-slate-700 text-white shadow-lg' : 'bg-slate-950 text-slate-600 border border-slate-800'}`}>ALL</button>
                     {Array.from(new Set(config.characters.map(c => c.element))).filter(e => e !== "無" && e !== "その他").map(el => (
-                      <button
-                        key={el}
-                        onClick={() => setElementFilter(el)}
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${elementFilter === el ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-950 text-slate-600 border border-slate-800 hover:border-slate-600'}`}
-                      >
-                        {el}
-                      </button>
+                      <button key={el} onClick={() => setElementFilter(el)} className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${elementFilter === el ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-950 text-slate-600 border border-slate-800'}`}>{el}</button>
                     ))}
                   </div>
                   <select value={characterName} onChange={e => setCharacterName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all">
                     {config.characters.filter(c => elementFilter === "ALL" || c.element === elementFilter).map(c => (
-                      <option key={c.name} value={c.name}>
-                        {c.defaults ? `✨ ${c.name}` : c.name}
-                      </option>
+                      <option key={c.name} value={c.name}>{c.defaults ? `✨ ${c.name}` : c.name}</option>
                     ))}
                   </select>
                 </div>
 
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <label className="block text-sm font-medium text-slate-400 mb-3">狙いのセット (ダンジョン別)</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-3">{t('targetSets')}</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {targetSets.map((setName, idx) => {
-                      const label = gameId === "starrail" 
-                        ? (idx === 0 ? "遺物1 (大本命)" : idx === 1 ? "遺物2 (副産物)" : idx === 2 ? "オーナメント1 (大本命)" : "オーナメント2 (副産物)") 
-                        : (idx === 0 ? "セット1 (大本命)" : idx === 1 ? "セット2 (副産物)" : idx === 2 ? "別秘境セット1" : "別秘境セット2");
-                      return (
-                        <div key={idx} className="space-y-1">
-                          <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">{label}</p>
-                          <select 
-                            value={setName} 
-                            onChange={e => {
-                              const val = e.target.value;
-                              const newSets = [...targetSets];
-                              newSets[idx] = val;
-                              const pair = SET_PAIRS[gameId][val];
-                              if (pair) {
-                                if (idx === 0 && !newSets[1]) newSets[1] = pair;
-                                if (idx === 2 && !newSets[3]) newSets[3] = pair;
-                              }
-                              setTargetSets(newSets);
-                            }}
-                            className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none"
-                          >
-                            <option value="">未選択</option>
-                            {config.sets.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </div>
-                      );
-                    })}
+                    {targetSets.map((setName, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">
+                          {lang === 'ja' 
+                            ? (gameId === "starrail" ? (idx === 0 ? "遺物1 (大本命)" : idx === 1 ? "遺物2 (副産物)" : idx === 2 ? "オーナメント1 (大本命)" : "オーナメント2 (副産物)") : (idx === 0 ? "セット1 (大本命)" : idx === 1 ? "セット2 (副産物)" : idx === 2 ? "別秘境セット1" : "別秘境セット2"))
+                            : (gameId === "starrail" ? (idx === 0 ? "Relic 1 (Primary)" : idx === 1 ? "Relic 2 (Sub)" : idx === 2 ? "Planar 1 (Primary)" : "Planar 2 (Sub)") : (idx === 0 ? "Set 1 (Primary)" : idx === 1 ? "Set 2 (Sub)" : idx === 2 ? "Other 1" : "Other 2"))}
+                        </p>
+                        <select value={setName} onChange={e => {
+                          const val = e.target.value;
+                          const newSets = [...targetSets];
+                          newSets[idx] = val;
+                          const pair = SET_PAIRS[gameId][val];
+                          if (pair) {
+                            if (idx === 0 && !newSets[1]) newSets[1] = pair;
+                            if (idx === 2 && !newSets[3]) newSets[3] = pair;
+                          }
+                          setTargetSets(newSets);
+                        }} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none">
+                          <option value="">{lang === 'ja' ? '未選択' : 'None'}</option>
+                          {config.sets.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-[9px] text-emerald-400 mt-2 italic">※「大本命」に設定したセットを最優先で装備するように計算します。<br/><span className="text-slate-500">※1&2(A)と3&4(B)は別ダンジョンとして計算します</span></p>
                 </div>
 
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <label className="block text-sm font-medium text-slate-400 mb-3">メインステータス</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-3">{t('mainStats')}</label>
                   <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                     {config.slots.filter(s => s !== "未選択").map(slot => {
-                      const isFixed = 
-                        slot.includes("花") || slot.includes("羽") || 
-                        slot === "頭部" || slot === "手部" || 
-                        slot === "スロット1" || slot === "スロット2" || slot === "スロット3";
-                      
+                      const isFixed = slot.includes("花") || slot.includes("羽") || slot === "頭部" || slot === "手部" || slot === "スロット1" || slot === "スロット2" || slot === "スロット3";
                       return (
                         <div key={slot} className="flex items-center justify-between gap-4">
-                          <span className="text-xs text-slate-500 whitespace-nowrap">{slot}</span>
+                          <span className="text-xs text-slate-500 whitespace-nowrap">{t(slot)}</span>
                           {isFixed ? (
                             <span className="text-xs text-slate-400 bg-slate-800/30 px-3 py-1.5 rounded border border-slate-700/50 flex-1 text-right">
-                              {slot.includes("花") || slot === "頭部" || slot === "スロット1" ? "HP(固定値)" : 
-                               slot.includes("羽") || slot === "手部" || slot === "スロット2" ? "攻撃力(固定値)" : "防御力(固定値)"}
+                              {slot.includes("花") || slot === "頭部" || slot === "スロット1" ? t("HP(固定値)") : slot.includes("羽") || slot === "手部" || slot === "スロット2" ? t("攻撃力(固定値)") : t("防御力(固定値)")}
                             </span>
                           ) : (
-                            <select 
-                              value={mainStats[slot] || ""} 
-                              onChange={e => setMainStats({...mainStats, [slot]: e.target.value})}
-                              className="bg-slate-800 text-xs p-1.5 rounded border border-slate-700 flex-1 outline-none"
-                            >
-                              {Object.keys(MAIN_PROBS[gameId][slot] || {}).map(m => (
-                                <option key={m} value={m}>{m}</option>
-                              ))}
+                            <select value={mainStats[slot] || ""} onChange={e => setMainStats({...mainStats, [slot]: e.target.value})} className="bg-slate-800 text-xs p-1.5 rounded border border-slate-700 flex-1 outline-none">
+                              {Object.keys(MAIN_PROBS[gameId][slot] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
                             </select>
                           )}
                         </div>
@@ -722,44 +785,37 @@ export default function Home() {
                 </div>
 
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <label className="block text-sm font-medium text-slate-400 mb-3">サブステータスの重み</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-3">{t('weights')}</label>
                   <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                     {config.subStats.filter(s => s !== "未選択").map(sub => (
                       <div key={sub} className="flex flex-col gap-1">
-                        <label className="text-[10px] text-slate-500 whitespace-nowrap">{sub}</label>
-                        <input 
-                          type="number" 
-                          step="0.1"
-                          value={scoreWeights[sub] || 0} 
-                          onChange={e => setScoreWeights({...scoreWeights, [sub]: e.target.value === "" ? 0 : Number(e.target.value)})}
-                          className="bg-slate-800 text-xs p-1.5 rounded border border-slate-700 outline-none text-white w-full"
-                        />
+                        <label className="text-[10px] text-slate-500 whitespace-nowrap">{t(sub)}</label>
+                        <input type="number" step="0.1" value={scoreWeights[sub] || 0} onChange={e => setScoreWeights({...scoreWeights, [sub]: e.target.value === "" ? 0 : Number(e.target.value)})} className="bg-slate-800 text-xs p-1.5 rounded border border-slate-700 outline-none text-white w-full"/>
                       </div>
                     ))}
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-3 italic">※会心率=2.0, 会心ダメ=1.0, 攻撃%=1.0 が一般的です</p>
                 </div>
 
                 {simMode === "target" && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-2">目標合計スコア</label>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">{t('targetScore')}</label>
                     <input type="number" value={targetScore} onChange={e => setTargetScore(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white"/>
                   </div>
                 )}
 
                 {(simMode === "period" || simMode === "rank" || simMode === "upgrade") && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-2">厳選日数</label>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">{t('farmingDays')}</label>
                     <input type="number" value={days} onChange={e => setDays(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white"/>
                   </div>
                 )}
 
                 {(simMode === "rank" || simMode === "upgrade") && (
                   <div className="grid grid-cols-2 gap-2 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/50">
-                    <p className="col-span-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">現在の部位別スコア</p>
+                    <p className="col-span-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">{t('currentScores')}</p>
                     {config.slots.filter(s => s !== "未選択").map(slot => (
                       <div key={slot}>
-                        <label className="block text-[10px] text-slate-500 mb-1">{slot}</label>
+                        <label className="block text-[10px] text-slate-500 mb-1">{t(slot)}</label>
                         <input type="number" value={userPartScores[slot] || 0} onChange={e => setUserPartScores({...userPartScores, [slot]: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"/>
                       </div>
                     ))}
@@ -769,11 +825,8 @@ export default function Home() {
                 {gameId === "genshin" && (
                   <div className="bg-slate-950/50 p-4 rounded-2xl border border-emerald-900/50">
                     <div className="flex items-center justify-between mb-4">
-                      <label className="text-sm font-medium text-emerald-400 flex items-center gap-2">✨ 祝聖のエリクシル</label>
-                      <button 
-                        onClick={() => setElixirEnabled(!elixirEnabled)}
-                        className={`w-10 h-5 rounded-full relative transition-colors ${elixirEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                      >
+                      <label className="text-sm font-medium text-emerald-400 flex items-center gap-2">✨ {t('elixir')}</label>
+                      <button onClick={() => setElixirEnabled(!elixirEnabled)} className={`w-10 h-5 rounded-full relative transition-colors ${elixirEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
                         <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${elixirEnabled ? 'left-6' : 'left-1'}`} />
                       </button>
                     </div>
@@ -781,156 +834,98 @@ export default function Home() {
                       <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">初期所持数</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '初期所持数' : 'Initial Count'}</p>
                             <input type="number" value={elixirInitialCount} onChange={e => setElixirInitialCount(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
                           </div>
                           <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">1Ver(42日)の獲得数</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '1Ver(42日)の獲得数' : 'Per Version (42d)'}</p>
                             <input type="number" value={elixirPerVersion} onChange={e => setElixirPerVersion(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">使用部位 (消費コスト)</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '使用部位 (消費コスト)' : 'Target Part (Cost)'}</p>
                             <select value={elixirTargetPart} onChange={e => setElixirTargetPart(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              <option value="生の花">生の花 (1)</option>
-                              <option value="死の羽">死の羽 (1)</option>
-                              <option value="時の砂">時の砂 (2)</option>
-                              <option value="空の杯">空の杯 (4)</option>
-                              <option value="理の冠">理の冠 (3)</option>
+                              <option value="生の花">{t('生の花')} (1)</option>
+                              <option value="死の羽">{t('死の羽')} (1)</option>
+                              <option value="時の砂">{t('時の砂')} (2)</option>
+                              <option value="空の杯">{t('空の杯')} (4)</option>
+                              <option value="理の冠">{t('理の冠')} (3)</option>
                             </select>
                           </div>
                           <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">セット</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'セット' : 'Set'}</p>
                             <select value={elixirTargetSet} onChange={e => setElixirTargetSet(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
                               {targetSets.filter(s => s && s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
-                              {targetSets.filter(s => s && s !== "未選択").length === 0 && <option value="">ダンジョン設定を反映</option>}
+                              {targetSets.filter(s => s && s !== "未選択").length === 0 && <option value="">{lang === 'ja' ? 'ダンジョン設定を反映' : 'Use Domain Settings'}</option>}
                             </select>
                           </div>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">メイン</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'メイン' : 'Main'}</p>
                             <select value={elixirTargetMain} onChange={e => setElixirTargetMain(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              {Object.keys(MAIN_PROBS["genshin"]?.[elixirTargetPart] || {}).map(m => <option key={m} value={m}>{m}</option>)}
+                              {Object.keys(MAIN_PROBS["genshin"]?.[elixirTargetPart] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
                             </select>
                           </div>
                           <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">サブ1</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'サブ1' : 'Sub 1'}</p>
                             <select value={elixirSub1} onChange={e => setElixirSub1(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              {config.subStats.filter(s => s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
+                              {config.subStats.filter(s => s !== "未選択").map(s => <option key={s} value={s}>{t(s)}</option>)}
                             </select>
                           </div>
                           <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">サブ2</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'サブ2' : 'Sub 2'}</p>
                             <select value={elixirSub2} onChange={e => setElixirSub2(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              {config.subStats.filter(s => s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
+                              {config.subStats.filter(s => s !== "未選択").map(s => <option key={s} value={s}>{t(s)}</option>)}
                             </select>
                           </div>
                         </div>
-                        <p className="text-[9px] text-emerald-500/70 italic">※初期4オプ率は50%でシミュレートされます</p>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Strongbox Toggle */}
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-yellow-900/50">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-sm font-medium text-yellow-400 flex items-center gap-2">♻️ 聖遺物廻聖を利用する</label>
-                      <p className="text-[10px] text-slate-500 mt-1">※3個につき1個生成。初期4オプ率50%。「大本命」のセットが固定で排出されます</p>
+                      <label className="text-sm font-medium text-yellow-400 flex items-center gap-2">
+                        ♻️ {lang === 'ja' ? '聖遺物廻聖を利用する' : `Use ${t('strongbox')}`}
+                      </label>
                     </div>
-                    <button 
-                      onClick={() => setUseStrongbox(!useStrongbox)}
-                      className={`w-10 h-5 rounded-full relative transition-colors ${useStrongbox ? 'bg-yellow-500' : 'bg-slate-700'}`}
-                    >
+                    <button onClick={() => setUseStrongbox(!useStrongbox)} className={`w-10 h-5 rounded-full relative transition-colors ${useStrongbox ? 'bg-yellow-500' : 'bg-slate-700'}`}>
                       <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${useStrongbox ? 'left-6' : 'left-1'}`} />
                     </button>
                   </div>
                 </div>
 
-
-                {simMode !== "upgrade" && (
-                  <button 
-                    onClick={() => handleSimulate()} 
-                    disabled={isSimulating}
-                    className={`w-full py-4 rounded-2xl font-black text-sm shadow-2xl transition-all ${
-                      isSimulating 
-                        ? 'bg-slate-800 text-slate-600' 
-                        : `bg-gradient-to-r ${config.gradient} text-white hover:scale-[1.02] active:scale-[0.98]`
-                    }`}
-                  >
-                    {isSimulating ? 'SIMULATING...' : 'RUN SIMULATION'}
-                  </button>
-                )}
-                {simMode === "upgrade" && (
-                  <button 
-                    onClick={() => handleSimulate()} 
-                    disabled={isSimulating}
-                    className={`w-full py-4 rounded-2xl font-black text-sm shadow-2xl transition-all ${
-                      isSimulating 
-                        ? 'bg-slate-800 text-slate-600' 
-                        : `bg-gradient-to-r ${config.gradient} text-white hover:scale-[1.02] active:scale-[0.98]`
-                    }`}
-                  >
-                    {isSimulating ? 'SIMULATING...' : 'RUN UPGRADE DIAGNOSIS'}
-                  </button>
-                )}
+                <button onClick={() => handleSimulate()} disabled={isSimulating} className={`w-full py-4 rounded-2xl font-black text-sm shadow-2xl transition-all ${isSimulating ? 'bg-slate-800 text-slate-600' : `bg-gradient-to-r ${config.gradient} text-white hover:scale-[1.02] active:scale-[0.98]`}`}>
+                  {isSimulating ? t('simulating').toUpperCase() : t('run').toUpperCase()}
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Results Panel */}
           <div className="lg:col-span-8">
-            <div ref={cardRef} className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex flex-col items-center relative overflow-hidden">
-              {simMode === "upgrade" && result && result.type === "upgrade" && upgradeResult ? (
+            <div ref={cardRef} className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex flex-col items-center relative overflow-hidden min-h-[600px]">
+              {simMode === "upgrade" && result && upgradeResult ? (
                 <div className="w-full space-y-12 animate-in fade-in duration-500">
                   <div className="text-center space-y-2">
-                    <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">Upgrade Probability</h3>
-                    <p className="text-xs text-slate-500 uppercase tracking-[0.3em]">{days}日間の厳選による更新期待度</p>
+                    <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">{t('upgrade')}</h3>
+                    <p className="text-xs text-slate-500 uppercase tracking-[0.3em]">{lang === 'ja' ? `${days}日間の厳選による更新期待度` : `Upgrade expectation from ${days} days`}</p>
                   </div>
-
-                  <div className="bg-slate-950/50 p-10 rounded-[50px] border border-slate-800 text-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-4">Overall Build Improvement Chance</p>
-                    <p className="text-8xl font-black text-white tracking-tighter mb-4">
-                      {(upgradeResult.overallProb || 0).toFixed(1)}<span className="text-2xl text-slate-500">%</span>
-                    </p>
-                    <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-blue-500/10 text-blue-400 text-sm font-black">
-                      <Target size={16} />
-                      <span>{(upgradeResult.trials || 0)}回のシミュレーション結果</span>
-                    </div>
+                  <div className="bg-slate-950/50 p-10 rounded-[50px] border border-slate-800 text-center">
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-4">{lang === 'ja' ? '全体のビルド更新確率' : 'Overall Improvement Chance'}</p>
+                    <p className="text-8xl font-black text-white tracking-tighter mb-4">{upgradeResult.overallProb.toFixed(1)}<span className="text-2xl text-slate-500">%</span></p>
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {(upgradeResult.slotResults || []).map((res: any) => (
-                      <div key={res.slot} className="bg-slate-900/50 p-6 rounded-[32px] border border-slate-800 hover:border-blue-500/30 transition-all group">
-                        <div className="flex justify-between items-start mb-4">
-                          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest truncate">{res.slot}</p>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${(res.prob || 0) > 20 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-600'}`}>
-                            {(res.prob || 0) > 20 ? '狙い目' : '難関'}
-                          </span>
-                        </div>
-                        <p className="text-4xl font-black text-white tracking-tighter mb-2">{(res.prob || 0).toFixed(1)}%</p>
-                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800/50">
-                          <span className="text-[9px] text-slate-600 font-bold uppercase">Expected Gain</span>
-                          <span className="text-xs font-black text-blue-400">+{(res.avgIncrease || 0).toFixed(1)} pt</span>
-                        </div>
+                    {upgradeResult.slotResults.map((res: any) => (
+                      <div key={res.slot} className="bg-slate-900/50 p-6 rounded-[32px] border border-slate-800">
+                        <p className="text-[10px] text-slate-500 font-black uppercase mb-4">{t(res.slot)}</p>
+                        <p className="text-4xl font-black text-white tracking-tighter">{res.prob.toFixed(1)}%</p>
+                        <p className="text-[9px] text-slate-600 font-bold uppercase mt-4">+{res.avgIncrease.toFixed(1)} {t('score_unit')}</p>
                       </div>
                     ))}
-                  </div>
-
-                  <div className="bg-blue-500/5 border border-blue-500/20 p-6 rounded-[32px] flex items-start gap-4">
-                    <MessageSquare className="text-blue-400 shrink-0 mt-1" />
-                    <div>
-                      <p className="text-sm font-bold text-blue-300">シミュレーターのアドバイス</p>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                        最も更新確率が高いのは <span className="text-white font-bold">{upgradeResult.slotResults[0]?.slot || "不明"}</span> です。
-                        {(upgradeResult.slotResults[0]?.prob || 0) < 5 ? " 現在の聖遺物が既に非常に強力なため、これ以上の更新は極めて困難です。" : " まずはここを重点的に狙うのが効率的です。"}
-                        全体の期待値としては、{days}日間で合計 <span className="text-white font-bold">{(upgradeResult.slotResults?.reduce((a:any,b:any)=>a+(b.avgIncrease||0)*(b.prob||0)/100, 0) || 0).toFixed(1)}pt</span> のスコアアップが見込まれます。
-                      </p>
-                    </div>
                   </div>
                 </div>
               ) : (
@@ -938,112 +933,55 @@ export default function Home() {
                   {!result && !isSimulating && (
                     <div className="text-center space-y-4 opacity-50 py-20">
                       <div className="text-8xl">🎲</div>
-                      <p className="text-xl font-bold">条件を入力して実行してください</p>
+                      <p className="text-xl font-bold">{lang === 'ja' ? '条件を入力して実行してください' : 'Enter criteria and run'}</p>
                     </div>
                   )}
-
                   {isSimulating && (
                     <div className="flex flex-col items-center gap-6 w-full max-w-md py-10">
-                      <div className={`w-16 h-16 border-4 border-t-transparent rounded-full animate-spin border-blue-500`}></div>
-                      <div className="w-full space-y-2 text-center">
-                        <p className="font-bold text-lg animate-pulse">確率の海を探索中... {simProgress}%</p>
-                        <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
-                          <div 
-                            className={`h-full bg-gradient-to-r ${config.gradient} transition-all duration-300`} 
-                            style={{ width: `${simProgress}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-widest">Running 500 trials</p>
+                      <div className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin border-blue-500"></div>
+                      <div className="w-full text-center">
+                        <p className="font-bold text-lg animate-pulse">{t('simulating')} {simProgress}%</p>
                       </div>
-
-                      {latestGodPiece && (
-                        <div className="mt-2 p-4 bg-yellow-500/10 border border-yellow-500/40 rounded-2xl w-full text-center animate-in zoom-in slide-in-from-bottom-4 duration-300 shadow-[0_0_40px_rgba(234,179,8,0.15)] relative overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-t from-yellow-500/10 to-transparent"></div>
-                          <p className="text-xs text-yellow-400 font-bold mb-1 relative z-10">✨ 神聖遺物ドロップ！ ✨</p>
-                          <p className="text-2xl font-black text-white relative z-10 drop-shadow-md">{latestGodPiece.score.toFixed(1)} <span className="text-[10px] text-slate-400">pt</span></p>
-                          <p className="text-[10px] font-bold text-slate-300 mt-1 relative z-10 truncate">{latestGodPiece.setName}</p>
-                          <p className="text-[9px] text-slate-400 relative z-10">{latestGodPiece.part} / {latestGodPiece.main}</p>
-                        </div>
-                      )}
                     </div>
                   )}
-
                   {result && !isSimulating && (
                     <div className="w-full space-y-4 animate-in zoom-in-95 duration-300">
                       <div className="bg-slate-900/30 p-5 rounded-[24px] border border-slate-800 mb-4">
                         <div className="flex justify-between items-center mb-6">
-                          <div>
-                            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                              <Zap size={14} className="text-blue-400" /> Luck Distribution Slider
-                            </h3>
-                            <p className="text-[10px] text-slate-500 mt-1">スライダーを動かして運勢ごとの結果を確認</p>
-                          </div>
-                          <div className={`px-4 py-1.5 rounded-full text-xs font-black shadow-lg ${luckPercentile <= 25 ? 'bg-emerald-600 text-white shadow-emerald-500/20' : luckPercentile <= 50 ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-rose-600 text-white shadow-rose-500/20'}`}>
-                            上位 {luckPercentile}% の運勢
+                          <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <Zap size={14} className="text-blue-400" /> {t('luckSlider')}
+                          </h3>
+                          <div className={`px-4 py-1.5 rounded-full text-xs font-black ${luckPercentile <= 25 ? 'bg-emerald-600' : luckPercentile <= 50 ? 'bg-blue-600' : 'bg-rose-600'}`}>
+                            {t('topLuck', luckPercentile)}
                           </div>
                         </div>
-
                         <div className="relative px-2 pt-8 pb-4">
-                          <input 
-                            type="range" min="10" max="90" step="1" 
-                            value={luckPercentile} 
-                            onChange={e => setLuckPercentile(Number(e.target.value))}
-                            className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                          />
+                          <input type="range" min="10" max="90" step="1" value={luckPercentile} onChange={e => setLuckPercentile(Number(e.target.value))} className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"/>
                           <div className="absolute top-0 left-0 right-0 h-8 text-[9px] font-bold text-slate-600">
-                            <span className="absolute left-0 -translate-x-1/2 flex flex-col items-center">豪運<span>(10%)</span></span>
-                            <span className="absolute left-[18.75%] -translate-x-1/2 flex flex-col items-center text-emerald-500">上位25%<span>(目標)</span></span>
-                            <span className="absolute left-[50%] -translate-x-1/2 flex flex-col items-center">中央値<span>(50%)</span></span>
-                            <span className="absolute left-[81.25%] -translate-x-1/2 flex flex-col items-center text-rose-400">下位25%<span>(75%)</span></span>
-                            <span className="absolute left-[100%] -translate-x-1/2 flex flex-col items-center">悲運<span>(90%)</span></span>
+                            <span className="absolute left-0 -translate-x-1/2">{t('luck10')}</span>
+                            <span className="absolute left-[18.75%] -translate-x-1/2 text-emerald-500">{t('luck25')}</span>
+                            <span className="absolute left-[50%] -translate-x-1/2">{t('luck50')}</span>
+                            <span className="absolute left-[81.25%] -translate-x-1/2 text-rose-400">{t('luck75')}</span>
+                            <span className="absolute left-[100%] -translate-x-1/2">{t('luck90')}</span>
                           </div>
-                          {/* Markers */}
-                          <div className="absolute top-8 left-[18.75%] w-0.5 h-4 bg-emerald-500/50 -translate-x-1/2"></div>
-                          <div className="absolute top-8 left-[81.25%] w-0.5 h-4 bg-rose-500/50 -translate-x-1/2"></div>
                         </div>
                       </div>
 
                       {result.type === "target" && (
                         <div className="space-y-6">
-                          <h3 className="text-center text-xl font-bold flex items-center justify-center gap-3">
-                            目標スコア <span className={`px-4 py-1 rounded-full bg-gradient-to-r ${config.gradient} text-white`}>{targetScore}</span> 到達までの日数
-                          </h3>
-                          
+                          <h3 className="text-center text-xl font-bold">{lang === 'ja' ? '目標到達までの日数' : 'Days to Reach Target'}</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[40px] text-center relative overflow-hidden group">
-                              {result.medianWithoutElixir && (
-                                <div className="absolute top-0 right-0 bg-yellow-500/10 border-l border-b border-yellow-500/20 px-4 py-1.5 rounded-bl-3xl">
-                                  <p className="text-[9px] text-yellow-500 font-black uppercase tracking-[0.2em]">
-                                    ✨ ELIXIR: -{(result.medianWithoutElixir - result.median).toFixed(0)} DAYS
-                                  </p>
-                                </div>
-                              )}
-                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Standard Expectation</p>
-                              <p className="text-6xl font-black text-white tracking-tighter">{result.median} <span className="text-xl font-bold text-slate-600 uppercase">Days</span></p>
-                              <p className="text-xs text-slate-400 mt-3 font-medium italic">平均的な運勢（中央値）</p>
+                            <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[40px] text-center">
+                              <p className="text-[10px] text-slate-500 font-black uppercase mb-1">{t('luck50')}</p>
+                              <p className="text-6xl font-black text-white tracking-tighter">{result.median} <span className="text-xl font-bold text-slate-600 uppercase">{t('days_unit')}</span></p>
                             </div>
-
                             {(() => {
-                              const staminaCost = gameId === "genshin" ? 20 : 40;
                               const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
                               const currentDays = Math.ceil((currentLuckRes?.attempts * staminaCost) / staminaPerDay);
-                              const isProfit = currentDays < result.median;
-                              const diffPercent = Math.abs((1 - currentDays / result.median) * 100).toFixed(1);
-
                               return (
-                                <div className={`p-8 rounded-[40px] border-2 transition-all duration-500 text-center relative overflow-hidden ${
-                                  luckPercentile <= 25 ? "bg-emerald-500/5 border-emerald-500/30 shadow-lg shadow-emerald-500/5" :
-                                  luckPercentile <= 50 ? "bg-blue-500/5 border-blue-500/30 shadow-lg shadow-blue-500/5" :
-                                  "bg-rose-500/5 border-rose-500/30 shadow-lg shadow-rose-500/5"
-                                }`}>
-                                  <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${luckPercentile <= 50 ? "text-emerald-400" : "text-rose-400"}`}>
-                                    {luckPercentile}% Luck Outcome
-                                  </p>
-                                  <p className="text-6xl font-black text-white tracking-tighter mb-2">{currentDays} <span className="text-xl font-bold text-slate-600 uppercase">Days</span></p>
-                                  <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black ${isProfit ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
-                                    {isProfit ? <Zap size={14} fill="currentColor" /> : <Shield size={14} fill="currentColor" />}
-                                    <span>樹脂 {diffPercent}% {isProfit ? "お得 (早まる)" : "の損 (沼る)"}</span>
-                                  </div>
+                                <div className="bg-slate-800/30 p-8 rounded-[40px] border border-white/5 text-center">
+                                  <p className="text-[10px] text-slate-500 font-black uppercase mb-1">{t('topLuck', luckPercentile)}</p>
+                                  <p className="text-6xl font-black text-white tracking-tighter">{currentDays} <span className="text-xl font-bold text-slate-600 uppercase">{t('days_unit')}</span></p>
                                 </div>
                               );
                             })()}
@@ -1054,51 +992,19 @@ export default function Home() {
                       {result.type === "period" && (
                         <div className="space-y-12">
                           <div className="text-center space-y-4">
-                            <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{days}日間の厳選期待値</h3>
+                            <h3 className="text-3xl font-black text-white uppercase">{lang === 'ja' ? `${days}日間の厳選期待値` : `${days} Days Expected Score`}</h3>
                             {(() => {
                               const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
                               const currentScore = currentLuckRes?.score || 0;
-                              const isHigher = currentScore > (result.median || 0);
-                              const diffPercent = result.median ? Math.abs((currentScore / result.median - 1) * 100).toFixed(1) : "0.0";
-
                               return (
-                                <div className="space-y-8">
-                                  <div className="bg-slate-900/50 p-8 rounded-[40px] border border-slate-800 shadow-xl max-w-2xl mx-auto relative overflow-hidden">
-                                    {result.elixirBonus > 0 && (
-                                      <div className="absolute top-0 right-0 bg-yellow-500/10 border-l border-b border-yellow-500/20 px-4 py-2 rounded-bl-3xl">
-                                        <p className="text-[10px] text-yellow-500 font-black uppercase tracking-widest leading-none">
-                                          ✨ ELIXIR BONUS: +{result.elixirBonus.toFixed(2)}pt
-                                        </p>
-                                      </div>
-                                    )}
-                                    <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${luckPercentile <= 50 ? "text-emerald-400" : "text-rose-400"}`}>
-                                      {luckPercentile}% Luck Result
-                                    </p>
-                                    <p className="text-7xl font-black text-white tracking-tighter mb-4">
-                                      {currentScore.toFixed(2)} <span className="text-xl font-bold text-slate-600 uppercase">Score</span>
-                                    </p>
-                                    <div className={`inline-flex items-center gap-6 py-2 rounded-full text-sm font-black ${isHigher ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
-                                      {isHigher ? <Zap size={16} fill="currentColor" /> : <Shield size={16} fill="currentColor" />}
-                                      <span>期待値より {diffPercent}% {isHigher ? "高いスコア" : "低いスコア"}</span>
-                                    </div>
-                                  </div>
-
-                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div className="bg-slate-900/50 p-8 rounded-[40px] border border-slate-800 shadow-xl max-w-2xl mx-auto">
+                                  <p className="text-7xl font-black text-white tracking-tighter">{currentScore.toFixed(2)} <span className="text-xl font-bold text-slate-600 uppercase">{t('score_unit')}</span></p>
+                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-8">
                                     {Object.entries(currentLuckRes?.pieces || {}).map(([slot, art]: [string, any]) => (
-                                      <div key={slot} className="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl group hover:border-blue-500/30 transition-all relative overflow-hidden">
-                                        {art?.isElixir && (
-                                          <div className="absolute top-0 right-0 bg-yellow-500 text-slate-950 text-[6px] font-black px-1.5 py-0.5 rounded-bl-lg uppercase">祝聖</div>
-                                        )}
-                                        <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{slot}</p>
-                                        {art ? (
-                                          <div className="space-y-1">
-                                            <p className="text-sm font-black text-white">{(art.score || 0).toFixed(2)} <span className="text-[10px] text-slate-500">pt</span></p>
-                                            <p className="text-[9px] text-blue-400 font-bold truncate">{art.setName}</p>
-                                            <p className="text-[8px] text-slate-600 truncate">{art.main}</p>
-                                          </div>
-                                        ) : (
-                                          <p className="text-[10px] text-slate-700 font-bold">N/A</p>
-                                        )}
+                                      <div key={slot} className="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl relative overflow-hidden">
+                                        {art?.isElixir && <div className="absolute top-0 right-0 bg-yellow-500 text-slate-950 text-[6px] font-black px-1.5 py-0.5 rounded-bl-lg uppercase">祝聖</div>}
+                                        <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{t(slot)}</p>
+                                        <p className="text-sm font-black text-white">{art?.score.toFixed(1)}</p>
                                       </div>
                                     ))}
                                   </div>
@@ -1112,26 +1018,16 @@ export default function Home() {
                       {result.type === "rank" && (
                         <div className="space-y-8">
                           <div className="flex flex-col items-center text-center space-y-4">
-                            <div className="w-32 h-32 rounded-full border-4 border-blue-500/30 flex items-center justify-center relative">
-                              <div className="absolute inset-0 bg-blue-500/10 rounded-full blur-xl"></div>
-                              <span className="text-4xl font-black text-white tracking-tighter">
-                                {result.percentile.toFixed(1)}<span className="text-sm">%</span>
-                              </span>
-                            </div>
-                            <div>
-                              <h3 className="text-xl font-bold text-white tracking-tight">上位 {result.percentile.toFixed(1)}% の実力です</h3>
-                              <p className="text-sm text-slate-500 mt-1">{days}日間の厳選を {result.trials}回試行した結果との比較</p>
-                            </div>
+                            <h3 className="text-xl font-bold text-white">{t('topLuck', result.percentile.toFixed(1))}</h3>
                           </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5">
-                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Your Current Build</p>
-                              <p className="text-5xl font-black text-white text-center tracking-tighter">{result.userScore} <span className="text-sm text-slate-600 uppercase">Score</span></p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5 text-center">
+                              <p className="text-[10px] text-slate-500 font-black uppercase mb-2">{t('yourScore')}</p>
+                              <p className="text-5xl font-black text-white tracking-tighter">{result.userScore}</p>
                             </div>
-                            <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5">
-                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Average for {days} Days</p>
-                              <p className="text-5xl font-black text-white text-center tracking-tighter">{result.median.toFixed(2)} <span className="text-sm text-slate-600 uppercase">Score</span></p>
+                            <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5 text-center">
+                              <p className="text-[10px] text-slate-500 font-black uppercase mb-2">{t('avgScore', days)}</p>
+                              <p className="text-5xl font-black text-white tracking-tighter">{result.median.toFixed(2)}</p>
                             </div>
                           </div>
                         </div>
@@ -1140,140 +1036,47 @@ export default function Home() {
                   )}
                 </div>
               )}
-
-                {/* --- Common Results (Part of the capture area) --- */}
-                {allGodPieces.length > 0 && (
-                  <div className="w-full max-w-4xl mx-auto mt-6 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4 shadow-xl">
-                    <h4 className="text-[10px] font-black text-yellow-500 uppercase tracking-widest flex items-center gap-2 mb-3">✨ God Pieces Found in Parallel Worlds</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                      {allGodPieces.map((art, idx) => (
-                        <div key={idx} className="bg-slate-900/80 border border-yellow-500/20 p-2 rounded-xl relative overflow-hidden group">
-                          <p className="text-[8px] text-yellow-500/80 font-bold mb-0.5 truncate">{art.setName}</p>
-                          <p className="text-sm font-black text-white">{art.score.toFixed(1)} <span className="text-[8px] text-slate-500">pt</span></p>
-                          <p className="text-[8px] text-slate-400 truncate">{art.part} / {art.main}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {result && result.pieces && Object.keys(getActiveSets(result.pieces)).length > 0 && (
-                  <div className="w-full max-w-4xl mx-auto mt-6 bg-slate-800/10 border border-slate-700/30 rounded-2xl p-4">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-3"><Sword size={12} className="text-emerald-500" /> Active Sets</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(getActiveSets(result.pieces)).map(([setName, count]) => (
-                        <div key={setName} className="bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
-                          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-tight">{setName}</span>
-                          <span className="text-[10px] font-bold text-slate-500">×{count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* --- Actions (Outside of capture area) --- */}
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4 py-8 border-t border-slate-800/50 mt-6">
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 py-8 border-t border-slate-800/50 mt-6 w-full">
                 <button onClick={downloadImage} className="flex items-center gap-2 px-8 py-3 bg-white text-slate-950 font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
                   <Share2 size={18} />
-                  <span>SNSで結果をシェア</span>
+                  <span>{t('share')}</span>
                 </button>
               </div>
             </div>
           </div>
+        </div>
 
         <footer className="mt-20 pb-12 border-t border-slate-800/50 pt-12 text-center">
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-            <Link href="/blog/how-to-use" className="hover:text-emerald-400 transition-colors">使い方ガイド</Link>
-            <Link href="/blog/artifact-probability" className="hover:text-emerald-400 transition-colors">厳選の沼を数値で見る</Link>
-            <Link href="/blog/artifact-score-guide" className="hover:text-emerald-400 transition-colors">聖遺物スコアとは？</Link>
-            <Link href="/blog/furina-artifact-guide" className="hover:text-emerald-400 transition-colors">フリーナ厳選ガイド</Link>
-            <Link href="/blog/talent-vs-artifact" className="hover:text-emerald-400 transition-colors">天賦か聖遺物か</Link>
-            <Link href="/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link>
-            <a href="https://github.com/bonta9puri-commits/artifact-sim-web/" target="_blank" rel="noopener" className="hover:text-white transition-colors">GitHub</a>
-            <a href="https://x.com/pouwa06" target="_blank" rel="noopener" className="hover:text-sky-400 transition-colors">Twitter (X)</a>
+             <Link href="/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link>
+             <a href="https://github.com/bonta9puri-commits/artifact-sim-web/" target="_blank" rel="noopener" className="hover:text-white transition-colors">GitHub</a>
           </div>
           <div className="space-y-2">
             <p className="text-[9px] text-slate-600 font-medium">© 2026 artifact-sim.com. All Rights Reserved.</p>
-            <p className="text-[8px] text-slate-700 font-bold max-w-xl mx-auto px-4 leading-relaxed">
-              当サイトは個人が制作した非公式のファンサイトであり、HoYoverse、COGNOSPHERE社とは一切関係ありません。
-              ゲーム画像の著作権は各権利所有者に帰属します。
-            </p>
           </div>
         </footer>
-      </div>
-
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-slate-950/80 backdrop-blur-xl border-t border-white/10 z-40 flex gap-3 animate-in fade-in slide-in-from-bottom duration-500">
-        <button 
-          onClick={() => setIsMobileSettingsOpen(true)}
-          className="w-16 h-14 bg-slate-900 rounded-2xl border border-slate-800 flex items-center justify-center text-slate-400 active:scale-90 transition-all shadow-xl"
-        >
-          <LayoutGrid size={24} />
-        </button>
-        <button 
-          onClick={() => {
-            handleSimulate();
-            setIsMobileSettingsOpen(false);
-          }} 
-          disabled={isSimulating}
-          className={`flex-1 h-14 rounded-2xl font-black text-sm shadow-2xl transition-all flex items-center justify-center gap-3 ${
-            isSimulating 
-              ? 'bg-slate-800 text-slate-600' 
-              : `bg-gradient-to-r ${config.gradient} text-white active:scale-[0.98] shadow-lg shadow-blue-500/20`
-          }`}
-        >
-          {isSimulating ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/20 border-t-white" />
-          ) : (
-            <Zap size={20} className="fill-current" />
-          )}
-          {isSimulating ? 'SIMULATING...' : 'RUN SIMULATION'}
-        </button>
       </div>
 
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)}></div>
-          <div className="relative w-80 bg-slate-900 h-full border-l border-slate-800 p-8 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
+          <div className="relative w-80 bg-slate-900 h-full border-l border-slate-800 p-8 shadow-2xl flex flex-col">
             <div className="flex justify-between items-center mb-10">
               <h2 className="text-xl font-black">Menu</h2>
               <button onClick={() => setIsDrawerOpen(false)} className="text-slate-500 hover:text-white">✕</button>
             </div>
-            
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
               <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2">Sim History</p>
               {history.length === 0 && <p className="text-center text-slate-600 py-10 italic">履歴はありません</p>}
               {[...history].reverse().map((item, i) => (
-                <div key={i} className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 group">
+                <div key={i} className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-[10px] font-bold text-blue-400">{item.result?.type === "target" ? "🎯 目標診断" : "⏳ 期間シミュ"}</span>
-                    <span className="text-[10px] text-slate-500">{new Date(item.timestamp).toLocaleString()}</span>
                   </div>
-                  <div className="text-xs font-bold text-slate-300 truncate mb-3">
-                    {item.character}
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        setResult(item.result);
-                        setIsDrawerOpen(false);
-                      }}
-                      className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-[10px] font-bold transition-colors"
-                    >
-                      復元
-                    </button>
-                  </div>
+                  <div className="text-xs font-bold text-slate-300 truncate mb-3">{item.character}</div>
+                  <button onClick={() => { setResult(item.result); setIsDrawerOpen(false); }} className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-[10px] font-bold">復元</button>
                 </div>
               ))}
-            </div>
-            
-            <nav className="mt-6 pt-6 border-t border-slate-800 space-y-2">
-              <a href="/chronicle" className="block py-2 px-4 hover:bg-slate-800 rounded-xl transition-colors text-xs text-slate-400">📜 Chronicle Hub</a>
-              <a href="/about" className="block py-2 px-4 hover:bg-slate-800 rounded-xl transition-colors text-xs text-slate-400">About</a>
-            </nav>
-            
-            <div className="mt-auto pt-6 border-t border-slate-800">
-              <p className="text-center text-[10px] text-slate-600">© 2026 Artifact Sim</p>
             </div>
           </div>
         </div>
