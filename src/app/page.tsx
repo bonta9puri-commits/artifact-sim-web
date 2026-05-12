@@ -1157,29 +1157,23 @@ export default function Home() {
                 )}
 
                 {result && result.pieces && Object.keys(getActiveSets(result.pieces)).length > 0 && (
-                  <div className="w-full max-w-4xl mx-auto mt-8 bg-slate-800/20 border border-slate-700/50 rounded-3xl p-6">
-                    <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-4"><Sword size={16} className="text-emerald-400" /> 発動中のセット効果</h4>
-                    <div className="space-y-3">
-                      {Object.entries(getActiveSets(result.pieces)).map(([setName, count]) => {
-                        const text = SET_EFFECTS_TEXT[setName];
-                        if (!text && count < 2) return null;
-                        return (
-                          <div key={setName} className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                            <p className="text-sm font-black text-emerald-400 mb-2">{setName} <span className="text-xs font-normal text-slate-500 ml-2">({count}セット装備)</span></p>
-                            {count >= 2 && text?.["2pc"] && <p className="text-xs text-slate-300 mb-1"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">2セット</span>{text["2pc"]}</p>}
-                            {count >= 4 && text?.["4pc"] && <p className="text-xs text-slate-300"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">4セット</span>{text["4pc"]}</p>}
-                            {count >= 2 && !text && <p className="text-xs text-slate-500 italic">※セット効果の詳細は準備中です</p>}
-                          </div>
-                        );
-                      })}
+                  <div className="w-full max-w-4xl mx-auto mt-6 bg-slate-800/10 border border-slate-700/30 rounded-2xl p-4">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-3"><Sword size={12} className="text-emerald-500" /> Active Sets</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(getActiveSets(result.pieces)).map(([setName, count]) => (
+                        <div key={setName} className="bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+                          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-tight">{setName}</span>
+                          <span className="text-[10px] font-bold text-slate-500">×{count}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
 
               {/* --- Actions (Outside of capture area) --- */}
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4 py-12 border-t border-slate-800/50 mt-8">
-                <button onClick={downloadImage} className="flex items-center gap-2 px-8 py-4 bg-white text-slate-950 font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 py-8 border-t border-slate-800/50 mt-6">
+                <button onClick={downloadImage} className="flex items-center gap-2 px-8 py-3 bg-white text-slate-950 font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
                   <Share2 size={18} />
                   <span>SNSで結果をシェア</span>
                 </button>
