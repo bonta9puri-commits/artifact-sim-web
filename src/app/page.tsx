@@ -1135,61 +1135,57 @@ export default function Home() {
                             </div>
                           </div>
                         </div>
-                      )}
-
-
-
-
-
-                  )}
-                </div>
-
-                {/* --- Common Footer Actions (Always visible after simulation) --- */}
-                <div className="w-full mt-12 space-y-8 animate-in fade-in duration-700 delay-300">
-                  <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-8 border-t border-slate-800">
-                    <button onClick={downloadImage} className="flex items-center gap-2 px-8 py-3 bg-white text-slate-950 font-black text-sm rounded-full shadow-xl hover:scale-105 transition-all">
-                      <Share2 size={18} />
-                      <span>SNSで結果をシェア</span>
-                    </button>
+                      </div>
+                    )}
                   </div>
+                )}
 
-                  {allGodPieces.length > 0 && (
-                    <div className="w-full max-w-4xl mx-auto bg-yellow-500/5 border border-yellow-500/20 rounded-3xl p-6 shadow-[0_0_50px_rgba(234,179,8,0.05)]">
-                      <h4 className="text-sm font-bold text-yellow-500 flex items-center gap-2 mb-4">✨ 🏆 並行世界でドロップした奇跡の神聖遺物 (スコア58以上)</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                        {allGodPieces.map((art, idx) => (
-                          <div key={idx} className="bg-slate-900/80 border border-yellow-500/30 p-3 rounded-2xl relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <p className="text-[10px] text-yellow-500 font-bold mb-1 truncate">{art.setName}</p>
-                            <p className="text-xl font-black text-white">{art.score.toFixed(2)} <span className="text-[9px] text-slate-500">pt</span></p>
-                            <p className="text-[9px] text-slate-400 mt-1">{art.part}</p>
-                            <p className="text-[9px] text-slate-400 truncate">{art.main}</p>
+                {/* --- Common Results (Part of the capture area) --- */}
+                {allGodPieces.length > 0 && (
+                  <div className="w-full max-w-4xl mx-auto mt-12 bg-yellow-500/5 border border-yellow-500/20 rounded-3xl p-6 shadow-[0_0_50px_rgba(234,179,8,0.05)]">
+                    <h4 className="text-sm font-bold text-yellow-500 flex items-center gap-2 mb-4">✨ 🏆 並行世界でドロップした奇跡の神聖遺物 (スコア58以上)</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                      {allGodPieces.map((art, idx) => (
+                        <div key={idx} className="bg-slate-900/80 border border-yellow-500/30 p-3 rounded-2xl relative overflow-hidden group">
+                          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                          <p className="text-[10px] text-yellow-500 font-bold mb-1 truncate">{art.setName}</p>
+                          <p className="text-xl font-black text-white">{art.score.toFixed(2)} <span className="text-[9px] text-slate-500">pt</span></p>
+                          <p className="text-[9px] text-slate-400 mt-1">{art.part}</p>
+                          <p className="text-[9px] text-slate-400 truncate">{art.main}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {result && result.pieces && Object.keys(getActiveSets(result.pieces)).length > 0 && (
+                  <div className="w-full max-w-4xl mx-auto mt-8 bg-slate-800/20 border border-slate-700/50 rounded-3xl p-6">
+                    <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-4"><Sword size={16} className="text-emerald-400" /> 発動中のセット効果</h4>
+                    <div className="space-y-3">
+                      {Object.entries(getActiveSets(result.pieces)).map(([setName, count]) => {
+                        const text = SET_EFFECTS_TEXT[setName];
+                        if (!text && count < 2) return null;
+                        return (
+                          <div key={setName} className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                            <p className="text-sm font-black text-emerald-400 mb-2">{setName} <span className="text-xs font-normal text-slate-500 ml-2">({count}セット装備)</span></p>
+                            {count >= 2 && text?.["2pc"] && <p className="text-xs text-slate-300 mb-1"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">2セット</span>{text["2pc"]}</p>}
+                            {count >= 4 && text?.["4pc"] && <p className="text-xs text-slate-300"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">4セット</span>{text["4pc"]}</p>}
+                            {count >= 2 && !text && <p className="text-xs text-slate-500 italic">※セット効果の詳細は準備中です</p>}
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
+                )}
+              </div>
 
-                  {result && result.pieces && Object.keys(getActiveSets(result.pieces)).length > 0 && (
-                    <div className="w-full max-w-4xl mx-auto bg-slate-800/20 border border-slate-700/50 rounded-3xl p-6">
-                      <h4 className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-4"><Sword size={16} className="text-emerald-400" /> 発動中のセット効果</h4>
-                      <div className="space-y-3">
-                        {Object.entries(getActiveSets(result.pieces)).map(([setName, count]) => {
-                          const text = SET_EFFECTS_TEXT[setName];
-                          if (!text && count < 2) return null;
-                          return (
-                            <div key={setName} className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                              <p className="text-sm font-black text-emerald-400 mb-2">{setName} <span className="text-xs font-normal text-slate-500 ml-2">({count}セット装備)</span></p>
-                              {count >= 2 && text?.["2pc"] && <p className="text-xs text-slate-300 mb-1"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">2セット</span>{text["2pc"]}</p>}
-                              {count >= 4 && text?.["4pc"] && <p className="text-xs text-slate-300"><span className="inline-block bg-slate-800 px-2 py-0.5 rounded text-slate-400 mr-2">4セット</span>{text["4pc"]}</p>}
-                              {count >= 2 && !text && <p className="text-xs text-slate-500 italic">※セット効果の詳細は準備中です</p>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
+              {/* --- Actions (Outside of capture area) --- */}
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 py-12 border-t border-slate-800/50 mt-8">
+                <button onClick={downloadImage} className="flex items-center gap-2 px-8 py-4 bg-white text-slate-950 font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                  <Share2 size={18} />
+                  <span>SNSで結果をシェア</span>
+                </button>
+              </div>
                 </div>
               )}
             </div>
