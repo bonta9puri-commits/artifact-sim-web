@@ -447,7 +447,7 @@ export default function NicoleSpecialPage() {
                          <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                            {GENSHIN_SUB_STATS.map(sub => (
                              <div key={sub} className="space-y-1">
-                               <label className="text-[8px] text-slate-500 uppercase">{sub}</label>
+                               <label className="text-[8px] text-slate-500 uppercase">{t(sub)}</label>
                                <input 
                                  type="number" step="0.1"
                                  value={scoreWeights[sub] || 0} 
@@ -464,13 +464,13 @@ export default function NicoleSpecialPage() {
                           <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                             {config.slots.filter(s => !s.includes("花") && !s.includes("羽") && s !== "未選択").map(slot => (
                               <div key={slot} className="flex items-center justify-between gap-4">
-                                <span className="text-[9px] text-slate-500 uppercase">{slot}</span>
+                                <span className="text-[9px] text-slate-500 uppercase">{t(slot)}</span>
                                 <select 
                                   value={mainStats[slot] || ""} 
                                   onChange={e => setMainStats({...mainStats, [slot]: e.target.value})}
                                   className="bg-slate-900 text-[10px] p-1.5 rounded border border-white/5 text-white outline-none flex-1"
                                 >
-                                  {Object.keys(MAIN_PROBS[gameId][slot] || {}).map(m => <option key={m} value={m}>{m}</option>)}
+                                  {Object.keys(MAIN_PROBS[gameId][slot] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
                                 </select>
                               </div>
                             ))}
@@ -491,7 +491,7 @@ export default function NicoleSpecialPage() {
                                  className="bg-slate-900 text-[9px] p-2 rounded border border-white/5 text-white outline-none"
                                >
                                  <option value="">未選択</option>
-                                 {GENSHIN_SETS.map(set => <option key={set} value={set}>{set}</option>)}
+                                 {GENSHIN_SETS.map(set => <option key={set} value={set}>{t(set)}</option>)}
                                </select>
                              ))}
                           </div>

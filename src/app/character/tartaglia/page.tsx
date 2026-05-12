@@ -468,7 +468,7 @@ export default function TartagliaSpecialPage() {
                                  className="bg-slate-900 text-[9px] p-2 rounded border border-white/5 text-white outline-none"
                                >
                                  <option value="">None</option>
-                                 {GENSHIN_SETS.map(set => <option key={set} value={set}>{set}</option>)}
+                                 {GENSHIN_SETS.map(set => <option key={set} value={set}>{t(set)}</option>)}
                                </select>
                              ))}
                           </div>
