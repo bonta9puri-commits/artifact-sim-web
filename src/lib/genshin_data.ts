@@ -1,12 +1,13 @@
 import { CharacterData } from './game_data';
+import { STAT_IDS } from './stats';
 
 export const GENSHIN_CHARACTERS: CharacterData[] = [
   { 
     name: "ニコ・リヤン", 
     element: "炎", 
     defaults: {
-      weights: { "会心率": 2.0, "会心ダメージ": 1.0, "攻撃力%": 1.0 },
-      mainStats: { "時の砂": "攻撃力%", "空の杯": "炎元素ダメージ", "理の冠": "会心率" },
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.ATK_PER]: 1.0 },
+      mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.PYRO_DMG, "理の冠": STAT_IDS.CRIT_RATE },
       targetSets: ["旧貴族のしつけ", "千岩牢固"],
       baseStats: { rate: 5, dmg: 50, atk: 311, hp: 0, def: 0, er: 120, em: 0, scalingMode: "atk" }
     }
@@ -15,8 +16,8 @@ export const GENSHIN_CHARACTERS: CharacterData[] = [
     name: "ヌヴィレット", 
     element: "水", 
     defaults: {
-      weights: { "会心率": 2, "会心ダメージ": 1, "HP%": 1, "元素熟知": 0.3 },
-      mainStats: { "時の砂": "HP%", "空の杯": "水元素ダメージ", "理の冠": "会心ダメージ" },
+      weights: { [STAT_IDS.CRIT_RATE]: 2, [STAT_IDS.CRIT_DMG]: 1, [STAT_IDS.HP_PER]: 1, [STAT_IDS.EM]: 0.3 },
+      mainStats: { "時の砂": STAT_IDS.HP_PER, "空の杯": STAT_IDS.HYDRO_DMG, "理の冠": STAT_IDS.CRIT_DMG },
       targetSets: ["ファントムハンター", "黄金の劇団"],
       baseStats: { rate: 5, dmg: 88.4, atk: 0, hp: 100, def: 0, er: 120, em: 40, scalingMode: "hp" }
     }
@@ -25,8 +26,8 @@ export const GENSHIN_CHARACTERS: CharacterData[] = [
     name: "フリーナ", 
     element: "水", 
     defaults: {
-      weights: { "会心率": 2, "会心ダメージ": 1, "HP%": 1, "元素チャージ効率": 0.8 },
-      mainStats: { "時の砂": "HP%", "空の杯": "HP%", "理の冠": "会心率" },
+      weights: { [STAT_IDS.CRIT_RATE]: 2, [STAT_IDS.CRIT_DMG]: 1, [STAT_IDS.HP_PER]: 1, [STAT_IDS.ER]: 0.8 },
+      mainStats: { "時の砂": STAT_IDS.HP_PER, "空の杯": STAT_IDS.HP_PER, "理の冠": STAT_IDS.CRIT_RATE },
       targetSets: ["黄金の劇団"],
       baseStats: { rate: 24.2, dmg: 50, atk: 0, hp: 80, def: 0, er: 160, em: 0, scalingMode: "hp" }
     }
@@ -35,8 +36,8 @@ export const GENSHIN_CHARACTERS: CharacterData[] = [
     name: "ナヒーダ", 
     element: "草", 
     defaults: {
-      weights: { "会心率": 1.6, "会心ダメージ": 0.8, "元素熟知": 1, "攻撃力%": 0.2 },
-      mainStats: { "時の砂": "元素熟知", "空の杯": "元素熟知", "理の冠": "会心率" },
+      weights: { [STAT_IDS.CRIT_RATE]: 1.6, [STAT_IDS.CRIT_DMG]: 0.8, [STAT_IDS.EM]: 1, [STAT_IDS.ATK_PER]: 0.2 },
+      mainStats: { "時の砂": STAT_IDS.EM, "空の杯": STAT_IDS.EM, "理の冠": STAT_IDS.CRIT_RATE },
       targetSets: ["深林の記憶", "金メッキの夢"],
       baseStats: { rate: 5, dmg: 50, atk: 0, hp: 0, def: 0, er: 120, em: 250, scalingMode: "em" as any }
     }
@@ -45,8 +46,8 @@ export const GENSHIN_CHARACTERS: CharacterData[] = [
     name: "雷電将軍", 
     element: "雷", 
     defaults: {
-      weights: { "会心率": 2, "会心ダメージ": 1, "元素チャージ効率": 1, "攻撃力%": 0.8 },
-      mainStats: { "時の砂": "元素チャージ効率", "空の杯": "攻撃力%", "理の冠": "会心率" },
+      weights: { [STAT_IDS.CRIT_RATE]: 2, [STAT_IDS.CRIT_DMG]: 1, [STAT_IDS.ER]: 1, [STAT_IDS.ATK_PER]: 0.8 },
+      mainStats: { "時の砂": STAT_IDS.ER, "空の杯": STAT_IDS.ATK_PER, "理の冠": STAT_IDS.CRIT_RATE },
       targetSets: ["絶縁の旗印"],
       baseStats: { rate: 5, dmg: 50, atk: 50, hp: 0, def: 0, er: 250, em: 0, scalingMode: "atk" }
     }
@@ -65,8 +66,8 @@ export const GENSHIN_CHARACTERS: CharacterData[] = [
     name: "タルタリヤ", 
     element: "水", 
     defaults: {
-      weights: { "会心率": 2.0, "会心ダメージ": 1.0, "攻撃力%": 1.0 },
-      mainStats: { "時の砂": "攻撃力%", "空の杯": "水元素ダメージ", "理の冠": "会心率" },
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.ATK_PER]: 1.0 },
+      mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.HYDRO_DMG, "理の冠": STAT_IDS.CRIT_RATE },
       targetSets: ["水仙の夢", "沈淪の心"],
       baseStats: { rate: 5, dmg: 50, atk: 311, hp: 0, def: 0, er: 120, em: 0, scalingMode: "atk" }
     }
@@ -85,14 +86,14 @@ export const GENSHIN_SETS = [
 export const GENSHIN_SLOTS = ["生の花", "死の羽", "時の砂", "空の杯", "理の冠"];
 
 export const GENSHIN_MAIN_STATS = [
-  "HP(固定値)", "攻撃力(固定値)", "防御力(固定値)",
-  "HP%", "攻撃力%", "防御力%", "元素熟知", "元素チャージ効率",
-  "会心率", "会心ダメージ", "与える治癒効果",
-  "炎元素ダメージ", "水元素ダメージ", "風元素ダメージ", "雷元素ダメージ",
-  "草元素ダメージ", "氷元素ダメージ", "岩元素ダメージ", "物理ダメージ"
+  STAT_IDS.HP_FLAT, STAT_IDS.ATK_FLAT, STAT_IDS.DEF_FLAT,
+  STAT_IDS.HP_PER, STAT_IDS.ATK_PER, STAT_IDS.DEF_PER, STAT_IDS.EM, STAT_IDS.ER,
+  STAT_IDS.CRIT_RATE, STAT_IDS.CRIT_DMG, STAT_IDS.HEAL_BONUS,
+  STAT_IDS.PYRO_DMG, STAT_IDS.HYDRO_DMG, STAT_IDS.ANEMO_DMG, STAT_IDS.ELECTRO_DMG,
+  STAT_IDS.DENDRO_DMG, STAT_IDS.CRYO_DMG, STAT_IDS.GEO_DMG, STAT_IDS.PHYSICAL_DMG
 ];
 
 export const GENSHIN_SUB_STATS = [
-  "会心率", "会心ダメージ", "攻撃力%", "HP%", "防御力%", 
-  "元素チャージ効率", "元素熟知", "攻撃力(固定値)", "HP(固定値)", "防御力(固定値)"
+  STAT_IDS.CRIT_RATE, STAT_IDS.CRIT_DMG, STAT_IDS.ATK_PER, STAT_IDS.HP_PER, STAT_IDS.DEF_PER, 
+  STAT_IDS.ER, STAT_IDS.EM, STAT_IDS.ATK_FLAT, STAT_IDS.HP_FLAT, STAT_IDS.DEF_FLAT
 ];

@@ -1,25 +1,26 @@
 // 汎用シミュレーターロジック (セット効果・詳細確率対応版)
 import { GameId } from './game_data';
+import { STAT_IDS } from './stats';
 
 // --- サブステータス定義 ---
 const GENSHIN_SUBSTAT_VALUES: Record<string, number[]> = {
-  "会心率": [2.7, 3.1, 3.5, 3.9], "会心ダメージ": [5.4, 6.2, 7.0, 7.8],
-  "攻撃力%": [4.1, 4.7, 5.3, 5.8], "HP%": [4.1, 4.7, 5.3, 5.8], "防御力%": [5.1, 5.8, 6.6, 7.3],
-  "元素熟知": [16, 19, 21, 23], "元素チャージ効率": [4.5, 5.2, 5.8, 6.5],
-  "攻撃力": [14, 16, 18, 19], "HP": [209, 239, 269, 299], "防御力": [16, 19, 21, 23],
+  [STAT_IDS.CRIT_RATE]: [2.7, 3.1, 3.5, 3.9], [STAT_IDS.CRIT_DMG]: [5.4, 6.2, 7.0, 7.8],
+  [STAT_IDS.ATK_PER]: [4.1, 4.7, 5.3, 5.8], [STAT_IDS.HP_PER]: [4.1, 4.7, 5.3, 5.8], [STAT_IDS.DEF_PER]: [5.1, 5.8, 6.6, 7.3],
+  [STAT_IDS.EM]: [16, 19, 21, 23], [STAT_IDS.ER]: [4.5, 5.2, 5.8, 6.5],
+  [STAT_IDS.ATK_FLAT]: [14, 16, 18, 19], [STAT_IDS.HP_FLAT]: [209, 239, 269, 299], [STAT_IDS.DEF_FLAT]: [16, 19, 21, 23],
 };
 
 const STARRAIL_SUBSTAT_VALUES: Record<string, number[]> = {
-  "HP": [33, 38, 42], "攻撃力": [16, 19, 21], "防御力": [16, 19, 21],
-  "HP%": [3.4, 3.8, 4.3], "攻撃力%": [3.4, 3.8, 4.3], "防御力%": [4.3, 4.8, 5.4],
-  "会心率": [2.5, 2.9, 3.2], "会心ダメージ": [5.1, 5.8, 6.4],
-  "速度": [2.0, 2.3, 2.6], "撃破特効": [5.1, 5.8, 6.4],
-  "効果命中": [3.4, 3.8, 4.3], "効果抵抗": [3.4, 3.8, 4.3],
+  [STAT_IDS.HP_FLAT]: [33, 38, 42], [STAT_IDS.ATK_FLAT]: [16, 19, 21], [STAT_IDS.DEF_FLAT]: [16, 19, 21],
+  [STAT_IDS.HP_PER]: [3.4, 3.8, 4.3], [STAT_IDS.ATK_PER]: [3.4, 3.8, 4.3], [STAT_IDS.DEF_PER]: [4.3, 4.8, 5.4],
+  [STAT_IDS.CRIT_RATE]: [2.5, 2.9, 3.2], [STAT_IDS.CRIT_DMG]: [5.1, 5.8, 6.4],
+  [STAT_IDS.SPEED]: [2.0, 2.3, 2.6], [STAT_IDS.BREAK_EFFECT]: [5.1, 5.8, 6.4],
+  [STAT_IDS.EFFECT_HIT]: [3.4, 3.8, 4.3], [STAT_IDS.EFFECT_RES]: [3.4, 3.8, 4.3],
 };
 
 const ZZZ_SUBSTAT_VALUES: Record<string, number> = {
-  "会心率": 2.4, "会心ダメージ": 4.8, "攻撃力%": 3.0, "HP%": 3.0, "防御力%": 4.8,
-  "攻撃力": 19, "HP": 112, "防御力": 15, "異常マスタリー": 9, "異常掌握": 9, "貫通値": 9, "衝撃力": 1.2,
+  [STAT_IDS.CRIT_RATE]: 2.4, [STAT_IDS.CRIT_DMG]: 4.8, [STAT_IDS.ATK_PER]: 3.0, [STAT_IDS.HP_PER]: 3.0, [STAT_IDS.DEF_PER]: 4.8,
+  [STAT_IDS.ATK_FLAT]: 19, [STAT_IDS.HP_FLAT]: 112, [STAT_IDS.DEF_FLAT]: 15, [STAT_IDS.AM_MAS]: 9, [STAT_IDS.AM_PRO]: 9, [STAT_IDS.PEN_FLAT]: 9, [STAT_IDS.IMPACT]: 1.2,
 };
 
 const getSubstatValue = (gameId: GameId, substatName: string): number => {
@@ -31,41 +32,41 @@ const getSubstatValue = (gameId: GameId, substatName: string): number => {
 // --- 出現確率 ---
 export const MAIN_PROBS: Record<GameId, Record<string, Record<string, number>>> = {
   genshin: {
-    "生の花": { "HP(固定値)": 100 }, "死の羽": { "攻撃力(固定値)": 100 },
-    "時の砂": { "攻撃力%": 26.6, "HP%": 26.6, "防御力%": 26.6, "元素熟知": 10.0, "元素チャージ効率": 10.0 },
+    "生の花": { [STAT_IDS.HP_FLAT]: 100 }, "死の羽": { [STAT_IDS.ATK_FLAT]: 100 },
+    "時の砂": { [STAT_IDS.ATK_PER]: 26.6, [STAT_IDS.HP_PER]: 26.6, [STAT_IDS.DEF_PER]: 26.6, [STAT_IDS.EM]: 10.0, [STAT_IDS.ER]: 10.0 },
     "空の杯": { 
-      "炎元素ダメージ": 5.0, "水元素ダメージ": 5.0, "風元素ダメージ": 5.0, "雷元素ダメージ": 5.0, 
-      "草元素ダメージ": 5.0, "氷元素ダメージ": 5.0, "岩元素ダメージ": 5.0, "物理ダメージ": 5.0,
-      "攻撃力%": 21.3, "HP%": 21.3, "防御力%": 20.0, "元素熟知": 2.5 
+      [STAT_IDS.PYRO_DMG]: 5.0, [STAT_IDS.HYDRO_DMG]: 5.0, [STAT_IDS.ANEMO_DMG]: 5.0, [STAT_IDS.ELECTRO_DMG]: 5.0, 
+      [STAT_IDS.DENDRO_DMG]: 5.0, [STAT_IDS.CRYO_DMG]: 5.0, [STAT_IDS.GEO_DMG]: 5.0, [STAT_IDS.PHYSICAL_DMG]: 5.0,
+      [STAT_IDS.ATK_PER]: 21.3, [STAT_IDS.HP_PER]: 21.3, [STAT_IDS.DEF_PER]: 20.0, [STAT_IDS.EM]: 2.5 
     },
-    "理の冠": { "会心率": 10.0, "会心ダメージ": 10.0, "攻撃力%": 22.0, "HP%": 22.0, "防御力%": 22.0, "与える治癒効果": 10.0, "元素熟知": 4.0 }
+    "理の冠": { [STAT_IDS.CRIT_RATE]: 10.0, [STAT_IDS.CRIT_DMG]: 10.0, [STAT_IDS.ATK_PER]: 22.0, [STAT_IDS.HP_PER]: 22.0, [STAT_IDS.DEF_PER]: 22.0, [STAT_IDS.HEAL_BONUS]: 10.0, [STAT_IDS.EM]: 4.0 }
   },
   starrail: {
-    "頭部": { "HP(固定値)": 100 }, "手部": { "攻撃力(固定値)": 100 },
-    "胴体": { "HP%": 18.0, "攻撃力%": 18.0, "防御力%": 18.0, "会心率": 10.0, "会心ダメージ": 10.0, "治癒量": 10.0, "効果命中": 10.0 },
-    "脚部": { "HP%": 28.0, "攻撃力%": 28.0, "防御力%": 28.0, "速度": 16.0 },
+    "頭部": { [STAT_IDS.HP_FLAT]: 100 }, "手部": { [STAT_IDS.ATK_FLAT]: 100 },
+    "胴体": { [STAT_IDS.HP_PER]: 18.0, [STAT_IDS.ATK_PER]: 18.0, [STAT_IDS.DEF_PER]: 18.0, [STAT_IDS.CRIT_RATE]: 10.0, [STAT_IDS.CRIT_DMG]: 10.0, "治癒量": 10.0, [STAT_IDS.EFFECT_HIT]: 10.0 },
+    "脚部": { [STAT_IDS.HP_PER]: 28.0, [STAT_IDS.ATK_PER]: 28.0, [STAT_IDS.DEF_PER]: 28.0, [STAT_IDS.SPEED]: 16.0 },
     "次元界オーブ": { 
       "物理属性ダメージ": 9.0, "火属性ダメージ": 9.0, "氷属性ダメージ": 9.0, "雷属性ダメージ": 9.0, 
       "風属性ダメージ": 9.0, "量子属性ダメージ": 9.0, "虚数属性ダメージ": 9.0,
-      "攻撃力%": 12.0, "HP%": 12.0, "防御力%": 12.0 
+      [STAT_IDS.ATK_PER]: 12.0, [STAT_IDS.HP_PER]: 12.0, [STAT_IDS.DEF_PER]: 12.0 
     },
-    "連結縄": { "攻撃力%": 25.0, "HP%": 25.0, "防御力%": 25.0, "撃破特効": 20.0, "EP回復効率": 5.0 }
+    "連結縄": { [STAT_IDS.ATK_PER]: 25.0, [STAT_IDS.HP_PER]: 25.0, [STAT_IDS.DEF_PER]: 25.0, [STAT_IDS.BREAK_EFFECT]: 20.0, [STAT_IDS.ERR]: 5.0 }
   },
   zzz: {
-    "スロット1": { "HP(固定値)": 100 }, "スロット2": { "攻撃力(固定値)": 100 }, "スロット3": { "防御力(固定値)": 100 },
-    "スロット4": { "攻撃力%": 25.0, "HP%": 25.0, "防御力%": 25.0, "会心率": 10.0, "会心ダメージ": 10.0, "異常マスタリー": 5.0 },
+    "スロット1": { [STAT_IDS.HP_FLAT]: 100 }, "スロット2": { [STAT_IDS.ATK_FLAT]: 100 }, "スロット3": { [STAT_IDS.DEF_FLAT]: 100 },
+    "スロット4": { [STAT_IDS.ATK_PER]: 25.0, [STAT_IDS.HP_PER]: 25.0, [STAT_IDS.DEF_PER]: 25.0, [STAT_IDS.CRIT_RATE]: 10.0, [STAT_IDS.CRIT_DMG]: 10.0, [STAT_IDS.AM_MAS]: 5.0 },
     "スロット5": { 
       "物理属性ダメージ": 12.0, "炎属性ダメージ": 12.0, "氷属性ダメージ": 12.0, "電気属性ダメージ": 12.0, "エーテル属性ダメージ": 12.0,
-      "攻撃力%": 10.0, "HP%": 10.0, "防御力%": 10.0, "貫通率": 10.0 
+      [STAT_IDS.ATK_PER]: 10.0, [STAT_IDS.HP_PER]: 10.0, [STAT_IDS.DEF_PER]: 10.0, "貫通率": 10.0 
     },
-    "スロット6": { "攻撃力%": 20.0, "HP%": 20.0, "防御力%": 20.0, "衝撃力": 15.0, "異常掌握": 15.0, "エネルギー自動回復": 10.0 }
+    "スロット6": { [STAT_IDS.ATK_PER]: 20.0, [STAT_IDS.HP_PER]: 20.0, [STAT_IDS.DEF_PER]: 20.0, [STAT_IDS.IMPACT]: 15.0, [STAT_IDS.AM_PRO]: 15.0, [STAT_IDS.ENERGY_GEN]: 10.0 }
   }
 };
 
 const SUB_WEIGHTS: Record<GameId, Record<string, number>> = {
-  genshin: { "会心率": 100, "会心ダメージ": 100, "攻撃力%": 100, "HP%": 100, "防御力%": 100, "元素チャージ効率": 100, "元素熟知": 100, "攻撃力(固定値)": 150, "HP(固定値)": 150, "防御力(固定値)": 150 },
-  starrail: { "会心率": 4, "会心ダメージ": 4, "速度": 4, "攻撃力%": 8, "HP%": 8, "防御力%": 8, "効果命中": 8, "効果抵抗": 8, "撃破特効": 8, "攻撃力(固定値)": 10, "HP(固定値)": 10, "防御力(固定値)": 10 },
-  zzz: { "会心率": 5, "会心ダメージ": 5, "攻撃力%": 10, "HP%": 10, "防御力%": 10, "異常マスタリー": 10, "貫通値": 10, "攻撃力(固定値)": 15, "HP(固定値)": 15, "防御力(固定値)": 15 }
+  genshin: { [STAT_IDS.CRIT_RATE]: 100, [STAT_IDS.CRIT_DMG]: 100, [STAT_IDS.ATK_PER]: 100, [STAT_IDS.HP_PER]: 100, [STAT_IDS.DEF_PER]: 100, [STAT_IDS.ER]: 100, [STAT_IDS.EM]: 100, [STAT_IDS.ATK_FLAT]: 150, [STAT_IDS.HP_FLAT]: 150, [STAT_IDS.DEF_FLAT]: 150 },
+  starrail: { [STAT_IDS.CRIT_RATE]: 4, [STAT_IDS.CRIT_DMG]: 4, [STAT_IDS.SPEED]: 4, [STAT_IDS.ATK_PER]: 8, [STAT_IDS.HP_PER]: 8, [STAT_IDS.DEF_PER]: 8, [STAT_IDS.EFFECT_HIT]: 8, [STAT_IDS.EFFECT_RES]: 8, [STAT_IDS.BREAK_EFFECT]: 8, [STAT_IDS.ATK_FLAT]: 10, [STAT_IDS.HP_FLAT]: 10, [STAT_IDS.DEF_FLAT]: 10 },
+  zzz: { [STAT_IDS.CRIT_RATE]: 5, [STAT_IDS.CRIT_DMG]: 5, [STAT_IDS.ATK_PER]: 10, [STAT_IDS.HP_PER]: 10, [STAT_IDS.DEF_PER]: 10, [STAT_IDS.AM_MAS]: 10, [STAT_IDS.PEN_FLAT]: 10, [STAT_IDS.ATK_FLAT]: 15, [STAT_IDS.HP_FLAT]: 15, [STAT_IDS.DEF_FLAT]: 15 }
 };
 
 const GAME_DEFAULTS = {
@@ -187,7 +188,7 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
     for (const [s, v] of Object.entries(substats)) {
       const weight = scoreWeights[s] || 0;
       if (weight > 0) {
-        const avgRoll = s === "会心率" ? 2.9 : s === "会心ダメージ" ? 5.8 : s === "速度" ? 2.3 : 3.9;
+        const avgRoll = s === STAT_IDS.CRIT_RATE ? 2.9 : s === STAT_IDS.CRIT_DMG ? 5.8 : s === STAT_IDS.SPEED ? 2.3 : 3.9;
         totalUsefulRolls += (v / avgRoll) * weight;
       }
     }
@@ -433,11 +434,11 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
             const cost = ELIXIR_COST[slot] || 1;
             if (currentAvailable >= cost) {
               const isTargetPart = slot === elixirConfig.targetPart;
-              let targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || "攻撃力%");
+              let targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || STAT_IDS.ATK_PER);
               
               // 固定メインステータスの強制適用 (花・羽)
-              if (slot.includes("花")) targetMain = "HP";
-              if (slot.includes("羽")) targetMain = "攻撃力";
+              if (slot.includes("花")) targetMain = STAT_IDS.HP_FLAT;
+              if (slot.includes("羽")) targetMain = STAT_IDS.ATK_FLAT;
 
               const sortedSubs = Object.entries(scoreWeights)
                 .filter(([s]) => s !== targetMain && s !== "未選択")
@@ -672,11 +673,11 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
         const cost = ELIXIR_COST[slot] || 1;
         if (totalElixirs >= cost) {
           const isTargetPart = slot === elixirConfig.targetPart;
-          let targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || "攻撃力%");
+          let targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || STAT_IDS.ATK_PER);
           
           // 固定メインステータスの強制適用 (花・羽)
-          if (slot.includes("花")) targetMain = "HP";
-          if (slot.includes("羽")) targetMain = "攻撃力";
+          if (slot.includes("花")) targetMain = STAT_IDS.HP_FLAT;
+          if (slot.includes("羽")) targetMain = STAT_IDS.ATK_FLAT;
 
           const sortedSubs = Object.entries(scoreWeights)
             .filter(([s]) => s !== targetMain && s !== "未選択")

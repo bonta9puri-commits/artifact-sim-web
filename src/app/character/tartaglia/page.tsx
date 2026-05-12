@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { GENSHIN_CHARACTERS, GENSHIN_SETS, GENSHIN_SLOTS, GENSHIN_MAIN_STATS, GENSHIN_SUB_STATS } from '@/lib/genshin_data';
 import { GAME_CONFIGS } from '@/lib/game_data';
+import { STAT_IDS } from '@/lib/stats';
 import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, MAIN_PROBS } from '@/lib/simulator';
 import { toPng } from 'html-to-image';
 import { 
@@ -84,18 +85,28 @@ export default function TartagliaSpecialPage() {
       days_unit: "日",
       piece_miss: "取得失敗",
       score_unit: "pt",
-      "会心率": "会心率",
-      "会心ダメージ": "会心ダメージ",
-      "攻撃力%": "攻撃力%",
-      "元素チャージ効率": "元素チャージ効率",
-      "元素熟知": "元素熟知",
-      "攻撃力": "攻撃力",
-      "HP": "HP",
-      "防御力": "防御力",
+      [STAT_IDS.CRIT_RATE]: "会心率",
+      [STAT_IDS.CRIT_DMG]: "会心ダメージ",
+      [STAT_IDS.ATK_PER]: "攻撃力%",
+      [STAT_IDS.HP_PER]: "HP%",
+      [STAT_IDS.DEF_PER]: "防御力%",
+      [STAT_IDS.ER]: "元素チャージ効率",
+      [STAT_IDS.EM]: "元素熟知",
+      [STAT_IDS.ATK_FLAT]: "攻撃力(固定値)",
+      [STAT_IDS.HP_FLAT]: "HP(固定値)",
+      [STAT_IDS.DEF_FLAT]: "防御力(固定値)",
+      [STAT_IDS.PYRO_DMG]: "炎元素ダメージ",
+      [STAT_IDS.HYDRO_DMG]: "水元素ダメージ",
+      [STAT_IDS.ANEMO_DMG]: "風元素ダメージ",
+      [STAT_IDS.ELECTRO_DMG]: "雷元素ダメージ",
+      [STAT_IDS.DENDRO_DMG]: "草元素ダメージ",
+      [STAT_IDS.CRYO_DMG]: "氷元素ダメージ",
+      [STAT_IDS.GEO_DMG]: "岩元素ダメージ",
+      [STAT_IDS.PHYSICAL_DMG]: "物理ダメージ",
+      [STAT_IDS.HEAL_BONUS]: "与える治癒効果",
       "時の砂": "時の砂",
       "空の杯": "空の杯",
       "理の冠": "理の冠",
-      "水元素ダメージ": "水元素ダメージ",
       "祝聖のエリクシル": "祝聖のエリクシル"
     },
     en: {
@@ -144,18 +155,28 @@ export default function TartagliaSpecialPage() {
       days_unit: "days",
       piece_miss: "MISS",
       score_unit: "pt",
-      "会心率": "CRIT Rate",
-      "会心ダメージ": "CRIT DMG",
-      "攻撃力%": "ATK%",
-      "元素チャージ効率": "Energy Recharge",
-      "元素熟知": "Elemental Mastery",
-      "攻撃力": "ATK",
-      "HP": "HP",
-      "防御力": "DEF",
+      [STAT_IDS.CRIT_RATE]: "CRIT Rate",
+      [STAT_IDS.CRIT_DMG]: "CRIT DMG",
+      [STAT_IDS.ATK_PER]: "ATK%",
+      [STAT_IDS.HP_PER]: "HP%",
+      [STAT_IDS.DEF_PER]: "DEF%",
+      [STAT_IDS.ER]: "Energy Recharge",
+      [STAT_IDS.EM]: "Elemental Mastery",
+      [STAT_IDS.ATK_FLAT]: "ATK (Flat)",
+      [STAT_IDS.HP_FLAT]: "HP (Flat)",
+      [STAT_IDS.DEF_FLAT]: "DEF (Flat)",
+      [STAT_IDS.PYRO_DMG]: "Pyro DMG Bonus",
+      [STAT_IDS.HYDRO_DMG]: "Hydro DMG Bonus",
+      [STAT_IDS.ANEMO_DMG]: "Anemo DMG Bonus",
+      [STAT_IDS.ELECTRO_DMG]: "Electro DMG Bonus",
+      [STAT_IDS.DENDRO_DMG]: "Dendro DMG Bonus",
+      [STAT_IDS.CRYO_DMG]: "Cryo DMG Bonus",
+      [STAT_IDS.GEO_DMG]: "Geo DMG Bonus",
+      [STAT_IDS.PHYSICAL_DMG]: "Physical DMG Bonus",
+      [STAT_IDS.HEAL_BONUS]: "Healing Bonus",
       "時の砂": "Sands",
       "空の杯": "Goblet",
       "理の冠": "Circlet",
-      "水元素ダメージ": "Hydro DMG",
       "祝聖のエリクシル": "Sanctifying Elixir"
     }
   };
@@ -183,7 +204,7 @@ export default function TartagliaSpecialPage() {
       let simResult: any;
       let godPieces: any[] = [];
       const trials = 500;
-      const subPool = GENSHIN_SUB_STATS.filter(s => s !== "未選択");
+      const subPool = GENSHIN_SUB_STATS;
 
       if (simMode === "upgrade") {
         const attempts = Math.floor(days * (staminaPerDay / 20));
@@ -414,7 +435,7 @@ export default function TartagliaSpecialPage() {
                        <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
                          <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-3">{t('substats')}</label>
                          <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                           {GENSHIN_SUB_STATS.filter(s => s !== "未選択").map(sub => (
+                           {GENSHIN_SUB_STATS.map(sub => (
                              <div key={sub} className="space-y-1">
                                <label className="text-[8px] text-slate-500 uppercase">{t(sub)}</label>
                                <input 

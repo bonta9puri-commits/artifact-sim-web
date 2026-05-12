@@ -3,7 +3,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { GAME_CONFIGS, GameId, GameConfig } from '@/lib/game_data';
-import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, MAIN_PROBS } from '@/lib/simulator';
+import { GENSHIN_CHARACTERS, GENSHIN_MAIN_STATS, GENSHIN_SUB_STATS, GENSHIN_SETS, GENSHIN_SLOTS } from "@/lib/genshin_data";
+import { STAT_IDS } from "@/lib/stats";
+import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, ElixirConfig, MAIN_PROBS } from "@/lib/simulator";
 import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effects';
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
@@ -49,13 +51,25 @@ export default function Home() {
       godPieceList: "神聖遺物ドロップリスト",
       days_unit: "日",
       score_unit: "pt",
-      "会心率": "会心率",
-      "会心ダメージ": "会心ダメージ",
-      "攻撃力%": "攻撃力%",
-      "元素チャージ効率": "元素チャージ効率",
-      "元素熟知": "元素熟知",
-      "HP%": "HP%",
-      "防御力%": "防御力%",
+      [STAT_IDS.CRIT_RATE]: "会心率",
+      [STAT_IDS.CRIT_DMG]: "会心ダメージ",
+      [STAT_IDS.ATK_PER]: "攻撃力%",
+      [STAT_IDS.HP_PER]: "HP%",
+      [STAT_IDS.DEF_PER]: "防御力%",
+      [STAT_IDS.ER]: "元素チャージ効率",
+      [STAT_IDS.EM]: "元素熟知",
+      [STAT_IDS.ATK_FLAT]: "攻撃力(固定値)",
+      [STAT_IDS.HP_FLAT]: "HP(固定値)",
+      [STAT_IDS.DEF_FLAT]: "防御力(固定値)",
+      [STAT_IDS.PYRO_DMG]: "炎元素ダメージ",
+      [STAT_IDS.HYDRO_DMG]: "水元素ダメージ",
+      [STAT_IDS.ANEMO_DMG]: "風元素ダメージ",
+      [STAT_IDS.ELECTRO_DMG]: "雷元素ダメージ",
+      [STAT_IDS.DENDRO_DMG]: "草元素ダメージ",
+      [STAT_IDS.CRYO_DMG]: "氷元素ダメージ",
+      [STAT_IDS.GEO_DMG]: "岩元素ダメージ",
+      [STAT_IDS.PHYSICAL_DMG]: "物理ダメージ",
+      [STAT_IDS.HEAL_BONUS]: "与える治癒効果",
       "生の花": "生の花",
       "死の羽": "死の羽",
       "時の砂": "時の砂",
@@ -116,13 +130,25 @@ export default function Home() {
       godPieceList: "God Piece Drop List",
       days_unit: "days",
       score_unit: "pt",
-      "会心率": "CRIT Rate",
-      "会心ダメージ": "CRIT DMG",
-      "攻撃力%": "ATK%",
-      "元素チャージ効率": "Energy Recharge",
-      "元素熟知": "Elemental Mastery",
-      "HP%": "HP%",
-      "防御力%": "DEF%",
+      [STAT_IDS.CRIT_RATE]: "CRIT Rate",
+      [STAT_IDS.CRIT_DMG]: "CRIT DMG",
+      [STAT_IDS.ATK_PER]: "ATK%",
+      [STAT_IDS.HP_PER]: "HP%",
+      [STAT_IDS.DEF_PER]: "DEF%",
+      [STAT_IDS.ER]: "Energy Recharge",
+      [STAT_IDS.EM]: "Elemental Mastery",
+      [STAT_IDS.ATK_FLAT]: "ATK (Flat)",
+      [STAT_IDS.HP_FLAT]: "HP (Flat)",
+      [STAT_IDS.DEF_FLAT]: "DEF (Flat)",
+      [STAT_IDS.PYRO_DMG]: "Pyro DMG Bonus",
+      [STAT_IDS.HYDRO_DMG]: "Hydro DMG Bonus",
+      [STAT_IDS.ANEMO_DMG]: "Anemo DMG Bonus",
+      [STAT_IDS.ELECTRO_DMG]: "Electro DMG Bonus",
+      [STAT_IDS.DENDRO_DMG]: "Dendro DMG Bonus",
+      [STAT_IDS.CRYO_DMG]: "Cryo DMG Bonus",
+      [STAT_IDS.GEO_DMG]: "Geo DMG Bonus",
+      [STAT_IDS.PHYSICAL_DMG]: "Physical DMG Bonus",
+      [STAT_IDS.HEAL_BONUS]: "Healing Bonus",
       "生の花": "Flower",
       "死の羽": "Plume",
       "時の砂": "Sands",
@@ -221,8 +247,8 @@ export default function Home() {
   const [elixirTargetPart, setElixirTargetPart] = useState("空の杯");
   const [elixirTargetMain, setElixirTargetMain] = useState("元素ダメージ");
   const [elixirTargetSet, setElixirTargetSet] = useState("");
-  const [elixirSub1, setElixirSub1] = useState("会心率");
-  const [elixirSub2, setElixirSub2] = useState("会心ダメージ");
+  const [elixirSub1, setElixirSub1] = useState<string>(STAT_IDS.CRIT_RATE);
+  const [elixirSub2, setElixirSub2] = useState<string>(STAT_IDS.CRIT_DMG);
 
   // God pieces
   const [latestGodPiece, setLatestGodPiece] = useState<any>(null);
@@ -249,20 +275,20 @@ export default function Home() {
       config.slots.forEach(s => {
         if (s === "未選択") return;
         if (gameId === "genshin") {
-          if (s === "生の花") initialMain[s] = "HP(固定値)";
-          else if (s === "死の羽") initialMain[s] = "攻撃力(固定値)";
-          else initialMain[s] = "攻撃力%";
+          if (s === "生の花") initialMain[s] = STAT_IDS.HP_FLAT;
+          else if (s === "死の羽") initialMain[s] = STAT_IDS.ATK_FLAT;
+          else initialMain[s] = STAT_IDS.ATK_PER;
         } else if (gameId === "starrail") {
-          if (s === "頭部") initialMain[s] = "HP(固定値)";
-          else if (s === "手部") initialMain[s] = "攻撃力(固定値)";
-          else initialMain[s] = "攻撃力%";
+          if (s === "頭部") initialMain[s] = STAT_IDS.HP_FLAT;
+          else if (s === "手部") initialMain[s] = STAT_IDS.ATK_FLAT;
+          else initialMain[s] = STAT_IDS.ATK_PER;
         } else if (gameId === "zzz") {
-          if (s === "スロット1") initialMain[s] = "HP(固定値)";
-          else if (s === "スロット2") initialMain[s] = "攻撃力(固定値)";
-          else if (s === "スロット3") initialMain[s] = "防御力(固定値)";
-          else initialMain[s] = "攻撃力%";
+          if (s === "スロット1") initialMain[s] = STAT_IDS.HP_FLAT;
+          else if (s === "スロット2") initialMain[s] = STAT_IDS.ATK_FLAT;
+          else if (s === "スロット3") initialMain[s] = STAT_IDS.DEF_FLAT;
+          else initialMain[s] = STAT_IDS.ATK_PER;
         } else {
-          initialMain[s] = "攻撃力%";
+          initialMain[s] = STAT_IDS.ATK_PER;
         }
       });
       setMainStats(initialMain);
@@ -275,9 +301,9 @@ export default function Home() {
       
       const initialWeights: Record<string, number> = {};
       config.subStats.forEach(s => {
-        if (s === "会心率") initialWeights[s] = (gameId === "zzz") ? 1.0 : 2.0;
-        else if (s === "会心ダメージ" || s === "攻撃力%" || s === "異常マスタリー") initialWeights[s] = 1.0;
-        else if (s === "速度") initialWeights[s] = 1.0;
+        if (s === STAT_IDS.CRIT_RATE) initialWeights[s] = (gameId === "zzz") ? 1.0 : 2.0;
+        else if (s === STAT_IDS.CRIT_DMG || s === STAT_IDS.ATK_PER || s === STAT_IDS.AM_MAS) initialWeights[s] = 1.0;
+        else if (s === STAT_IDS.SPEED) initialWeights[s] = 1.0;
         else initialWeights[s] = 0;
       });
       setScoreWeights(initialWeights);
@@ -330,7 +356,7 @@ export default function Home() {
     setSortedResults([]);
     
     const trials = 500;
-    const subPool = config.subStats.filter(s => s !== "未選択");
+    const subPool = config.subStats;
 
     if (simMode === "upgrade") {
       const upgradeStats: Record<string, { count: number, totalIncrease: number }> = {};
@@ -787,7 +813,7 @@ export default function Home() {
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
                   <label className="block text-sm font-medium text-slate-400 mb-3">{t('weights')}</label>
                   <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                    {config.subStats.filter(s => s !== "未選択").map(sub => (
+                    {config.subStats.map(sub => (
                       <div key={sub} className="flex flex-col gap-1">
                         <label className="text-[10px] text-slate-500 whitespace-nowrap">{t(sub)}</label>
                         <input type="number" step="0.1" value={scoreWeights[sub] || 0} onChange={e => setScoreWeights({...scoreWeights, [sub]: e.target.value === "" ? 0 : Number(e.target.value)})} className="bg-slate-800 text-xs p-1.5 rounded border border-slate-700 outline-none text-white w-full"/>
@@ -871,13 +897,13 @@ export default function Home() {
                           <div>
                             <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'サブ1' : 'Sub 1'}</p>
                             <select value={elixirSub1} onChange={e => setElixirSub1(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              {config.subStats.filter(s => s !== "未選択").map(s => <option key={s} value={s}>{t(s)}</option>)}
+                              {config.subStats.map(s => <option key={s} value={s}>{t(s)}</option>)}
                             </select>
                           </div>
                           <div>
                             <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'サブ2' : 'Sub 2'}</p>
                             <select value={elixirSub2} onChange={e => setElixirSub2(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              {config.subStats.filter(s => s !== "未選択").map(s => <option key={s} value={s}>{t(s)}</option>)}
+                              {config.subStats.map(s => <option key={s} value={s}>{t(s)}</option>)}
                             </select>
                           </div>
                         </div>
