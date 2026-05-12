@@ -10,7 +10,7 @@ import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { 
   Sword, Shield, Zap, Target, Share2, Sparkles, 
-  Flame, Calendar, MessageSquare, ChevronLeft, X, LayoutGrid 
+  Flame, Calendar, MessageSquare, ChevronLeft, X, LayoutGrid, Settings2, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 export default function NicoleSpecialPage() {
@@ -23,11 +23,13 @@ export default function NicoleSpecialPage() {
   const [days, setDays] = useState(90);
   const [staminaPerDay, setStaminaPerDay] = useState(180);
   
-  // Nicole Defaults
+  // Nicole Defaults & State
   const [scoreWeights, setScoreWeights] = useState(character.defaults?.weights || {});
   const [mainStats, setMainStats] = useState(character.defaults?.mainStats || {});
-  const [targetSets, setTargetSets] = useState(character.defaults?.targetSets || ["", ""]);
+  const [targetSets, setTargetSets] = useState(character.defaults?.targetSets || ["", "", "", ""]);
   const [userPartScores, setUserPartScores] = useState<Record<string, number>>({});
+  
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [isSimulating, setIsSimulating] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -36,7 +38,7 @@ export default function NicoleSpecialPage() {
   
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Nicole-specific scores for Upgrade Mode
+  // Initialize for Upgrade Mode
   useEffect(() => {
     const initial: any = {};
     config.slots.forEach(s => { if(s !== "未選択") initial[s] = 35; });
@@ -149,7 +151,7 @@ export default function NicoleSpecialPage() {
           <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter text-white leading-none mb-4">
             NICOLE <span className="text-orange-500 uppercase">Reiyan</span>
           </h1>
-          <p className="text-slate-400 font-medium tracking-wide">魔導の導き手 - ニコ・リヤン専用解析システム</p>
+          <p className="text-slate-400 font-medium tracking-wide italic">Guide of Magic - 特別解析システム</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -220,6 +222,76 @@ export default function NicoleSpecialPage() {
                    </div>
                 )}
 
+                {/* Advanced Settings Toggle */}
+                <div className="pt-4">
+                  <button 
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="w-full flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-orange-500 transition-colors"
+                  >
+                    <span className="flex items-center gap-2"><Settings2 size={12} /> 詳細設定 (ウェイト・セット)</span>
+                    {showAdvanced ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                  
+                  {showAdvanced && (
+                    <div className="mt-6 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                       <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
+                         <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-3">サブステータスの重み</label>
+                         <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                           {GENSHIN_SUB_STATS.filter(s => s !== "未選択").map(sub => (
+                             <div key={sub} className="space-y-1">
+                               <label className="text-[8px] text-slate-500 uppercase">{sub}</label>
+                               <input 
+                                 type="number" step="0.1"
+                                 value={scoreWeights[sub] || 0} 
+                                 onChange={e => setScoreWeights({...scoreWeights, [sub]: Number(e.target.value)})}
+                                 className="w-full bg-slate-900 text-xs p-1.5 rounded border border-white/5 text-white outline-none"
+                               />
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+
+                       <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
+                          <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-3">メインステータス</label>
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                            {config.slots.filter(s => !s.includes("花") && !s.includes("羽") && s !== "未選択").map(slot => (
+                              <div key={slot} className="flex items-center justify-between gap-4">
+                                <span className="text-[9px] text-slate-500 uppercase">{slot}</span>
+                                <select 
+                                  value={mainStats[slot] || ""} 
+                                  onChange={e => setMainStats({...mainStats, [slot]: e.target.value})}
+                                  className="bg-slate-900 text-[10px] p-1.5 rounded border border-white/5 text-white outline-none flex-1"
+                                >
+                                  {Object.keys(MAIN_PROBS[gameId][slot] || {}).map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                              </div>
+                            ))}
+                          </div>
+                       </div>
+
+                       <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
+                          <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-3">狙いのセット</label>
+                          <div className="grid grid-cols-2 gap-2">
+                             {targetSets.map((s, i) => (
+                               <select 
+                                 key={i} value={s} 
+                                 onChange={e => {
+                                   const next = [...targetSets];
+                                   next[i] = e.target.value;
+                                   setTargetSets(next);
+                                 }}
+                                 className="bg-slate-900 text-[9px] p-2 rounded border border-white/5 text-white outline-none"
+                               >
+                                 <option value="">未選択</option>
+                                 {GENSHIN_SETS.map(set => <option key={set} value={set}>{set}</option>)}
+                               </select>
+                             ))}
+                          </div>
+                       </div>
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   onClick={handleSimulate}
                   disabled={isSimulating}
@@ -234,7 +306,6 @@ export default function NicoleSpecialPage() {
           {/* Results Column */}
           <div className="lg:col-span-8">
             <div ref={cardRef} className="bg-slate-900/40 border border-white/5 rounded-[40px] p-8 md:p-12 min-h-[600px] flex flex-col items-center relative overflow-hidden backdrop-blur-3xl shadow-3xl">
-              {/* Internal Card Background Elements */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/5 blur-[80px] rounded-full"></div>
               
               {!result && !isSimulating && (
