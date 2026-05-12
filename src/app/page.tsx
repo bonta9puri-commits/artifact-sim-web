@@ -1186,8 +1186,6 @@ export default function Home() {
                   <span>SNSで結果をシェア</span>
                 </button>
               </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
