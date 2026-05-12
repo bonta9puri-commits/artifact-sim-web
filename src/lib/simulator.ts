@@ -433,7 +433,12 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
             const cost = ELIXIR_COST[slot] || 1;
             if (currentAvailable >= cost) {
               const isTargetPart = slot === elixirConfig.targetPart;
-              const targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || "攻撃力%");
+              let targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || "攻撃力%");
+              
+              // 固定メインステータスの強制適用 (花・羽)
+              if (slot.includes("花")) targetMain = "HP";
+              if (slot.includes("羽")) targetMain = "攻撃力";
+
               const sortedSubs = Object.entries(scoreWeights)
                 .filter(([s]) => s !== targetMain && s !== "未選択")
                 .sort((a, b) => b[1] - a[1])
@@ -667,8 +672,12 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
         const cost = ELIXIR_COST[slot] || 1;
         if (totalElixirs >= cost) {
           const isTargetPart = slot === elixirConfig.targetPart;
-          const targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || "攻撃力%");
+          let targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || "攻撃力%");
           
+          // 固定メインステータスの強制適用 (花・羽)
+          if (slot.includes("花")) targetMain = "HP";
+          if (slot.includes("羽")) targetMain = "攻撃力";
+
           const sortedSubs = Object.entries(scoreWeights)
             .filter(([s]) => s !== targetMain && s !== "未選択")
             .sort((a, b) => b[1] - a[1])
