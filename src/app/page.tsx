@@ -247,35 +247,41 @@ export default function Home() {
         sub2: elixirSub2
       };
       let collectedGods: any[] = [];
-      const results: {attempts: number, pieces: any, godPieces?: any[]}[] = [];
+      const results: any[] = [];
+      const baselineResults: any[] = [];
+
       for (let i = 0; i < trials; i++) {
-        if (i % 10 === 0) {
+        if (i % 20 === 0) {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
         const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig);
         results.push(res);
+        
+        if (elixirEnabled && i < 50) {
+          const base = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, { ...elixirConfig, enabled: false });
+          baselineResults.push(base);
+        }
+
         if (res.godPieces && res.godPieces.length > 0) {
           collectedGods.push(...res.godPieces);
           setLatestGodPiece(res.godPieces[res.godPieces.length - 1]);
         }
       }
       results.sort((a, b) => a.attempts - b.attempts);
-      setSortedResults(results);
-      setLuckPercentile(50);
-      collectedGods.sort((a, b) => b.score - a.score);
-      setAllGodPieces(collectedGods.slice(0, 10));
+      baselineResults.sort((a, b) => a.attempts - b.attempts);
       
       const medianRes = results[Math.floor(trials / 2)];
       const top10Res = results[Math.floor(trials * 0.1)];
       const bottom10Res = results[Math.floor(trials * 0.9)];
-  
+      const medianBase = baselineResults.length > 0 ? baselineResults[Math.floor(baselineResults.length / 2)] : null;
   
       const finalRes = {
         type: "target",
         median: Math.ceil((medianRes.attempts * staminaCost) / staminaPerDay),
         top10: Math.ceil((top10Res.attempts * staminaCost) / staminaPerDay),
         bottom10: Math.ceil((bottom10Res.attempts * staminaCost) / staminaPerDay),
+        medianWithoutElixir: medianBase ? Math.ceil((medianBase.attempts * staminaCost) / staminaPerDay) : null,
         pieces: medianRes.pieces,
         trials
       };
@@ -409,6 +415,13 @@ export default function Home() {
                       {result.type === "rank" || result.type === "upgrade" ? "%" : result.type === "target" ? "Days" : "Score"}
                     </span>
                   </div>
+
+                  {result.type === "target" && result.medianWithoutElixir && (
+                    <p className="text-[10px] text-yellow-500/80 font-black mb-4 uppercase tracking-[0.15em] flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20">
+                      <span className="animate-pulse">✨</span> 
+                      {result.medianWithoutElixir - result.median} DAYS SAVED BY ELIXIR
+                    </p>
+                  )}
 
                   <p className="text-sm font-black text-blue-400 mb-8 tracking-wider">
                     {result.type === "rank" ? "TOP PERCENTILE" : result.type === "upgrade" ? "UPGRADE CHANCE" : "ESTIMATED AVERAGE"}
@@ -994,6 +1007,13 @@ export default function Home() {
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[40px] text-center relative overflow-hidden group">
+                              {result.medianWithoutElixir && (
+                                <div className="absolute top-0 right-0 bg-yellow-500/10 border-l border-b border-yellow-500/20 px-4 py-1.5 rounded-bl-3xl">
+                                  <p className="text-[9px] text-yellow-500 font-black uppercase tracking-[0.2em]">
+                                    ✨ ELIXIR: -{result.medianWithoutElixir - result.median} DAYS
+                                  </p>
+                                </div>
+                              )}
                               <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Standard Expectation</p>
                               <p className="text-6xl font-black text-white tracking-tighter">{result.median} <span className="text-xl font-bold text-slate-600 uppercase">Days</span></p>
                               <p className="text-xs text-slate-400 mt-3 font-medium italic">平均的な運勢（中央値）</p>
@@ -1039,7 +1059,14 @@ export default function Home() {
 
                               return (
                                 <div className="space-y-8">
-                                  <div className="bg-slate-900/50 p-8 rounded-[40px] border border-slate-800 shadow-xl max-w-2xl mx-auto">
+                                  <div className="bg-slate-900/50 p-8 rounded-[40px] border border-slate-800 shadow-xl max-w-2xl mx-auto relative overflow-hidden">
+                                    {result.elixirBonus > 0 && (
+                                      <div className="absolute top-0 right-0 bg-yellow-500/10 border-l border-b border-yellow-500/20 px-4 py-2 rounded-bl-3xl">
+                                        <p className="text-[10px] text-yellow-500 font-black uppercase tracking-widest leading-none">
+                                          ✨ ELIXIR BONUS: +{result.elixirBonus.toFixed(1)}pt
+                                        </p>
+                                      </div>
+                                    )}
                                     <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${luckPercentile <= 50 ? "text-emerald-400" : "text-rose-400"}`}>
                                       {luckPercentile}% Luck Result
                                     </p>
@@ -1054,7 +1081,10 @@ export default function Home() {
 
                                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                     {Object.entries(currentLuckRes?.pieces || {}).map(([slot, art]: [string, any]) => (
-                                      <div key={slot} className="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl group hover:border-blue-500/30 transition-all">
+                                      <div key={slot} className="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl group hover:border-blue-500/30 transition-all relative overflow-hidden">
+                                        {art?.isElixir && (
+                                          <div className="absolute top-0 right-0 bg-yellow-500 text-slate-950 text-[6px] font-black px-1.5 py-0.5 rounded-bl-lg uppercase">祝聖</div>
+                                        )}
                                         <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{slot}</p>
                                         {art ? (
                                           <div className="space-y-1">
