@@ -548,7 +548,14 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
     finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
     if (finalResult.substatTotal >= target) break;
   }
-  return { attempts, stamina: attempts * defaults.staminaCost, pieces: finalResult.pieces, score: finalResult.substatTotal, godPieces };
+  return { 
+    attempts, 
+    stamina: attempts * defaults.staminaCost, 
+    pieces: finalResult.pieces, 
+    score: finalResult.substatTotal, 
+    scoreBeforeElixir: finalResult.substatTotal, // 目標診断では投入前も後も同じ（目標達成した瞬間なので）
+    godPieces 
+  };
 }
 
 // シミュレーション (固定期間)

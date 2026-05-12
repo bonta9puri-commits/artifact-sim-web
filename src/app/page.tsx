@@ -320,7 +320,7 @@ export default function Home() {
         const bottom10Res = results[Math.floor(trials * 0.9)];
         
         // 平均的なエリクシルによる伸びを計算
-        const avgBonus = results.reduce((acc, r) => acc + (r.score - (r.scoreBeforeElixir || r.score)), 0) / trials;
+        const avgBonus = results.reduce((acc, r: any) => acc + (r.score - (r.scoreBeforeElixir || r.score)), 0) / trials;
 
         const finalRes = {
           type: "period",
