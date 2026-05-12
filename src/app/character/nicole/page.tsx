@@ -29,13 +29,11 @@ export default function NicoleSpecialPage() {
         "genshin",
         targetScore,
         scoreWeights,
+        GENSHIN_SUB_STATS, // subPool
+        false, // useRecycle
         mainStats,
         targetSets,
-        false, // elixir
-        false, // strongbox
-        null, // elixir target
-        null, // elixir sub1
-        null // elixir sub2
+        null // elixirConfig
       );
       
       setResult({
