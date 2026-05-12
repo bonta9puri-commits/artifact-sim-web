@@ -1137,6 +1137,8 @@ export default function Home() {
                       )}
                     </div>
                   )}
+                </div>
+              )}
 
                 {/* --- Common Results (Part of the capture area) --- */}
                 {allGodPieces.length > 0 && (
