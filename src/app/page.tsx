@@ -879,7 +879,6 @@ export default function Home() {
                 )}
               </div>
             </div>
-          </div>
 
           {/* Results Panel */}
           <div className="lg:col-span-8">
