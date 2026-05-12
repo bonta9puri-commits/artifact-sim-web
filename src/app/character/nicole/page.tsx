@@ -156,10 +156,10 @@ export default function NicoleSpecialPage() {
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-12">
            <Link href="/" className="flex items-center gap-2 text-slate-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest group">
-             <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Multi-Sim
+             <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> ホームへ戻る
            </Link>
            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-black uppercase tracking-[0.3em]">
-             <Sparkles size={12} className="animate-spin-slow" /> Official Special Edition
+             <Sparkles size={12} className="animate-spin-slow" /> 公式特設エディション
            </div>
         </div>
 
@@ -313,7 +313,7 @@ export default function NicoleSpecialPage() {
                   disabled={isSimulating}
                   className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-400 text-white font-black text-sm shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
-                  {isSimulating ? "RUNNING..." : "シミュレーション開始"}
+                  {isSimulating ? "解析中..." : "シミュレーション開始"}
                 </button>
               </div>
             </div>
@@ -338,7 +338,7 @@ export default function NicoleSpecialPage() {
                     <div className="absolute inset-0 rounded-full border-4 border-orange-500 border-t-transparent animate-spin"></div>
                     <Flame size={32} className="absolute inset-0 m-auto text-orange-500 animate-pulse" />
                   </div>
-                  <p className="mt-8 text-xs font-black text-slate-500 uppercase tracking-[0.3em] animate-pulse">Processing Parallel Worlds</p>
+                  <p className="mt-8 text-xs font-black text-slate-500 uppercase tracking-[0.3em] animate-pulse">確率の海を解析中...</p>
                 </div>
               )}
 
@@ -348,19 +348,19 @@ export default function NicoleSpecialPage() {
                   {result.type === "target" && (
                     <div className="text-center space-y-6">
                       <div className="space-y-1">
-                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em]">Target Achievement Estimation</p>
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em]">目標スコア達成までの推定期間</p>
                         <h3 className="text-7xl md:text-9xl font-black text-white italic tracking-tighter">
-                          {result.median.toFixed(0)} <span className="text-2xl text-slate-600 uppercase italic">Days</span>
+                          {result.median.toFixed(0)} <span className="text-2xl text-slate-600 uppercase italic">日</span>
                         </h3>
                       </div>
                       <div className="flex justify-center gap-12">
                          <div className="text-center">
-                            <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Top 10% Luck</p>
-                            <p className="text-2xl font-black text-emerald-400 italic">{result.top10.toFixed(0)}d</p>
+                            <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">豪運 (上位10%)</p>
+                            <p className="text-2xl font-black text-emerald-400 italic">{result.top10.toFixed(0)}日</p>
                          </div>
                          <div className="text-center border-l border-white/10 pl-12">
-                            <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Bottom 10%</p>
-                            <p className="text-2xl font-black text-rose-500 italic">{result.bottom10.toFixed(0)}d</p>
+                            <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">悲運 (下位10%)</p>
+                            <p className="text-2xl font-black text-rose-500 italic">{result.bottom10.toFixed(0)}日</p>
                          </div>
                       </div>
                     </div>
@@ -369,18 +369,18 @@ export default function NicoleSpecialPage() {
                   {result.type === "period" && (
                     <div className="text-center space-y-6">
                       <div className="space-y-1">
-                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em]">Expected Score in {days} Days</p>
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em]">{days}日間の期待されるビルドスコア</p>
                         <h3 className="text-7xl md:text-9xl font-black text-white italic tracking-tighter">
                           {result.median.toFixed(1)} <span className="text-2xl text-slate-600 uppercase italic">pt</span>
                         </h3>
                       </div>
                       <div className="flex justify-center gap-12">
                          <div className="text-center">
-                            <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Max Potential</p>
+                            <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">最高到達スコア</p>
                             <p className="text-2xl font-black text-emerald-400 italic">{result.top10.toFixed(1)}pt</p>
                          </div>
                          <div className="text-center border-l border-white/10 pl-12">
-                            <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Min Result</p>
+                            <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">最低保証スコア</p>
                             <p className="text-2xl font-black text-rose-500 italic">{result.bottom10.toFixed(1)}pt</p>
                          </div>
                       </div>
@@ -389,7 +389,7 @@ export default function NicoleSpecialPage() {
 
                   {result.type === "rank" && (
                     <div className="text-center space-y-8">
-                       <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em]">Probability of Surpassing Current Score</p>
+                       <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em]">現在のスコアを上回る確率（勝率）</p>
                        <div className="relative inline-block">
                           <svg className="w-48 h-48 -rotate-90">
                             <circle cx="96" cy="96" r="80" fill="none" stroke="currentColor" strokeWidth="12" className="text-white/5" />
@@ -405,7 +405,7 @@ export default function NicoleSpecialPage() {
                   {result.type === "upgrade" && upgradeResult && (
                     <div className="space-y-8">
                        <div className="text-center">
-                          <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em] mb-2">Overall Upgrade Chance</p>
+                          <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em] mb-2">全体の更新期待度（ビルド向上確率）</p>
                           <p className="text-7xl font-black text-white italic tracking-tighter">{upgradeResult.overallProb.toFixed(1)}%</p>
                        </div>
                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -423,7 +423,7 @@ export default function NicoleSpecialPage() {
                   <div className="pt-12 border-t border-white/5 flex flex-col items-center">
                     <div className="flex items-center gap-2 mb-4">
                       <Flame size={16} className="text-orange-500" />
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">Artifact Simulation System</span>
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">聖遺物厳選解析システム</span>
                     </div>
                     {allGodPieces.length > 0 && (
                       <div className="w-full grid grid-cols-5 gap-2">

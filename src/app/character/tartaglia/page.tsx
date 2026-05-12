@@ -153,10 +153,10 @@ export default function TartagliaSpecialPage() {
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-12">
            <Link href="/" className="flex items-center gap-2 text-sky-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest group">
-             <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Hub
+             <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> ホームへ戻る
            </Link>
            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-[10px] font-black uppercase tracking-[0.3em]">
-             <Droplets size={12} className="animate-bounce" /> Tartaglia Main Exclusive
+             <Droplets size={12} className="animate-bounce" /> タルタリヤメイン専用
            </div>
         </div>
 
@@ -305,7 +305,7 @@ export default function TartagliaSpecialPage() {
               {!result && !isSimulating && (
                 <div className="flex-1 flex flex-col items-center justify-center text-center opacity-20">
                   <Waves size={80} className="text-sky-500 mb-6 animate-pulse" />
-                  <p className="text-xs font-black text-sky-300 uppercase tracking-[0.5em]">System Idle / Waiting for Input</p>
+                  <p className="text-xs font-black text-sky-300 uppercase tracking-[0.5em]">スタンバイ中 / 命令待機</p>
                 </div>
               )}
 
@@ -316,7 +316,7 @@ export default function TartagliaSpecialPage() {
                     <div className="absolute inset-0 rounded-full border-[8px] border-sky-500 border-t-transparent animate-spin"></div>
                     <Zap size={40} className="absolute inset-0 m-auto text-sky-500 animate-pulse" />
                   </div>
-                  <p className="mt-10 text-xs font-black text-sky-400 uppercase tracking-[0.4em] animate-pulse italic">Calculating Probabilities...</p>
+                  <p className="mt-10 text-xs font-black text-sky-400 uppercase tracking-[0.4em] animate-pulse italic">確率の海を解析中...</p>
                 </div>
               )}
 
@@ -326,19 +326,19 @@ export default function TartagliaSpecialPage() {
                   {result.type === "target" && (
                     <div className="text-center space-y-8">
                       <div className="space-y-2">
-                        <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em]">Target Achievement Period</p>
+                        <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em]">目標スコア達成までの推定期間</p>
                         <h3 className="text-8xl md:text-[140px] font-black text-white italic tracking-tighter leading-none">
-                          {result.median.toFixed(0)} <span className="text-2xl text-slate-600 uppercase not-italic">Days</span>
+                          {result.median.toFixed(0)} <span className="text-2xl text-slate-600 uppercase not-italic">日</span>
                         </h3>
                       </div>
                       <div className="flex justify-center gap-16">
                          <div className="text-center">
-                            <p className="text-[10px] text-slate-500 font-bold mb-2 uppercase tracking-widest">God Luck (Top 10%)</p>
-                            <p className="text-4xl font-black text-sky-400 italic tracking-tighter">{result.top10.toFixed(0)}d</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-2 uppercase tracking-widest">豪運 (上位10%)</p>
+                            <p className="text-4xl font-black text-sky-400 italic tracking-tighter">{result.top10.toFixed(0)}日</p>
                          </div>
                          <div className="text-center border-l border-white/10 pl-16">
-                            <p className="text-[10px] text-slate-500 font-bold mb-2 uppercase tracking-widest">Unlucky (Bottom 10%)</p>
-                            <p className="text-4xl font-black text-rose-500 italic tracking-tighter">{result.bottom10.toFixed(0)}d</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-2 uppercase tracking-widest">悲運 (下位10%)</p>
+                            <p className="text-4xl font-black text-rose-500 italic tracking-tighter">{result.bottom10.toFixed(0)}日</p>
                          </div>
                       </div>
                     </div>
@@ -347,18 +347,18 @@ export default function TartagliaSpecialPage() {
                   {result.type === "period" && (
                     <div className="text-center space-y-8">
                       <div className="space-y-2">
-                        <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em]">Expected Combat Score ({days}d)</p>
+                        <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em]">{days}日間の期待されるビルドスコア</p>
                         <h3 className="text-8xl md:text-[140px] font-black text-white italic tracking-tighter leading-none">
                           {result.median.toFixed(1)} <span className="text-2xl text-slate-600 uppercase not-italic">pt</span>
                         </h3>
                       </div>
                       <div className="grid grid-cols-2 gap-8 max-w-md mx-auto">
                          <div className="bg-sky-500/10 p-4 rounded-3xl border border-sky-500/20">
-                            <p className="text-[10px] text-sky-500 font-bold mb-1 uppercase">Max Potential</p>
+                            <p className="text-[10px] text-sky-500 font-bold mb-1 uppercase">最高到達スコア</p>
                             <p className="text-3xl font-black text-white italic">{result.top10.toFixed(1)}pt</p>
                          </div>
                          <div className="bg-slate-900/50 p-4 rounded-3xl border border-white/5">
-                            <p className="text-[10px] text-slate-500 font-bold mb-1 uppercase">Minimum</p>
+                            <p className="text-[10px] text-slate-500 font-bold mb-1 uppercase">最低保証スコア</p>
                             <p className="text-3xl font-black text-slate-400 italic">{result.bottom10.toFixed(1)}pt</p>
                          </div>
                       </div>
@@ -367,7 +367,7 @@ export default function TartagliaSpecialPage() {
 
                   {result.type === "rank" && (
                     <div className="text-center space-y-10 py-10">
-                       <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em]">Combat Record Superiority</p>
+                       <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em]">現在のビルドの実力診断</p>
                        <div className="relative inline-block group">
                           <div className="absolute inset-0 bg-sky-500/20 blur-[60px] group-hover:bg-sky-500/40 transition-all rounded-full"></div>
                           <svg className="w-64 h-64 -rotate-90 relative">
@@ -375,7 +375,7 @@ export default function TartagliaSpecialPage() {
                             <circle cx="128" cy="128" r="100" fill="none" stroke="currentColor" strokeWidth="20" strokeDasharray={628} strokeDashoffset={628 - (628 * result.winRate / 100)} className="text-sky-500 transition-all duration-1000 ease-out shadow-sky-500 shadow-2xl" />
                           </svg>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
-                             <p className="text-[10px] text-sky-300 font-black uppercase tracking-widest mb-1">Win Rate</p>
+                             <p className="text-[10px] text-sky-300 font-black uppercase tracking-widest mb-1">勝率</p>
                              <p className="text-6xl font-black text-white tracking-tighter italic">{result.winRate.toFixed(1)}%</p>
                           </div>
                        </div>
@@ -385,7 +385,7 @@ export default function TartagliaSpecialPage() {
                   {result.type === "upgrade" && upgradeResult && (
                     <div className="space-y-12">
                        <div className="text-center">
-                          <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em] mb-4">Total Reinforcement Probability</p>
+                          <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em] mb-4">全体の更新期待度（ビルド向上確率）</p>
                           <div className="text-8xl md:text-[120px] font-black text-white italic tracking-tighter leading-none">{upgradeResult.overallProb.toFixed(1)}%</div>
                        </div>
                        <div className="grid grid-cols-5 gap-3">
@@ -403,7 +403,7 @@ export default function TartagliaSpecialPage() {
                   <div className="pt-12 border-t border-white/5 w-full flex flex-col items-center gap-6">
                     <div className="flex items-center gap-3">
                       <div className="h-px w-8 bg-sky-500/30"></div>
-                      <span className="text-[10px] font-black text-sky-600 uppercase tracking-[0.6em]">Fatui Intelligence Bureau</span>
+                      <span className="text-[10px] font-black text-sky-600 uppercase tracking-[0.6em]">ファトゥス：タルタリヤ情報局</span>
                       <div className="h-px w-8 bg-sky-500/30"></div>
                     </div>
                     {allGodPieces.length > 0 && (
