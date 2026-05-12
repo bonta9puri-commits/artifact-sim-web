@@ -1077,7 +1077,7 @@ export default function Home() {
                                     <p className="text-7xl font-black text-white tracking-tighter mb-4">
                                       {currentScore.toFixed(2)} <span className="text-xl font-bold text-slate-600 uppercase">Score</span>
                                     </p>
-                                    <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-full text-sm font-black ${isHigher ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
+                                    <div className={`inline-flex items-center gap-6 py-2 rounded-full text-sm font-black ${isHigher ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
                                       {isHigher ? <Zap size={16} fill="currentColor" /> : <Shield size={16} fill="currentColor" />}
                                       <span>期待値より {diffPercent}% {isHigher ? "高いスコア" : "低いスコア"}</span>
                                     </div>
@@ -1135,10 +1135,9 @@ export default function Home() {
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
 
                 {/* --- Common Results (Part of the capture area) --- */}
                 {allGodPieces.length > 0 && (
