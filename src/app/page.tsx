@@ -8,7 +8,7 @@ import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effe
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis } from 'recharts';
-import { Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, X } from 'lucide-react';
+import { Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, X, Share2 } from 'lucide-react';
 
 export default function Home() {
   const [gameId, setGameId] = useState<GameId>("genshin");
