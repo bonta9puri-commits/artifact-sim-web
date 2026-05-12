@@ -642,13 +642,13 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
     }
   }
 
+  const scoreBeforeElixir = finalResult.substatTotal;
+
   // 2. 厳選終了後のエリクシル投入 (最適化処理)
   if (gameId === "genshin" && elixirConfig?.enabled) {
     const days = totalAttempts / (staminaPerDay / defaults.staminaCost);
     let totalElixirs = elixirConfig.initialCount + Math.floor(days / 42) * elixirConfig.perVersion;
     
-    // スコアの低い部位から順にエリクシルを試す
-    // 何回かループして、エリクシルが尽きるまで改善を試みる
     let improved = true;
     while (improved && totalElixirs > 0) {
       improved = false;
@@ -659,11 +659,9 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       for (const { slot } of currentPieces) {
         const cost = ELIXIR_COST[slot] || 1;
         if (totalElixirs >= cost) {
-          // ユーザー設定の部位なら設定通りのメイン・サブを使用、そうでなければ自動最適化
           const isTargetPart = slot === elixirConfig.targetPart;
           const targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || "攻撃力%");
           
-          // サブステは重い順に自動選択
           const sortedSubs = Object.entries(scoreWeights)
             .filter(([s]) => s !== targetMain && s !== "未選択")
             .sort((a, b) => b[1] - a[1])
@@ -677,7 +675,6 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
           
           if (eArt.score >= 58) godPieces.push(eArt);
           
-          // セット効果を維持するため、現在装備中のセット名で生成
           const currentEquippedSet = (finalResult.pieces as any)[slot]?.setName || targetSets[0];
           const finalSet = currentEquippedSet !== "その他" ? currentEquippedSet : targetSets[0];
           eArt.setName = finalSet;
@@ -690,7 +687,6 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
           }
           
           totalElixirs -= cost;
-          // 1回使ったらコンボを再計算して次の「最弱部位」を探す
           finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
           if (improved) break; 
         }
@@ -698,7 +694,12 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
     }
   }
 
-  return { score: finalResult.substatTotal, pieces: finalResult.pieces, godPieces };
+  return { 
+    score: finalResult.substatTotal, 
+    scoreBeforeElixir: scoreBeforeElixir,
+    pieces: finalResult.pieces, 
+    godPieces 
+  };
 }
 
 // --- リサイクル効率比較シミュレーション ---

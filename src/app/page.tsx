@@ -318,11 +318,16 @@ export default function Home() {
         const medianRes = results[Math.floor(trials / 2)];
         const top10Res = results[Math.floor(trials * 0.1)];
         const bottom10Res = results[Math.floor(trials * 0.9)];
+        
+        // 平均的なエリクシルによる伸びを計算
+        const avgBonus = results.reduce((acc, r) => acc + (r.score - (r.scoreBeforeElixir || r.score)), 0) / trials;
+
         const finalRes = {
           type: "period",
           median: medianRes.score,
           top10: top10Res.score,
           bottom10: bottom10Res.score,
+          elixirBonus: avgBonus,
           pieces: medianRes.pieces,
           top10Pieces: top10Res.pieces,
           bottom10Pieces: bottom10Res.pieces,
