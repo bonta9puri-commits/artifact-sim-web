@@ -2,6 +2,16 @@ import { CharacterData } from './game_data';
 
 export const GENSHIN_CHARACTERS: CharacterData[] = [
   { 
+    name: "ニコ・リヤン", 
+    element: "炎", 
+    defaults: {
+      weights: { "攻撃力%": 1.2, "元素チャージ効率": 1.0, "会心率": 0.6, "会心ダメージ": 0.4 },
+      mainStats: { "時の砂": "元素チャージ効率", "空の杯": "攻撃力%", "理の冠": "攻撃力%" },
+      targetSets: ["旧貴族のしつけ", "千岩牢固"],
+      baseStats: { rate: 5, dmg: 50, atk: 311, hp: 0, def: 0, er: 180, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
     name: "ヌヴィレット", 
     element: "水", 
     defaults: {
