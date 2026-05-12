@@ -413,7 +413,7 @@ export default function Home() {
                   
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-8xl font-black text-white tracking-tighter drop-shadow-2xl">
-                      {result.type === "rank" ? result.percentile.toFixed(1) : result.type === "upgrade" ? upgradeResult?.overallProb.toFixed(1) : result.median.toFixed(2)}
+                      {result.type === "rank" ? result.percentile.toFixed(1) : result.type === "upgrade" ? upgradeResult?.overallProb.toFixed(1) : (result.type === "target" ? result.median.toFixed(0) : result.median.toFixed(2))}
                     </span>
                     <span className="text-2xl font-black text-slate-500 uppercase tracking-widest">
                       {result.type === "rank" || result.type === "upgrade" ? "%" : result.type === "target" ? "Days" : "Score"}
@@ -423,7 +423,7 @@ export default function Home() {
                   {result.type === "target" && result.medianWithoutElixir && (
                     <p className="text-[10px] text-yellow-500/80 font-black mb-4 uppercase tracking-[0.15em] flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20">
                       <span className="animate-pulse">✨</span> 
-                      {result.medianWithoutElixir - result.median} DAYS SAVED BY ELIXIR
+                      {(result.medianWithoutElixir - result.median).toFixed(0)} DAYS SAVED BY ELIXIR
                     </p>
                   )}
 
@@ -1014,7 +1014,7 @@ export default function Home() {
                               {result.medianWithoutElixir && (
                                 <div className="absolute top-0 right-0 bg-yellow-500/10 border-l border-b border-yellow-500/20 px-4 py-1.5 rounded-bl-3xl">
                                   <p className="text-[9px] text-yellow-500 font-black uppercase tracking-[0.2em]">
-                                    ✨ ELIXIR: -{result.medianWithoutElixir - result.median} DAYS
+                                    ✨ ELIXIR: -{(result.medianWithoutElixir - result.median).toFixed(0)} DAYS
                                   </p>
                                 </div>
                               )}
