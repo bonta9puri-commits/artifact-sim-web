@@ -8,7 +8,7 @@ export const GENSHIN_CHARACTERS: CharacterData[] = [
     defaults: {
       weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.ATK_PER]: 1.0 },
       mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.PYRO_DMG, "理の冠": STAT_IDS.CRIT_RATE },
-      targetSets: ["旧貴族のしつけ", "千岩牢固"],
+      targetSets: ["天からの贈り物", "旧貴族のしつけ"],
       baseStats: { rate: 5, dmg: 50, atk: 311, hp: 0, def: 0, er: 120, em: 0, scalingMode: "atk" }
     }
   },

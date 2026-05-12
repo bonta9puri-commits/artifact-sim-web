@@ -148,7 +148,7 @@ export default function NicoleSpecialPage() {
       guide: "View Nicole Build Guide",
       backHome: "Back to Home",
       specialPage: "Nicole Special",
-      title: "NICOLE REIYAN",
+      title: "NICOLE REEYN",
       subtitle: "Artifact Analysis System",
       upgradeProb: "Upgrade Probability",
       upgradeOverall: "Overall Upgrade Probability",
@@ -179,7 +179,12 @@ export default function NicoleSpecialPage() {
       "時の砂": "Sands",
       "空の杯": "Goblet",
       "理の冠": "Circlet",
-      "祝聖のエリクシル": "Sanctifying Elixir"
+      "祝聖のエリクシル": "Sanctifying Elixir",
+      "天からの贈り物": "Celestial Gift",
+      "影に沈む幻": "Disenchantment in Deep Shadow",
+      "旧貴族のしつけ": "Noblesse Oblige",
+      "千岩牢固": "Tenacity of the Millelith",
+      "ニコ・リヤン": "Nicole Reeyn"
     }
   };
 
