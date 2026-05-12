@@ -9,7 +9,7 @@ import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, MA
 import { toPng } from 'html-to-image';
 import { 
   Sword, Shield, Zap, Target, Share2, Sparkles, 
-  Droplets, Calendar, MessageSquare, ChevronLeft, LayoutGrid, Settings2, ChevronDown, ChevronUp, Waves
+  Droplets, Calendar, MessageSquare, ChevronLeft, LayoutGrid, Settings2, ChevronDown, ChevronUp, Waves, X
 } from 'lucide-react';
 
 export default function TartagliaSpecialPage() {
