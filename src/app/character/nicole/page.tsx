@@ -19,14 +19,14 @@ export default function NicoleSpecialPage() {
   const character = GENSHIN_CHARACTERS.find(c => c.name === "ニコ・リヤン")!;
   
   const [simMode, setSimMode] = useState<"target" | "period" | "rank" | "upgrade">("target");
-  const [targetScore, setTargetScore] = useState(240);
+  const [targetScore, setTargetScore] = useState(160);
   const [days, setDays] = useState(90);
   const [staminaPerDay, setStaminaPerDay] = useState(180);
   
   // Nicole Defaults & State
-  const [scoreWeights, setScoreWeights] = useState(character.defaults?.weights || {});
-  const [mainStats, setMainStats] = useState(character.defaults?.mainStats || {});
-  const [targetSets, setTargetSets] = useState(character.defaults?.targetSets || ["", "", "", ""]);
+  const [scoreWeights, setScoreWeights] = useState(character.defaults?.weights || { "会心率": 2.0, "会心ダメージ": 1.0, "攻撃力%": 1.0 });
+  const [mainStats, setMainStats] = useState(character.defaults?.mainStats || { "時の砂": "攻撃力%", "空の杯": "炎元素ダメージ", "理の冠": "会心率" });
+  const [targetSets, setTargetSets] = useState(character.defaults?.targetSets || ["旧貴族のしつけ", "千岩牢固", "", ""]);
   const [userPartScores, setUserPartScores] = useState<Record<string, number>>({});
   
   const [showAdvanced, setShowAdvanced] = useState(false);
