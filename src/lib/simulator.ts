@@ -250,7 +250,7 @@ export function generateElixirArtifact(config: ElixirConfig, subPool: string[], 
     if (weight > 0) score += v * weight;
   }
 
-  return { part, main, score: score || 0, substats, isTargetSet, setName, isOrnament: false };
+  return { part, main, score: score || 0, substats, isTargetSet, setName, isOrnament: false, isElixir: true };
 }
 
 // 最高スコア(コンボ考慮)を計算

@@ -492,11 +492,16 @@ export default function Home() {
                       .replace("与える治療効果", "治療");
 
                     return (
-                      <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px]">
+                      <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px] relative overflow-hidden group">
+                        {art.isElixir && (
+                          <div className="absolute top-0 right-0 bg-gradient-to-l from-yellow-400 to-yellow-600 text-slate-950 text-[6px] font-black px-2 py-0.5 rounded-bl-lg uppercase tracking-tighter z-10 shadow-sm animate-pulse">
+                            祝聖
+                          </div>
+                        )}
                         <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{slot}</p>
                         <div className="flex flex-col items-center -my-1">
                            <p className="text-[8px] text-slate-500 font-bold mb-0.5">{shortMain}</p>
-                          <p className="text-xl font-black text-white tracking-tighter">{art.score.toFixed(1)}</p>
+                          <p className={`text-xl font-black tracking-tighter ${art.isElixir ? 'text-yellow-400' : 'text-white'}`}>{art.score.toFixed(1)}</p>
                         </div>
                         <div className="w-full text-center">
                           <p className="text-[6px] text-blue-400/50 font-black truncate leading-tight">{art.setName}</p>
