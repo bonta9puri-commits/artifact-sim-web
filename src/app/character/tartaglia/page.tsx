@@ -32,6 +32,8 @@ export default function TartagliaSpecialPage() {
   const [result, setResult] = useState<any>(null);
   const [upgradeResult, setUpgradeResult] = useState<any>(null);
   const [allGodPieces, setAllGodPieces] = useState<any[]>([]);
+  const [sortedResults, setSortedResults] = useState<any[]>([]);
+  const [luckPercentile, setLuckPercentile] = useState(25);
   
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -43,67 +45,24 @@ export default function TartagliaSpecialPage() {
 
   const handleSimulate = () => {
     setIsSimulating(true);
-    setTimeout(() => {
+    setResult(null);
+    setAllGodPieces([]);
+    setSortedResults([]);
+
+    setTimeout(async () => {
       let simResult: any;
       let godPieces: any[] = [];
+      const trials = 500;
+      const subPool = GENSHIN_SUB_STATS.filter(s => s !== "未選択");
 
-      if (simMode === "target") {
-        const trials = 500;
-        const results = [];
-        for (let i = 0; i < trials; i++) {
-          const res = simulateUntilScore(gameId, targetScore, scoreWeights, GENSHIN_SUB_STATS, false, mainStats, targetSets, null);
-          results.push(res);
-          if (res.godPieces && res.godPieces.length > 0) godPieces.push(...res.godPieces);
-        }
-        results.sort((a, b) => a.attempts - b.attempts);
-        const medianRes = results[Math.floor(trials / 2)];
-        const top10Res = results[Math.floor(trials * 0.1)];
-        const bottom10Res = results[Math.floor(trials * 0.9)];
-        
-        simResult = {
-          type: "target",
-          median: Math.ceil((medianRes.attempts * 20) / staminaPerDay),
-          top10: Math.ceil((top10Res.attempts * 20) / staminaPerDay),
-          bottom10: Math.ceil((bottom10Res.attempts * 20) / staminaPerDay),
-          pieces: medianRes.pieces
-        };
-      } else if (simMode === "period") {
-        const totalAttempts = Math.floor(days * (staminaPerDay / 20));
-        const trials = 1000;
-        const results = [];
-        for (let i = 0; i < trials; i++) {
-          const r = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, GENSHIN_SUB_STATS, false, mainStats, targetSets, null);
-          results.push(r);
-        }
-        results.sort((a, b) => a.score - b.score);
-        simResult = {
-          type: "period",
-          median: results[Math.floor(trials * 0.5)].score,
-          top10: results[Math.floor(trials * 0.9)].score,
-          bottom10: results[Math.floor(trials * 0.1)].score,
-          pieces: results[Math.floor(trials * 0.5)].pieces,
-          allResults: results
-        };
-        godPieces = results[Math.floor(trials * 0.5)].godPieces;
-      } else if (simMode === "rank") {
-        const totalAttempts = Math.floor(days * (staminaPerDay / 20));
-        const userTotal = Object.values(userPartScores).reduce((a, b) => a + b, 0);
-        const trials = 1000;
-        let winCount = 0;
-        for (let i = 0; i < trials; i++) {
-          const r = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, GENSHIN_SUB_STATS, false, mainStats, targetSets, null);
-          if (r.score > userTotal) winCount++;
-        }
-        simResult = { type: "rank", winRate: (winCount / trials) * 100, userTotal };
-      } else if (simMode === "upgrade") {
-        const totalAttempts = Math.floor(days * (staminaPerDay / 20));
-        const trials = 500;
+      if (simMode === "upgrade") {
+        const attempts = Math.floor(days * (staminaPerDay / 20));
         let overallUpgrades = 0;
         const partUpgrades: any = {};
         config.slots.forEach(s => { if(s !== "未選択") partUpgrades[s] = 0; });
 
         for (let i = 0; i < trials; i++) {
-          const r = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, GENSHIN_SUB_STATS, false, mainStats, targetSets, null);
+          const r = simulateFixedAttempts(gameId, attempts, staminaPerDay, scoreWeights, subPool, false, mainStats, targetSets, null);
           let improved = false;
           Object.entries(r.pieces).forEach(([slot, art]: [string, any]) => {
             if (art && art.score > (userPartScores[slot] || 0)) {
@@ -116,16 +75,78 @@ export default function TartagliaSpecialPage() {
         
         const upgradeData = {
           overallProb: (overallUpgrades / trials) * 100,
-          parts: Object.fromEntries(Object.entries(partUpgrades).map(([s, c]) => [s, (Number(c) / trials) * 100]))
+          slotResults: Object.entries(partUpgrades).map(([slot, count]: [any, any]) => ({
+            slot,
+            prob: (count / trials) * 100
+          })).sort((a, b) => b.prob - a.prob)
         };
         setUpgradeResult(upgradeData);
         simResult = { type: "upgrade" };
+      } else if (simMode === "target") {
+        const results = [];
+        for (let i = 0; i < trials; i++) {
+          const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, false, mainStats, targetSets, null);
+          results.push(res);
+          if (res.godPieces && res.godPieces.length > 0) godPieces.push(...res.godPieces);
+        }
+        results.sort((a, b) => a.attempts - b.attempts);
+        setSortedResults(results);
+        setLuckPercentile(25);
+        
+        const medianRes = results[Math.floor(trials / 2)];
+        const top10Res = results[Math.floor(trials * 0.1)];
+        const bottom10Res = results[Math.floor(trials * 0.9)];
+        
+        simResult = {
+          type: "target",
+          median: Math.ceil((medianRes.attempts * 20) / staminaPerDay),
+          top10: Math.ceil((top10Res.attempts * 20) / staminaPerDay),
+          bottom10: Math.ceil((bottom10Res.attempts * 20) / staminaPerDay),
+          pieces: medianRes.pieces
+        };
+      } else {
+        const totalAttempts = Math.floor(days * (staminaPerDay / 20));
+        const results = [];
+        let winCount = 0;
+        const userTotal = Object.values(userPartScores).reduce((a, b) => a + b, 0);
+
+        for (let i = 0; i < trials; i++) {
+          const r = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, false, mainStats, targetSets, null);
+          results.push(r);
+          if (r.godPieces && r.godPieces.length > 0) godPieces.push(...r.godPieces);
+          if (simMode === "rank" && r.score > userTotal) winCount++;
+        }
+
+        if (simMode === "period") {
+          results.sort((a, b) => b.score - a.score);
+          setSortedResults(results);
+          setLuckPercentile(25);
+          const medianRes = results[Math.floor(trials * 0.5)];
+          simResult = {
+            type: "period",
+            median: medianRes.score,
+            top10: results[Math.floor(trials * 0.1)].score,
+            bottom10: results[Math.floor(trials * 0.9)].score,
+            pieces: medianRes.pieces
+          };
+        } else {
+          results.sort((a, b) => b.score - a.score);
+          setSortedResults(results);
+          setLuckPercentile(50);
+          simResult = {
+            type: "rank",
+            winRate: (winCount / trials) * 100,
+            userScore: userTotal,
+            median: results[Math.floor(trials / 2)].score
+          };
+        }
       }
 
       setResult(simResult);
-      if (godPieces.length > 0) setAllGodPieces(godPieces.slice(0, 5));
+      godPieces.sort((a, b) => b.score - a.score);
+      setAllGodPieces(godPieces.slice(0, 10));
       setIsSimulating(false);
-    }, 800);
+    }, 100);
   };
 
   const downloadImage = async () => {
@@ -297,126 +318,204 @@ export default function TartagliaSpecialPage() {
 
           {/* Results Column */}
           <div className="lg:col-span-8">
-            <div ref={cardRef} className="bg-slate-900/60 border border-sky-500/10 rounded-[40px] p-8 md:p-12 min-h-[600px] flex flex-col items-center relative overflow-hidden backdrop-blur-3xl shadow-inner">
-              {/* Card BG Decorations */}
+            <div ref={cardRef} className="bg-slate-900/60 border border-sky-500/10 rounded-[40px] p-6 md:p-10 min-h-[600px] flex flex-col items-center relative overflow-hidden backdrop-blur-3xl shadow-inner">
               <div className="absolute top-[-10%] right-[-10%] w-80 h-80 bg-sky-600/10 blur-[100px] rounded-full"></div>
               <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-blue-900/10 blur-[80px] rounded-full"></div>
 
-              {!result && !isSimulating && (
-                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-20">
-                  <Waves size={80} className="text-sky-500 mb-6 animate-pulse" />
-                  <p className="text-xs font-black text-sky-300 uppercase tracking-[0.5em]">スタンバイ中 / 命令待機</p>
-                </div>
-              )}
-
-              {isSimulating && (
-                <div className="flex-1 flex flex-col items-center justify-center">
-                  <div className="relative w-32 h-32">
-                    <div className="absolute inset-0 rounded-full border-[8px] border-white/5"></div>
-                    <div className="absolute inset-0 rounded-full border-[8px] border-sky-500 border-t-transparent animate-spin"></div>
-                    <Zap size={40} className="absolute inset-0 m-auto text-sky-500 animate-pulse" />
+              {simMode === "upgrade" && result && result.type === "upgrade" && upgradeResult ? (
+                <div className="w-full space-y-10 animate-in fade-in duration-500">
+                  <div className="text-center space-y-2">
+                    <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">Upgrade Probability</h3>
+                    <p className="text-xs text-sky-500 font-bold uppercase tracking-[0.3em]">{days}日間の厳選による更新期待度</p>
                   </div>
-                  <p className="mt-10 text-xs font-black text-sky-400 uppercase tracking-[0.4em] animate-pulse italic">確率の海を解析中...</p>
+
+                  <div className="bg-sky-600/5 p-10 rounded-[50px] border border-sky-500/10 text-center relative overflow-hidden group">
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-4">全体の更新期待度（ビルド向上確率）</p>
+                    <p className="text-8xl font-black text-white tracking-tighter mb-4">
+                      {upgradeResult.overallProb.toFixed(1)}<span className="text-2xl text-slate-500">%</span>
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {upgradeResult.slotResults.map((res: any) => (
+                      <div key={res.slot} className="bg-slate-900/50 p-6 rounded-[32px] border border-white/5 hover:border-sky-500/30 transition-all group">
+                        <div className="flex justify-between items-start mb-4">
+                          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest truncate">{res.slot}</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${res.prob > 20 ? 'bg-sky-500/10 text-sky-400' : 'bg-slate-800 text-slate-600'}`}>
+                            {res.prob > 20 ? '狙い目' : '難関'}
+                          </span>
+                        </div>
+                        <p className="text-4xl font-black text-white tracking-tighter mb-2">{res.prob.toFixed(1)}%</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
-
-              {result && !isSimulating && (
-                <div className="w-full space-y-12 animate-in fade-in zoom-in-95 duration-700">
-                  {/* Mode Display */}
-                  {result.type === "target" && (
-                    <div className="text-center space-y-8">
-                      <div className="space-y-2">
-                        <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em]">目標スコア達成までの推定期間</p>
-                        <h3 className="text-8xl md:text-[140px] font-black text-white italic tracking-tighter leading-none">
-                          {result.median.toFixed(0)} <span className="text-2xl text-slate-600 uppercase not-italic">日</span>
-                        </h3>
-                      </div>
-                      <div className="flex justify-center gap-16">
-                         <div className="text-center">
-                            <p className="text-[10px] text-slate-500 font-bold mb-2 uppercase tracking-widest">豪運 (上位10%)</p>
-                            <p className="text-4xl font-black text-sky-400 italic tracking-tighter">{result.top10.toFixed(0)}日</p>
-                         </div>
-                         <div className="text-center border-l border-white/10 pl-16">
-                            <p className="text-[10px] text-slate-500 font-bold mb-2 uppercase tracking-widest">悲運 (下位10%)</p>
-                            <p className="text-4xl font-black text-rose-500 italic tracking-tighter">{result.bottom10.toFixed(0)}日</p>
-                         </div>
-                      </div>
+              ) : (
+                <div className="w-full flex flex-col items-center">
+                  {!result && !isSimulating && (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30 py-20">
+                      <Waves size={64} className="text-sky-500 mb-6" />
+                      <p className="text-sm font-black text-slate-500 uppercase tracking-[0.2em]">条件を入力して実行してください</p>
                     </div>
                   )}
 
-                  {result.type === "period" && (
-                    <div className="text-center space-y-8">
-                      <div className="space-y-2">
-                        <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em]">{days}日間の期待されるビルドスコア</p>
-                        <h3 className="text-8xl md:text-[140px] font-black text-white italic tracking-tighter leading-none">
-                          {result.median.toFixed(1)} <span className="text-2xl text-slate-600 uppercase not-italic">pt</span>
-                        </h3>
+                  {isSimulating && (
+                    <div className="flex flex-col items-center gap-6 w-full max-w-md py-10">
+                      <div className="relative w-24 h-24">
+                        <div className="absolute inset-0 rounded-full border-4 border-white/5"></div>
+                        <div className="absolute inset-0 rounded-full border-4 border-sky-500 border-t-transparent animate-spin"></div>
+                        <Zap size={32} className="absolute inset-0 m-auto text-sky-500 animate-pulse" />
                       </div>
-                      <div className="grid grid-cols-2 gap-8 max-w-md mx-auto">
-                         <div className="bg-sky-500/10 p-4 rounded-3xl border border-sky-500/20">
-                            <p className="text-[10px] text-sky-500 font-bold mb-1 uppercase">最高到達スコア</p>
-                            <p className="text-3xl font-black text-white italic">{result.top10.toFixed(1)}pt</p>
-                         </div>
-                         <div className="bg-slate-900/50 p-4 rounded-3xl border border-white/5">
-                            <p className="text-[10px] text-slate-500 font-bold mb-1 uppercase">最低保証スコア</p>
-                            <p className="text-3xl font-black text-slate-400 italic">{result.bottom10.toFixed(1)}pt</p>
-                         </div>
-                      </div>
+                      <p className="mt-8 text-xs font-black text-slate-500 uppercase tracking-[0.3em] animate-pulse italic">可能性を演算中...</p>
                     </div>
                   )}
 
-                  {result.type === "rank" && (
-                    <div className="text-center space-y-10 py-10">
-                       <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em]">現在のビルドの実力診断</p>
-                       <div className="relative inline-block group">
-                          <div className="absolute inset-0 bg-sky-500/20 blur-[60px] group-hover:bg-sky-500/40 transition-all rounded-full"></div>
-                          <svg className="w-64 h-64 -rotate-90 relative">
-                            <circle cx="128" cy="128" r="100" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="20" />
-                            <circle cx="128" cy="128" r="100" fill="none" stroke="currentColor" strokeWidth="20" strokeDasharray={628} strokeDashoffset={628 - (628 * result.winRate / 100)} className="text-sky-500 transition-all duration-1000 ease-out shadow-sky-500 shadow-2xl" />
-                          </svg>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                             <p className="text-[10px] text-sky-300 font-black uppercase tracking-widest mb-1">勝率</p>
-                             <p className="text-6xl font-black text-white tracking-tighter italic">{result.winRate.toFixed(1)}%</p>
-                          </div>
-                       </div>
-                    </div>
-                  )}
-
-                  {result.type === "upgrade" && upgradeResult && (
-                    <div className="space-y-12">
-                       <div className="text-center">
-                          <p className="text-[11px] text-sky-500 font-black uppercase tracking-[0.4em] mb-4">全体の更新期待度（ビルド向上確率）</p>
-                          <div className="text-8xl md:text-[120px] font-black text-white italic tracking-tighter leading-none">{upgradeResult.overallProb.toFixed(1)}%</div>
-                       </div>
-                       <div className="grid grid-cols-5 gap-3">
-                          {Object.entries(upgradeResult.parts).map(([slot, prob]: [string, any]) => (
-                            <div key={slot} className="bg-sky-900/10 p-4 rounded-3xl border border-sky-500/10 text-center">
-                               <p className="text-[8px] text-sky-500/60 font-black mb-2 truncate uppercase">{slot.replace("(固定値)", "")}</p>
-                               <p className="text-xl font-black text-white italic">{prob.toFixed(1)}%</p>
-                            </div>
-                          ))}
-                       </div>
-                    </div>
-                  )}
-
-                  {/* Card Footer */}
-                  <div className="pt-12 border-t border-white/5 w-full flex flex-col items-center gap-6">
-                    <div className="flex items-center gap-3">
-                      <div className="h-px w-8 bg-sky-500/30"></div>
-                      <span className="text-[10px] font-black text-sky-600 uppercase tracking-[0.6em]">ファトゥス：タルタリヤ情報局</span>
-                      <div className="h-px w-8 bg-sky-500/30"></div>
-                    </div>
-                    {allGodPieces.length > 0 && (
-                      <div className="w-full grid grid-cols-5 gap-3">
-                         {allGodPieces.map((p, i) => (
-                           <div key={i} className="bg-sky-500/5 border border-sky-500/10 p-3 rounded-2xl text-center group hover:bg-sky-500/20 transition-all">
-                              <p className="text-[10px] text-sky-400 font-black mb-1 italic">{p.score.toFixed(1)}</p>
-                              <p className="text-[8px] text-slate-500 font-bold truncate uppercase">{p.part}</p>
+                  {result && !isSimulating && (
+                    <div className="w-full space-y-8 animate-in zoom-in-95 duration-500">
+                      <div className="bg-slate-900/40 p-6 rounded-[32px] border border-white/5">
+                        <div className="flex justify-between items-center mb-6">
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-sky-600/10 flex items-center justify-center border border-sky-500/20">
+                                 <Zap size={18} className="text-sky-500" />
+                              </div>
+                              <div>
+                                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Luck Distribution Slider</h3>
+                                 <p className="text-[10px] text-slate-600">スライダーを動かして運勢ごとの結果を確認</p>
+                              </div>
                            </div>
-                         ))}
+                           <div className={`px-4 py-1.5 rounded-full text-xs font-black shadow-lg ${luckPercentile <= 25 ? 'bg-sky-600 text-white shadow-sky-500/20' : luckPercentile <= 50 ? 'bg-white text-slate-950 shadow-white/10' : 'bg-slate-800 text-slate-400'}`}>
+                              上位 {luckPercentile}% の運勢
+                           </div>
+                        </div>
+                        <div className="relative px-2 pt-8 pb-4">
+                           <input 
+                              type="range" min="10" max="90" step="1" 
+                              value={luckPercentile} 
+                              onChange={e => setLuckPercentile(Number(e.target.value))}
+                              className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-sky-500"
+                           />
+                           <div className="absolute top-0 left-0 right-0 h-8 text-[9px] font-bold text-slate-600 flex justify-between">
+                              <span className="flex flex-col items-center">豪運<span>(10%)</span></span>
+                              <span className="flex flex-col items-center text-sky-500">上位25%<span>(目標)</span></span>
+                              <span className="flex flex-col items-center">中央値<span>(50%)</span></span>
+                              <span className="flex flex-col items-center text-rose-500">下位25%<span>(75%)</span></span>
+                              <span className="flex flex-col items-center">悲運<span>(90%)</span></span>
+                           </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
+
+                      {result.type === "target" && (
+                        <div className="space-y-8 text-center">
+                          <h3 className="text-xl font-black text-white italic tracking-tight flex items-center justify-center gap-3">
+                            目標スコア <span className="px-4 py-1 rounded-full bg-sky-600/20 border border-sky-500/30 text-sky-400">{targetScore}</span> 到達までの日数
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-slate-900/50 border border-white/5 p-8 rounded-[40px] text-center group">
+                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Standard Expectation</p>
+                              <p className="text-6xl font-black text-white tracking-tighter italic">{result.median} <span className="text-xl font-bold text-slate-600 uppercase not-italic">日</span></p>
+                              <p className="text-xs text-slate-500 mt-3 italic">平均的な運勢（中央値）</p>
+                            </div>
+                            {(() => {
+                              const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+                              const currentDays = Math.ceil((currentLuckRes?.attempts * 20) / staminaPerDay);
+                              const isProfit = currentDays < result.median;
+                              return (
+                                <div className={`p-8 rounded-[40px] border-2 transition-all duration-500 text-center relative overflow-hidden ${
+                                  luckPercentile <= 25 ? "bg-sky-500/5 border-sky-500/30" : luckPercentile <= 50 ? "bg-white/5 border-white/20" : "bg-rose-500/5 border-rose-500/30"
+                                }`}>
+                                  <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">Result Outcome</p>
+                                  <p className="text-6xl font-black text-white tracking-tighter italic">{currentDays} <span className="text-xl font-bold text-slate-600 uppercase not-italic">日</span></p>
+                                  <div className={`mt-4 inline-flex items-center gap-2 px-4 py-1 rounded-full text-[10px] font-black ${isProfit ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
+                                    {isProfit ? "✨ 運勢が良い！" : "🚨 運勢が悪い..."}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      )}
+
+                      {result.type === "period" && (
+                        <div className="space-y-8">
+                          <div className="text-center">
+                            <h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-6 italic">{days}日間の厳選期待値</h3>
+                            {(() => {
+                              const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+                              const currentScore = currentLuckRes?.score || 0;
+                              return (
+                                <div className="space-y-10">
+                                  <div className="bg-sky-600/10 p-10 rounded-[50px] border border-sky-500/20 shadow-2xl max-w-2xl mx-auto relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-sky-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-sky-500 mb-2 relative z-10">Estimated Build Score</p>
+                                    <p className="text-8xl font-black text-white tracking-tighter relative z-10 italic">
+                                      {currentScore.toFixed(1)} <span className="text-2xl text-slate-600 uppercase not-italic">pt</span>
+                                    </p>
+                                  </div>
+                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                    {Object.entries(currentLuckRes?.pieces || {}).map(([slot, art]: [string, any]) => (
+                                      <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl group hover:border-sky-500/30 transition-all">
+                                        <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{slot}</p>
+                                        {art ? (
+                                          <div className="space-y-1">
+                                            <p className="text-sm font-black text-white italic">{(art.score || 0).toFixed(1)} <span className="text-[10px] text-slate-600 not-italic">pt</span></p>
+                                            <p className="text-[9px] text-sky-400 font-bold truncate">{art.setName}</p>
+                                            <p className="text-[8px] text-slate-600 truncate">{art.main}</p>
+                                          </div>
+                                        ) : <p className="text-[10px] text-slate-800 font-black">MISS</p>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      )}
+
+                      {result.type === "rank" && (
+                        <div className="space-y-8 py-10">
+                           <div className="text-center">
+                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.4em] mb-4 italic">BUILD SUPERIORITY</p>
+                              <p className="text-8xl font-black text-white italic tracking-tighter leading-none">{result.winRate.toFixed(1)}%</p>
+                              <p className="text-xs text-slate-500 mt-4 italic">あなたのスコアが上位 {(100 - result.winRate).toFixed(1)}% に位置しています</p>
+                           </div>
+                           <div className="bg-slate-900/50 p-6 rounded-[32px] border border-white/5 flex justify-around text-center">
+                              <div>
+                                 <p className="text-[9px] text-slate-500 uppercase font-black mb-1">Your Score</p>
+                                 <p className="text-3xl font-black text-sky-500 italic">{result.userScore.toFixed(1)}</p>
+                              </div>
+                              <div className="w-px bg-white/5"></div>
+                              <div>
+                                 <p className="text-[9px] text-slate-500 uppercase font-black mb-1">Avg for {days}d</p>
+                                 <p className="text-3xl font-black text-white italic">{result.median.toFixed(1)}</p>
+                              </div>
+                           </div>
+                        </div>
+                      )}
+
+                      {/* God Pieces Section */}
+                      {allGodPieces.length > 0 && (
+                        <div className="mt-12 w-full pt-10 border-t border-white/5">
+                           <h4 className="text-[10px] font-black text-sky-500 uppercase tracking-[0.4em] flex items-center gap-3 mb-6">
+                              <Sparkles size={14} className="animate-pulse" /> 神聖遺物ドロップリスト (平行世界での発見)
+                           </h4>
+                           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                              {allGodPieces.map((p, i) => (
+                                <div key={i} className="bg-slate-900/80 border border-sky-500/10 p-3 rounded-2xl group hover:border-sky-500/40 transition-all relative overflow-hidden">
+                                   <div className="absolute top-0 right-0 w-8 h-8 bg-sky-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                   <p className={`text-lg font-black italic mb-1 ${p.score >= 58 ? 'text-sky-400' : 'text-white'}`}>{p.score.toFixed(1)}pt</p>
+                                   <p className="text-[9px] text-slate-500 font-bold truncate">{p.setName}</p>
+                                   <p className="text-[8px] text-slate-600 uppercase tracking-tighter">{p.part} / {p.main}</p>
+                                   {p.score >= 58 && (
+                                     <div className="mt-2 text-[7px] font-black text-sky-500 bg-sky-500/10 px-1.5 py-0.5 rounded-full inline-block">GOD PIECE</div>
+                                   )}
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
