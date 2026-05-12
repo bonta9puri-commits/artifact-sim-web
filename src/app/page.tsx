@@ -270,6 +270,10 @@ export default function Home() {
       }
       results.sort((a, b) => a.attempts - b.attempts);
       baselineResults.sort((a, b) => a.attempts - b.attempts);
+      setSortedResults(results);
+      setLuckPercentile(50);
+      collectedGods.sort((a, b) => b.score - a.score);
+      setAllGodPieces(collectedGods.slice(0, 10));
       
       const medianRes = results[Math.floor(trials / 2)];
       const top10Res = results[Math.floor(trials * 0.1)];
