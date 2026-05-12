@@ -37,6 +37,7 @@ export default function NicoleSpecialPage() {
   const [allGodPieces, setAllGodPieces] = useState<any[]>([]);
   const [sortedResults, setSortedResults] = useState<any[]>([]);
   const [luckPercentile, setLuckPercentile] = useState(25);
+  const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
 
   const [lang, setLang] = useState<"ja" | "en">("ja");
 
@@ -364,7 +365,13 @@ export default function NicoleSpecialPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Settings Column */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className={`lg:col-span-4 space-y-6 ${isMobileSettingsOpen ? 'fixed inset-0 z-50 p-6 bg-[#050505] overflow-y-auto' : 'hidden lg:block'}`}>
+            {isMobileSettingsOpen && (
+              <div className="flex justify-between items-center mb-6 lg:hidden">
+                <h2 className="text-xl font-black italic">SETTINGS</h2>
+                <button onClick={() => setIsMobileSettingsOpen(false)} className="p-2 text-slate-500 hover:text-white"><X size={24} /></button>
+              </div>
+            )}
             <div className="bg-slate-900/60 border border-white/5 rounded-[32px] p-8 backdrop-blur-xl shadow-2xl">
               <h2 className="text-lg font-black text-white mb-6 flex items-center gap-2 italic">
                 <LayoutGrid size={20} className="text-orange-500" /> {t('advanced')}
@@ -730,6 +737,23 @@ export default function NicoleSpecialPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* MOBILE FLOATING BAR */}
+      <div className="lg:hidden fixed bottom-6 left-4 right-4 z-40 flex gap-3">
+        <button 
+          onClick={() => setIsMobileSettingsOpen(true)}
+          className="flex-1 bg-slate-900/90 border border-white/10 backdrop-blur-xl text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-2xl flex items-center justify-center gap-2"
+        >
+          <Settings2 size={14} /> {t('settings')}
+        </button>
+        <button 
+          onClick={() => handleSimulate()}
+          disabled={isSimulating}
+          className={`flex-[2] bg-gradient-to-r from-orange-600 to-rose-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-2xl flex items-center justify-center gap-2 disabled:opacity-50`}
+        >
+          <Zap size={14} /> {isSimulating ? t('simulating') : t('run')}
+        </button>
       </div>
     </main>
   );

@@ -1113,6 +1113,23 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* MOBILE FLOATING BAR */}
+      <div className="lg:hidden fixed bottom-6 left-4 right-4 z-40 flex gap-3">
+        <button 
+          onClick={() => setIsMobileSettingsOpen(true)}
+          className="flex-1 bg-slate-900/90 border border-white/10 backdrop-blur-xl text-white py-4 rounded-2xl font-black text-xs shadow-2xl flex items-center justify-center gap-2"
+        >
+          <Settings2 size={16} /> {t('settings').toUpperCase()}
+        </button>
+        <button 
+          onClick={() => handleSimulate()}
+          disabled={isSimulating}
+          className={`flex-[2] bg-gradient-to-r ${config.gradient} text-white py-4 rounded-2xl font-black text-xs shadow-2xl flex items-center justify-center gap-2 disabled:opacity-50`}
+        >
+          <Zap size={16} /> {isSimulating ? t('simulating').toUpperCase() : t('run').toUpperCase()}
+        </button>
+      </div>
     </main>
   );
 }
