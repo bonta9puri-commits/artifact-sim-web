@@ -413,7 +413,7 @@ export default function Home() {
                   
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-8xl font-black text-white tracking-tighter drop-shadow-2xl">
-                      {result.type === "rank" ? result.percentile.toFixed(1) : result.type === "upgrade" ? upgradeResult?.overallProb.toFixed(1) : result.median}
+                      {result.type === "rank" ? result.percentile.toFixed(1) : result.type === "upgrade" ? upgradeResult?.overallProb.toFixed(1) : result.median.toFixed(2)}
                     </span>
                     <span className="text-2xl font-black text-slate-500 uppercase tracking-widest">
                       {result.type === "rank" || result.type === "upgrade" ? "%" : result.type === "target" ? "Days" : "Score"}
@@ -523,7 +523,7 @@ export default function Home() {
                         <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{slot}</p>
                         <div className="flex flex-col items-center -my-1">
                            <p className="text-[8px] text-slate-500 font-bold mb-0.5">{shortMain}</p>
-                          <p className={`text-xl font-black tracking-tighter ${art.isElixir ? 'text-yellow-400' : 'text-white'}`}>{art.score.toFixed(1)}</p>
+                          <p className={`text-xl font-black tracking-tighter ${art.isElixir ? 'text-yellow-400' : 'text-white'}`}>{art.score.toFixed(2)}</p>
                         </div>
                         <div className="w-full text-center">
                           <p className="text-[6px] text-blue-400/50 font-black truncate leading-tight">{art.setName}</p>
@@ -1067,7 +1067,7 @@ export default function Home() {
                                     {result.elixirBonus > 0 && (
                                       <div className="absolute top-0 right-0 bg-yellow-500/10 border-l border-b border-yellow-500/20 px-4 py-2 rounded-bl-3xl">
                                         <p className="text-[10px] text-yellow-500 font-black uppercase tracking-widest leading-none">
-                                          ✨ ELIXIR BONUS: +{result.elixirBonus.toFixed(1)}pt
+                                          ✨ ELIXIR BONUS: +{result.elixirBonus.toFixed(2)}pt
                                         </p>
                                       </div>
                                     )}
@@ -1075,7 +1075,7 @@ export default function Home() {
                                       {luckPercentile}% Luck Result
                                     </p>
                                     <p className="text-7xl font-black text-white tracking-tighter mb-4">
-                                      {currentScore.toFixed(1)} <span className="text-xl font-bold text-slate-600 uppercase">Score</span>
+                                      {currentScore.toFixed(2)} <span className="text-xl font-bold text-slate-600 uppercase">Score</span>
                                     </p>
                                     <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-full text-sm font-black ${isHigher ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
                                       {isHigher ? <Zap size={16} fill="currentColor" /> : <Shield size={16} fill="currentColor" />}
@@ -1092,7 +1092,7 @@ export default function Home() {
                                         <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{slot}</p>
                                         {art ? (
                                           <div className="space-y-1">
-                                            <p className="text-sm font-black text-white">{(art.score || 0).toFixed(1)} <span className="text-[10px] text-slate-500">pt</span></p>
+                                            <p className="text-sm font-black text-white">{(art.score || 0).toFixed(2)} <span className="text-[10px] text-slate-500">pt</span></p>
                                             <p className="text-[9px] text-blue-400 font-bold truncate">{art.setName}</p>
                                             <p className="text-[8px] text-slate-600 truncate">{art.main}</p>
                                           </div>
@@ -1131,7 +1131,7 @@ export default function Home() {
                             </div>
                             <div className="bg-slate-800/30 p-6 rounded-[32px] border border-white/5">
                               <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 text-center">Average for {days} Days</p>
-                              <p className="text-5xl font-black text-white text-center tracking-tighter">{result.median.toFixed(1)} <span className="text-sm text-slate-600 uppercase">Score</span></p>
+                              <p className="text-5xl font-black text-white text-center tracking-tighter">{result.median.toFixed(2)} <span className="text-sm text-slate-600 uppercase">Score</span></p>
                             </div>
                           </div>
                         </div>
@@ -1153,7 +1153,7 @@ export default function Home() {
                               <div key={idx} className="bg-slate-900/80 border border-yellow-500/30 p-3 rounded-2xl relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <p className="text-[10px] text-yellow-500 font-bold mb-1 truncate">{art.setName}</p>
-                                <p className="text-xl font-black text-white">{art.score.toFixed(1)} <span className="text-[9px] text-slate-500">pt</span></p>
+                                <p className="text-xl font-black text-white">{art.score.toFixed(2)} <span className="text-[9px] text-slate-500">pt</span></p>
                                 <p className="text-[9px] text-slate-400 mt-1">{art.part}</p>
                                 <p className="text-[9px] text-slate-400 truncate">{art.main}</p>
                               </div>
