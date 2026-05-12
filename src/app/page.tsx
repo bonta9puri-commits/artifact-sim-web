@@ -882,7 +882,7 @@ export default function Home() {
 
           {/* Results Panel */}
           <div className="lg:col-span-8">
-            <div ref={cardRef} className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 min-h-[600px] flex flex-col items-center justify-center relative overflow-hidden">
+            <div ref={cardRef} className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex flex-col items-center relative overflow-hidden">
               {simMode === "upgrade" && result && result.type === "upgrade" && upgradeResult ? (
                 <div className="w-full space-y-12 animate-in fade-in duration-500">
                   <div className="text-center space-y-2">
@@ -968,8 +968,8 @@ export default function Home() {
                   )}
 
                   {result && !isSimulating && (
-                    <div className="w-full space-y-8 animate-in zoom-in-95 duration-300">
-                      <div className="bg-slate-900/30 p-6 rounded-[32px] border border-slate-800 mb-8">
+                    <div className="w-full space-y-4 animate-in zoom-in-95 duration-300">
+                      <div className="bg-slate-900/30 p-5 rounded-[24px] border border-slate-800 mb-4">
                         <div className="flex justify-between items-center mb-6">
                           <div>
                             <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -1142,16 +1142,14 @@ export default function Home() {
 
                 {/* --- Common Results (Part of the capture area) --- */}
                 {allGodPieces.length > 0 && (
-                  <div className="w-full max-w-4xl mx-auto mt-12 bg-yellow-500/5 border border-yellow-500/20 rounded-3xl p-6 shadow-[0_0_50px_rgba(234,179,8,0.05)]">
-                    <h4 className="text-sm font-bold text-yellow-500 flex items-center gap-2 mb-4">✨ 🏆 並行世界でドロップした奇跡の神聖遺物 (スコア58以上)</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                  <div className="w-full max-w-4xl mx-auto mt-6 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4 shadow-xl">
+                    <h4 className="text-[10px] font-black text-yellow-500 uppercase tracking-widest flex items-center gap-2 mb-3">✨ God Pieces Found in Parallel Worlds</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                       {allGodPieces.map((art, idx) => (
-                        <div key={idx} className="bg-slate-900/80 border border-yellow-500/30 p-3 rounded-2xl relative overflow-hidden group">
-                          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                          <p className="text-[10px] text-yellow-500 font-bold mb-1 truncate">{art.setName}</p>
-                          <p className="text-xl font-black text-white">{art.score.toFixed(2)} <span className="text-[9px] text-slate-500">pt</span></p>
-                          <p className="text-[9px] text-slate-400 mt-1">{art.part}</p>
-                          <p className="text-[9px] text-slate-400 truncate">{art.main}</p>
+                        <div key={idx} className="bg-slate-900/80 border border-yellow-500/20 p-2 rounded-xl relative overflow-hidden group">
+                          <p className="text-[8px] text-yellow-500/80 font-bold mb-0.5 truncate">{art.setName}</p>
+                          <p className="text-sm font-black text-white">{art.score.toFixed(1)} <span className="text-[8px] text-slate-500">pt</span></p>
+                          <p className="text-[8px] text-slate-400 truncate">{art.part} / {art.main}</p>
                         </div>
                       ))}
                     </div>
