@@ -52,9 +52,25 @@ export default function NicoleSpecialPage() {
       let godPieces: any[] = [];
 
       if (simMode === "target") {
-        const fullSim = simulateUntilScore(gameId, targetScore, scoreWeights, GENSHIN_SUB_STATS, false, mainStats, targetSets, null);
-        simResult = { ...fullSim, type: "target" };
-        godPieces = fullSim.godPieces;
+        const trials = 500;
+        const results = [];
+        for (let i = 0; i < trials; i++) {
+          const res = simulateUntilScore(gameId, targetScore, scoreWeights, GENSHIN_SUB_STATS, false, mainStats, targetSets, null);
+          results.push(res);
+          if (res.godPieces && res.godPieces.length > 0) godPieces.push(...res.godPieces);
+        }
+        results.sort((a, b) => a.attempts - b.attempts);
+        const medianRes = results[Math.floor(trials / 2)];
+        const top10Res = results[Math.floor(trials * 0.1)];
+        const bottom10Res = results[Math.floor(trials * 0.9)];
+        
+        simResult = {
+          type: "target",
+          median: Math.ceil((medianRes.attempts * 20) / staminaPerDay),
+          top10: Math.ceil((top10Res.attempts * 20) / staminaPerDay),
+          bottom10: Math.ceil((bottom10Res.attempts * 20) / staminaPerDay),
+          pieces: medianRes.pieces
+        };
       } else if (simMode === "period") {
         const totalAttempts = Math.floor(days * (staminaPerDay / 20));
         const trials = 1000;
