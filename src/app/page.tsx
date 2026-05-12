@@ -992,7 +992,7 @@ export default function Home() {
                           />
                           <div className="absolute top-0 left-0 right-0 h-8 text-[9px] font-bold text-slate-600">
                             <span className="absolute left-0 -translate-x-1/2 flex flex-col items-center">豪運<span>(10%)</span></span>
-                            <span className="absolute left-[18.75%] -translate-x-1/2 flex flex-col items-center text-emerald-500">現実的目標<span>(25%)</span></span>
+                            <span className="absolute left-[18.75%] -translate-x-1/2 flex flex-col items-center text-emerald-500">上位25%<span>(目標)</span></span>
                             <span className="absolute left-[50%] -translate-x-1/2 flex flex-col items-center">中央値<span>(50%)</span></span>
                             <span className="absolute left-[81.25%] -translate-x-1/2 flex flex-col items-center text-rose-400">下位25%<span>(75%)</span></span>
                             <span className="absolute left-[100%] -translate-x-1/2 flex flex-col items-center">悲運<span>(90%)</span></span>
