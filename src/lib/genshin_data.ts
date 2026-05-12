@@ -61,6 +61,16 @@ export const GENSHIN_CHARACTERS: CharacterData[] = [
   { name: "放浪者", element: "風" },
   { name: "ムアラニ", element: "水" },
   { name: "キィニチ", element: "草" },
+  { 
+    name: "タルタリヤ", 
+    element: "水", 
+    defaults: {
+      weights: { "会心率": 2.0, "会心ダメージ": 1.0, "攻撃力%": 1.0, "元素熟知": 0.5 },
+      mainStats: { "時の砂": "攻撃力%", "空の杯": "水元素ダメージ", "理の冠": "会心率" },
+      targetSets: ["水仙の夢", "沈淪の心"],
+      baseStats: { rate: 5, dmg: 50, atk: 311, hp: 0, def: 0, er: 120, em: 0, scalingMode: "atk" }
+    }
+  },
   { name: "その他", element: "無" }
 ];
 
