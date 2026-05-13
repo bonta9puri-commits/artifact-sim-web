@@ -76,7 +76,7 @@ export default function NicoleSpecialPage() {
       avgScore: (d: number) => `${d}日間の平均`,
       godPieceList: "神聖遺物ドロップリスト (平行世界)",
       share: "結果をシェア",
-      guide: "ニコ・リヤンの最適装備を見る",
+      guide: "使い方ガイド・記事一覧",
       backHome: "ホームへ戻る",
       specialPage: "ニコ・リヤン専用",
       title: "NICOLE REEYN",
@@ -111,7 +111,8 @@ export default function NicoleSpecialPage() {
       "時の砂": "時の砂",
       "空の杯": "空の杯",
       "理の冠": "理の冠",
-      "祝聖のエリクシル": "祝聖のエリクシル"
+      "祝聖のエリクシル": "祝聖のエリクシル",
+      disclaimer: "当ツールはファンによる非公式プロジェクトであり、HoYoverseとは一切関係ありません。"
     },
     en: {
       target: "Target Score",
@@ -147,7 +148,7 @@ export default function NicoleSpecialPage() {
       avgScore: (d: number) => `${d}d Average`,
       godPieceList: "God Pieces (Parallel Worlds)",
       share: "Share Results",
-      guide: "View Nicole Build Guide",
+      guide: "Guides & Articles",
       backHome: "Back to Home",
       specialPage: "Nicole Special",
       title: "NICOLE REEYN",
@@ -187,7 +188,8 @@ export default function NicoleSpecialPage() {
       "影に沈む幻": "Disenchantment in Deep Shadow",
       "旧貴族のしつけ": "Noblesse Oblige",
       "千岩牢固": "Tenacity of the Millelith",
-      "ニコ・リヤン": "Nicole Reeyn"
+      "ニコ・リヤン": "Nicole Reeyn",
+      disclaimer: "This tool is a fan-made project and is not affiliated with or endorsed by HoYoverse."
     }
   };
 
@@ -729,14 +731,28 @@ export default function NicoleSpecialPage() {
                 >
                   <Share2 size={18} /> {t('share')}
                 </button>
-                <button className="px-10 py-4 rounded-full bg-slate-900 border border-white/10 text-white font-black text-sm hover:bg-slate-800 transition-all">
+                <Link 
+                  href="/blog"
+                  className="px-10 py-4 rounded-full bg-slate-900 border border-white/10 text-white font-black text-sm hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                >
+                  <BookOpen size={18} />
                   {t('guide')}
-                </button>
+                </Link>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* MOBILE FLOATING BAR */}
+      </div>
+
+      <footer className="mt-20 pb-12 border-t border-white/5 pt-12 text-center relative z-10">
+        <div className="max-w-2xl mx-auto px-4">
+          <p className="text-[9px] text-slate-500 leading-relaxed mb-4">{t('disclaimer')}</p>
+          <p className="text-[9px] text-slate-600 font-medium tracking-widest uppercase">© 2026 ARTIFACT-SIM.COM. ALL RIGHTS RESERVED.</p>
+        </div>
+      </footer>
 
       {/* MOBILE FLOATING BAR */}
       <div className="lg:hidden fixed bottom-6 left-4 right-4 z-40 flex gap-3">

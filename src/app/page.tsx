@@ -51,6 +51,8 @@ export default function Home() {
       godPieceList: "神聖遺物ドロップリスト",
       days_unit: "日",
       score_unit: "pt",
+      guide: "ガイド",
+      disclaimer: "当ツールはファンによる非公式プロジェクトであり、HoYoverseとは一切関係ありません。",
       [STAT_IDS.CRIT_RATE]: "会心率",
       [STAT_IDS.CRIT_DMG]: "会心ダメージ",
       [STAT_IDS.ATK_PER]: "攻撃力%",
@@ -164,6 +166,8 @@ export default function Home() {
       godPieceList: "God Piece Drop List",
       days_unit: "days",
       score_unit: "pt",
+      guide: "Guide",
+      disclaimer: "This tool is a fan-made project and is not affiliated with or endorsed by HoYoverse.",
       [STAT_IDS.CRIT_RATE]: "CRIT Rate",
       [STAT_IDS.CRIT_DMG]: "CRIT DMG",
       [STAT_IDS.ATK_PER]: "ATK%",
@@ -725,19 +729,28 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="flex bg-slate-900/80 rounded-full p-1 border border-white/5">
-            <button 
-              onClick={() => setLang('ja')}
-              className={`px-4 py-1.5 rounded-full text-xs font-black transition-all ${lang === 'ja' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+          <div className="flex items-center gap-3">
+            <Link 
+              href="/blog"
+              className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 rounded-full border border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-emerald-400 transition-colors"
             >
-              JP
-            </button>
-            <button 
-              onClick={() => setLang('en')}
-              className={`px-4 py-1.5 rounded-full text-xs font-black transition-all ${lang === 'en' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              EN
-            </button>
+              <BookOpen size={12} />
+              {t('guide')}
+            </Link>
+            <div className="flex bg-slate-900/80 rounded-full p-1 border border-white/5">
+              <button 
+                onClick={() => setLang('ja')}
+                className={`px-4 py-1.5 rounded-full text-xs font-black transition-all ${lang === 'ja' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                JP
+              </button>
+              <button 
+                onClick={() => setLang('en')}
+                className={`px-4 py-1.5 rounded-full text-xs font-black transition-all ${lang === 'en' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                EN
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1111,8 +1124,9 @@ export default function Home() {
              <Link href="/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link>
              <a href="https://github.com/bonta9puri-commits/artifact-sim-web/" target="_blank" rel="noopener" className="hover:text-white transition-colors">GitHub</a>
           </div>
-          <div className="space-y-2">
-            <p className="text-[9px] text-slate-600 font-medium">© 2026 artifact-sim.com. All Rights Reserved.</p>
+          <div className="space-y-2 max-w-2xl mx-auto">
+            <p className="text-[9px] text-slate-500 leading-relaxed mb-4">{t('disclaimer')}</p>
+            <p className="text-[9px] text-slate-600 font-medium tracking-widest">© 2026 ARTIFACT-SIM.COM. ALL RIGHTS RESERVED.</p>
           </div>
         </footer>
       </div>

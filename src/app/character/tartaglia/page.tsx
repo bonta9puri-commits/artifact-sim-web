@@ -74,7 +74,7 @@ export default function TartagliaSpecialPage() {
       avgScore: (d: number) => `${d}日間の平均`,
       godPieceList: "神聖遺物ドロップリスト (平行世界)",
       share: "結果をシェア",
-      guide: "タルタリヤの最適装備を見る",
+      guide: "使い方ガイド・記事一覧",
       backHome: "ホームへ戻る",
       specialPage: "タルタリヤ専用",
       title: "TARTAGLIA",
@@ -108,7 +108,8 @@ export default function TartagliaSpecialPage() {
       "時の砂": "時の砂",
       "空の杯": "空の杯",
       "理の冠": "理の冠",
-      "祝聖のエリクシル": "祝聖のエリクシル"
+      "祝聖のエリクシル": "祝聖のエリクシル",
+      disclaimer: "当ツールはファンによる非公式プロジェクトであり、HoYoverseとは一切関係ありません。"
     },
     en: {
       target: "Target Score",
@@ -144,7 +145,7 @@ export default function TartagliaSpecialPage() {
       avgScore: (d: number) => `${d}d Average`,
       godPieceList: "God Pieces (Parallel Worlds)",
       share: "Share Results",
-      guide: "View Tartaglia Build Guide",
+      guide: "Guides & Articles",
       backHome: "Back to Home",
       specialPage: "Tartaglia Special",
       title: "TARTAGLIA",
@@ -183,7 +184,8 @@ export default function TartagliaSpecialPage() {
       "影に沈む幻": "Disenchantment in Deep Shadow",
       "旧貴族のしつけ": "Noblesse Oblige",
       "千岩牢固": "Tenacity of the Millelith",
-      "ニコ・リヤン": "Nicole Reeyn"
+      "ニコ・リヤン": "Nicole Reeyn",
+      disclaimer: "This tool is a fan-made project and is not affiliated with or endorsed by HoYoverse."
     }
   };
 
@@ -707,15 +709,25 @@ export default function TartagliaSpecialPage() {
                   <Share2 size={24} className="text-sky-600" />
                   {t('share')}
                 </button>
-                <button className="px-12 py-5 rounded-full bg-slate-900 border border-sky-500/20 text-sky-400 font-black text-md hover:bg-sky-900/40 hover:border-sky-500/50 transition-all flex items-center gap-2">
-                  <Sword size={20} />
+                <Link 
+                  href="/blog"
+                  className="px-12 py-5 rounded-full bg-slate-900 border border-sky-500/20 text-sky-400 font-black text-md hover:bg-sky-900/40 hover:border-sky-500/50 transition-all flex items-center gap-2"
+                >
+                  <BookOpen size={20} />
                   {t('guide')}
-                </button>
+                </Link>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      <footer className="mt-20 pb-12 border-t border-white/5 pt-12 text-center relative z-10">
+        <div className="max-w-2xl mx-auto px-4">
+          <p className="text-[9px] text-slate-500 leading-relaxed mb-4">{t('disclaimer')}</p>
+          <p className="text-[9px] text-slate-600 font-medium tracking-widest uppercase">© 2026 ARTIFACT-SIM.COM. ALL RIGHTS RESERVED.</p>
+        </div>
+      </footer>
 
       {/* MOBILE FLOATING BAR */}
       <div className="lg:hidden fixed bottom-6 left-4 right-4 z-40 flex gap-3">
