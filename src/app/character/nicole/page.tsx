@@ -10,9 +10,9 @@ import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effe
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { 
-  Sword, Shield, Zap, Target, Share2, Sparkles, 
-  Flame, Calendar, MessageSquare, ChevronLeft, X, LayoutGrid, Settings2, ChevronDown, ChevronUp
+  Sword, Shield, Zap, Target, Share2, Sparkles, Flame, Calendar, MessageSquare, ChevronLeft, X, LayoutGrid, Settings2, ChevronDown, ChevronUp
 } from 'lucide-react';
+
 export default function NicoleSpecialPage() {
   const gameId = "genshin";
   const config = GAME_CONFIGS[gameId];
@@ -79,12 +79,13 @@ export default function NicoleSpecialPage() {
       guide: "ニコ・リヤンの最適装備を見る",
       backHome: "ホームへ戻る",
       specialPage: "ニコ・リヤン専用",
-      title: "NICOLE REIYAN",
+      title: "NICOLE REEYN",
       subtitle: "特選・聖遺物解析システム",
       upgradeProb: "更新期待度",
       upgradeOverall: "全体の更新期待度",
       recommended: "狙い目",
       difficult: "難関",
+      settings: "設定",
       days_unit: "日",
       piece_miss: "取得失敗",
       score_unit: "pt",
@@ -116,8 +117,8 @@ export default function NicoleSpecialPage() {
       target: "Target Score",
       period: "Farming Sim",
       rank: "Build Rank",
-      upgrade: "Upgrade Prob",
-      run: "Execute",
+      upgrade: "Build Upgrade Chance",
+      run: "Run Simulation",
       simulating: "Analyzing...",
       targetScore: "Target Score",
       days: "Farming Days",
@@ -125,21 +126,21 @@ export default function NicoleSpecialPage() {
       advanced: "Strategy (Weights)",
       substats: "Substat Priority",
       targetSets: "Target Sets",
-      luckSlider: "Luck Distribution",
-      luckDesc: "Adjust slider to see outcomes by luck",
+      luckSlider: "Luck Probability",
+      luckDesc: "Adjust slider to see outcomes by probability",
       topLuck: (n: number) => `Top ${n}% Luck`,
       luck10: "Godly",
       luck25: "Great",
       luck50: "Median",
       luck75: "Bad",
       luck90: "Terrible",
-      targetReach: (s: number) => `Days to reach ${s}pt`,
+      targetReach: (s: number) => `Estimated Days to reach ${s}pt`,
       standardExpectation: "Standard Expectation",
       medianLuck: "Median Luck",
       outcome: "Outcome",
       luckGood: "✨ High Luck!",
       luckBad: "🚨 Low Luck...",
-      periodResult: (d: number) => `${d} Days Outcome`,
+      periodResult: (d: number) => `${d} Days Expected Score`,
       buildScore: "Est. Build Score",
       superiority: "Build Superiority",
       yourScore: "Your Score",
@@ -151,10 +152,11 @@ export default function NicoleSpecialPage() {
       specialPage: "Nicole Special",
       title: "NICOLE REEYN",
       subtitle: "Artifact Analysis System",
-      upgradeProb: "Upgrade Probability",
-      upgradeOverall: "Overall Upgrade Probability",
+      upgradeProb: "Build Upgrade Chance",
+      upgradeOverall: "Overall Upgrade Chance",
       recommended: "Hot",
       difficult: "Hard",
+      settings: "Settings",
       days_unit: "days",
       piece_miss: "MISS",
       score_unit: "pt",
@@ -196,7 +198,6 @@ export default function NicoleSpecialPage() {
 
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Initialize for Upgrade Mode
   useEffect(() => {
     const initial: any = {};
     config.slots.forEach(s => { if(s !== "未選択") initial[s] = 35; });
@@ -443,14 +444,14 @@ export default function NicoleSpecialPage() {
                     onClick={() => setShowAdvanced(!showAdvanced)}
                     className="w-full flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-orange-500 transition-colors"
                   >
-                    <span className="flex items-center gap-2"><Settings2 size={12} /> 詳細設定 (ウェイト・セット)</span>
+                    <span className="flex items-center gap-2"><Settings2 size={12} /> {t('advanced')}</span>
                     {showAdvanced ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                   </button>
                   
                   {showAdvanced && (
                     <div className="mt-6 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
                        <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
-                         <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-3">サブステータスの重み</label>
+                         <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-3">{t('substats')}</label>
                          <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                            {GENSHIN_SUB_STATS.map(sub => (
                              <div key={sub} className="space-y-1">
@@ -485,7 +486,7 @@ export default function NicoleSpecialPage() {
                        </div>
 
                        <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
-                          <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-3">狙いのセット</label>
+                          <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-3">{t('targetSets')}</label>
                           <div className="grid grid-cols-2 gap-2">
                              {targetSets.map((s, i) => (
                                <select 
@@ -512,7 +513,7 @@ export default function NicoleSpecialPage() {
                   disabled={isSimulating}
                   className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-400 text-white font-black text-sm shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
-                  {isSimulating ? "解析中..." : "シミュレーション開始"}
+                  {isSimulating ? t('simulating') : t('run')}
                 </button>
               </div>
             </div>
@@ -637,9 +638,8 @@ export default function NicoleSpecialPage() {
                       )}
 
                       {result.type === "period" && (
-                        <div className="space-y-8">
-                          <div className="text-center">
-                            <h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-6 italic">{t('periodResult', days)}</h3>
+                        <div className="space-y-10 animate-in fade-in slide-in-from-top-4 duration-700">
+                          <h3 className="text-center text-xl font-bold italic tracking-tighter uppercase mb-6">{lang === 'ja' ? `${days}日間の厳選期待値` : `${days} Days Expected Score`}</h3>
                             {(() => {
                               const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
                               const currentScore = currentLuckRes?.score || 0;
@@ -669,7 +669,6 @@ export default function NicoleSpecialPage() {
                                 </div>
                               );
                             })()}
-                          </div>
                         </div>
                       )}
 

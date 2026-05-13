@@ -99,7 +99,7 @@ export default function Home() {
       target: "Target Score",
       period: "Farming Sim",
       rank: "Build Rank",
-      upgrade: "Upgrade Prob",
+      upgrade: "Build Upgrade Chance",
       settings: "Settings",
       character: "Character",
       targetSets: "Target Sets (by Domain)",
@@ -115,13 +115,41 @@ export default function Home() {
       "旧貴族のしつけ": "Noblesse Oblige",
       "千岩牢固": "Tenacity of the Millelith",
       "ニコ・リヤン": "Nicole Reeyn",
+      "ヌヴィレット": "Neuvillette",
+      "フリーナ": "Furina",
+      "ナヒーダ": "Nahida",
+      "雷電将軍": "Raiden Shogun",
+      "アルレッキーノ": "Arlecchino",
+      "鍾離": "Zhongli",
+      "甘雨": "Ganyu",
+      "胡桃": "Hu Tao",
+      "神里綾華": "Kamisato Ayaka",
+      "八重神子": "Yae Miko",
+      "夜蘭": "Yelan",
+      "放浪者": "Wanderer",
+      "ムアラニ": "Mualani",
+      "キィニチ": "Kinich",
+      "シロネン": "Xilonen",
+      "タルタリヤ": "Tartaglia",
+      "楓原万葉": "Kaedehara Kazuha",
+      "珊瑚宮心海": "Sangonomiya Kokomi",
+      "ニィロウ": "Nilou",
+      "アルハイゼン": "Alhaitham",
+      "セノ": "Cyno",
+      "エウルア": "Eula",
+      "荒瀧一斗": "Arataki Itto",
+      "申鶴": "Shenhe",
+      "ナヴィア": "Navia",
+      "クロリンデ": "Clorinde",
+      "エミリエ": "Emilie",
+      "その他": "Others",
       strongbox: "Strongbox",
-      run: "Start Simulation",
+      run: "Run Simulation",
       simulating: "Analyzing...",
       outcome: "Outcome",
       share: "Share Results as Image",
       back: "Back",
-      luckSlider: "Luck Distribution",
+      luckSlider: "Luck Probability",
       luckDesc: "Adjust slider to see outcomes by luck",
       topLuck: (n: number) => `Top ${n}% Luck`,
       luck10: "Godly",
@@ -561,7 +589,7 @@ export default function Home() {
               <p className={`text-[10px] font-black tracking-[0.4em] uppercase mb-2 bg-clip-text text-transparent bg-gradient-to-r ${config.gradient}`}>
                 {config.name} Simulator
               </p>
-              <h2 className="text-4xl font-black text-white tracking-tighter italic">{characterName}</h2>
+              <h2 className="text-4xl font-black text-white tracking-tighter italic">{t(characterName)}</h2>
               <div className="h-1.5 w-16 bg-white/20 mx-auto mt-6 rounded-full"></div>
             </div>
             {result && (
@@ -1001,7 +1029,7 @@ export default function Home() {
 
                       {result.type === "target" && (
                         <div className="space-y-6">
-                          <h3 className="text-center text-xl font-bold">{lang === 'ja' ? '目標到達までの日数' : 'Days to Reach Target'}</h3>
+                          <h3 className="text-center text-xl font-bold">{lang === 'ja' ? '目標到達までの日数' : 'Estimated Days to Target'}</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[40px] text-center">
                               <p className="text-[10px] text-slate-500 font-black uppercase mb-1">{t('luck50')}</p>

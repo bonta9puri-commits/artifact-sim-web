@@ -114,8 +114,8 @@ export default function TartagliaSpecialPage() {
       target: "Target Score",
       period: "Farming Sim",
       rank: "Build Rank",
-      upgrade: "Upgrade Prob",
-      run: "Execute",
+      upgrade: "Build Upgrade Chance",
+      run: "Run Simulation",
       simulating: "Analyzing...",
       targetScore: "Target Score",
       days: "Farming Days",
@@ -123,21 +123,21 @@ export default function TartagliaSpecialPage() {
       advanced: "Strategy (Weights)",
       substats: "Substat Priority",
       targetSets: "Target Sets",
-      luckSlider: "Luck Distribution",
-      luckDesc: "Adjust slider to see outcomes by luck",
+      luckSlider: "Luck Probability",
+      luckDesc: "Adjust slider to see outcomes by probability",
       topLuck: (n: number) => `Top ${n}% Luck`,
       luck10: "Godly",
       luck25: "Great",
       luck50: "Median",
       luck75: "Bad",
       luck90: "Terrible",
-      targetReach: (s: number) => `Days to reach ${s}pt`,
+      targetReach: (s: number) => `Estimated Days to reach ${s}pt`,
       standardExpectation: "Standard Expectation",
       medianLuck: "Median Luck",
       outcome: "Outcome",
       luckGood: "✨ High Luck!",
       luckBad: "🚨 Low Luck...",
-      periodResult: (d: number) => `${d} Days Outcome`,
+      periodResult: (d: number) => `${d} Days Expected Score`,
       buildScore: "Est. Build Score",
       superiority: "Build Superiority",
       yourScore: "Your Score",
@@ -148,9 +148,9 @@ export default function TartagliaSpecialPage() {
       backHome: "Back to Home",
       specialPage: "Tartaglia Special",
       title: "TARTAGLIA",
-      subtitle: "Hydro Artifact Analysis System",
-      upgradeProb: "Upgrade Probability",
-      upgradeOverall: "Overall Upgrade Probability",
+      subtitle: "Artifact Analysis System",
+      upgradeProb: "Build Upgrade Chance",
+      upgradeOverall: "Overall Upgrade Chance",
       recommended: "Hot",
       difficult: "Hard",
       days_unit: "days",
@@ -615,9 +615,8 @@ export default function TartagliaSpecialPage() {
                       )}
 
                       {result.type === "period" && (
-                        <div className="space-y-8">
-                          <div className="text-center">
-                            <h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-6 italic">{t('periodResult', days)}</h3>
+                        <div className="space-y-10 animate-in fade-in slide-in-from-top-4 duration-700">
+                          <h3 className="text-center text-xl font-bold italic tracking-tighter uppercase mb-6">{lang === 'ja' ? `${days}日間の厳選期待値` : `${days} Days Expected Score`}</h3>
                             {(() => {
                               const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
                               const currentScore = currentLuckRes?.score || 0;
