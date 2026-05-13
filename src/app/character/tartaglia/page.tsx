@@ -646,7 +646,6 @@ export default function TartagliaSpecialPage() {
                                 </div>
                               );
                             })()}
-                          </div>
                         </div>
                       )}
 
