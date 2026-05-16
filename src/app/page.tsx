@@ -10,7 +10,7 @@ import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effe
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis } from 'recharts';
-import { Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, X, Share2, Settings2 } from 'lucide-react';
+import { Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2 } from 'lucide-react';
 
 export default function Home() {
   const [lang, setLang] = useState<"ja" | "en">("ja");
@@ -1140,6 +1140,22 @@ export default function Home() {
               <button onClick={() => setIsDrawerOpen(false)} className="text-slate-500 hover:text-white">✕</button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+              <div className="mb-6">
+                <Link 
+                  href="/blog" 
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="flex items-center justify-between p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl group hover:bg-emerald-500/20 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <BookOpen size={20} className="text-emerald-500" />
+                    <div>
+                      <p className="text-sm font-black text-white">{t('guide')}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Usage & Knowledge</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-emerald-500 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
               <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2">Sim History</p>
               {history.length === 0 && <p className="text-center text-slate-600 py-10 italic">履歴はありません</p>}
               {[...history].reverse().map((item, i) => (

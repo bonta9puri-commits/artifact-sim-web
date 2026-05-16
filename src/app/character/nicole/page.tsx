@@ -10,7 +10,7 @@ import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effe
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { 
-  Sword, Shield, Zap, Target, Share2, Sparkles, Flame, Calendar, MessageSquare, ChevronLeft, X, LayoutGrid, Settings2, ChevronDown, ChevronUp
+  Sword, Shield, Zap, Target, Share2, Sparkles, Flame, Calendar, MessageSquare, ChevronLeft, X, LayoutGrid, Settings2, ChevronDown, ChevronUp, BookOpen
 } from 'lucide-react';
 
 export default function NicoleSpecialPage() {
@@ -335,9 +335,14 @@ export default function NicoleSpecialPage() {
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-12">
-           <Link href="/" className="flex items-center gap-2 text-slate-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest group">
-             <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> {t('backHome')}
-           </Link>
+           <div className="flex items-center gap-6">
+              <Link href="/blog" className="flex items-center gap-2 text-slate-500 hover:text-emerald-400 transition-all text-xs font-black uppercase tracking-widest group">
+                <BookOpen size={16} className="group-hover:scale-110 transition-transform" /> {t('guide')}
+              </Link>
+              <Link href="/" className="flex items-center gap-2 text-slate-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest group">
+                <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> {t('backHome')}
+              </Link>
+           </div>
            <div className="flex items-center gap-4">
               <div className="flex bg-slate-900/80 rounded-full p-1 border border-white/5">
                 <button 
