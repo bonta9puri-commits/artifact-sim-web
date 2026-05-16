@@ -748,10 +748,7 @@ export default function NicoleSpecialPage() {
           </div>
         </div>
       </div>
-
-      {/* MOBILE FLOATING BAR */}
-      </div>
-
+      
       <footer className="mt-20 pb-12 border-t border-white/5 pt-12 text-center relative z-10">
         <div className="max-w-2xl mx-auto px-4">
           <p className="text-[9px] text-slate-500 leading-relaxed mb-4">{t('disclaimer')}</p>
