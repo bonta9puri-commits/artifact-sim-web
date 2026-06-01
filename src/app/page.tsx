@@ -1712,6 +1712,17 @@ export default function Home() {
                   <Link2 size={18} className="text-blue-400" />
                   <span>{lang === 'ja' ? '設定をURLとして保存・共有' : 'Save & Share Settings via URL'}</span>
                 </button>
+                <a 
+                  href="https://www.youtube.com/channel/UCl9ZmeECCvInf8XiNSWduuA" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex items-center gap-2 px-8 py-3 bg-[#ff0000] hover:bg-[#cc0000] text-white font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                >
+                  <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.108C19.53 3.5 12 3.5 12 3.5s-7.53 0-9.388.555A3.002 3.002 0 0 0 .502 6.163C0 8.07 0 12 0 12s0 3.93.502 5.837a3.003 3.003 0 0 0 2.11 2.108C4.47 20.5 12 20.5 12 20.5s7.53 0 9.388-.555a3.003 3.003 0 0 0 2.11-2.108C24 15.93 24 12 24 12s0-3.93-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                  <span>{lang === 'ja' ? 'YouTubeチャンネル' : 'YouTube Channel'}</span>
+                </a>
               </div>
             </div>
           </div>
