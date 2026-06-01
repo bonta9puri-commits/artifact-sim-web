@@ -471,7 +471,7 @@ export default function Home() {
       results.sort((a, b) => a.attempts - b.attempts);
       baselineResults.sort((a, b) => a.attempts - b.attempts);
       setSortedResults(results);
-      setLuckPercentile(25);
+      setLuckPercentile(50);
       collectedGods.sort((a, b) => b.score - a.score);
       setAllGodPieces(collectedGods.slice(0, 10));
       
@@ -520,7 +520,7 @@ export default function Home() {
       }
       results.sort((a, b) => b.score - a.score);
       setSortedResults(results);
-      setLuckPercentile(25);
+      setLuckPercentile(50);
       collectedGods.sort((a, b) => b.score - a.score);
       setAllGodPieces(collectedGods.slice(0, 10));
       

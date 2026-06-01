@@ -36,7 +36,7 @@ export default function NicoleSpecialPage() {
   const [upgradeResult, setUpgradeResult] = useState<any>(null);
   const [allGodPieces, setAllGodPieces] = useState<any[]>([]);
   const [sortedResults, setSortedResults] = useState<any[]>([]);
-  const [luckPercentile, setLuckPercentile] = useState(25);
+  const [luckPercentile, setLuckPercentile] = useState(50);
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
 
   const [lang, setLang] = useState<"ja" | "en">("ja");
@@ -254,7 +254,7 @@ export default function NicoleSpecialPage() {
         }
         results.sort((a, b) => a.attempts - b.attempts);
         setSortedResults(results);
-        setLuckPercentile(25);
+        setLuckPercentile(50);
         
         const medianRes = results[Math.floor(trials / 2)];
         const top10Res = results[Math.floor(trials * 0.1)];
@@ -283,7 +283,7 @@ export default function NicoleSpecialPage() {
         if (simMode === "period") {
           results.sort((a, b) => b.score - a.score);
           setSortedResults(results);
-          setLuckPercentile(25);
+          setLuckPercentile(50);
           const medianRes = results[Math.floor(trials * 0.5)];
           simResult = {
             type: "period",
