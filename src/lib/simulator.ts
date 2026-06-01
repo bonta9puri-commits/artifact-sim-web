@@ -404,6 +404,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
   });
   
   let attempts = 0;
+  let attemptsMinus10 = 0;
   let recycleQueue = 0;
   const defaults = GAME_DEFAULTS[gameId];
   let finalResult = { total: 0, substatTotal: 0, pieces: {} };
@@ -552,6 +553,9 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
     }
 
     finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
+    if (attemptsMinus10 === 0 && finalResult.substatTotal >= target - 10) {
+      attemptsMinus10 = attempts;
+    }
     if (finalResult.substatTotal >= target) break;
   }
   return { 
@@ -560,6 +564,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
     pieces: finalResult.pieces, 
     score: finalResult.substatTotal, 
     scoreBeforeElixir: finalResult.substatTotal, // 目標診断では投入前も後も同じ（目標達成した瞬間なので）
+    attemptsMinus10: attemptsMinus10 || attempts,
     godPieces 
   };
 }

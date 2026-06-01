@@ -448,7 +448,7 @@ export default function NicoleSpecialPage() {
                          </button>
                        ))}
                      </div>
-                     <input 
+                     <input inputMode="numeric" pattern="[0-9]*" 
                        type="number" value={targetScore} onChange={e => setTargetScore(Number(e.target.value))}
                        className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-white font-black outline-none focus:border-orange-500 transition-all"
                      />
@@ -458,7 +458,7 @@ export default function NicoleSpecialPage() {
                 {simMode !== "target" && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">{t('days')}</label>
-                    <input 
+                    <input inputMode="numeric" pattern="[0-9]*" 
                       type="number" value={days} onChange={e => setDays(Number(e.target.value))}
                       className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-white font-black outline-none focus:border-orange-500 transition-all"
                     />
@@ -472,7 +472,7 @@ export default function NicoleSpecialPage() {
                         {config.slots.filter(s => s !== "未選択").map(slot => (
                           <div key={slot} className="bg-slate-950/50 p-2 rounded-xl border border-white/5">
                             <p className="text-[8px] text-slate-600 font-bold mb-1 truncate">{t(slot)}</p>
-                            <input 
+                            <input inputMode="decimal" pattern="[0-9.]*" 
                               type="number" value={userPartScores[slot] || 0} 
                               onChange={e => setUserPartScores({...userPartScores, [slot]: Number(e.target.value)})}
                               className="w-full bg-transparent text-xs font-black text-white outline-none"
@@ -501,7 +501,7 @@ export default function NicoleSpecialPage() {
                            {GENSHIN_SUB_STATS.map(sub => (
                              <div key={sub} className="space-y-1">
                                <label className="text-[8px] text-slate-500 uppercase">{t(sub)}</label>
-                               <input 
+                               <input inputMode="decimal" pattern="[0-9.]*" 
                                  type="number" step="0.1"
                                  value={scoreWeights[sub] || 0} 
                                  onChange={e => setScoreWeights({...scoreWeights, [sub]: Number(e.target.value)})}

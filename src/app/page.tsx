@@ -9,8 +9,92 @@ import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, El
 import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effects';
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
-import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis } from 'recharts';
-import { Link2, Sparkles, Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis, AreaChart, Area } from 'recharts';
+import { Link2, Sparkles, Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2, ChevronDown, ChevronUp } from 'lucide-react';
+
+function toKatakana(str: string): string {
+  return str.replace(/[\u3041-\u3096]/g, (match) => {
+    return String.fromCharCode(match.charCodeAt(0) + 0x60);
+  });
+}
+
+interface SearchableSelectProps {
+  value: string;
+  onChange: (val: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}
+
+function SearchableSelect({ value, onChange, options, placeholder = "選択してください..." }: SearchableSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = options.filter(opt => {
+    if (!search) return true;
+    const query = toKatakana(search.toLowerCase());
+    const label = toKatakana(opt.label.toLowerCase());
+    const val = toKatakana(opt.value.toLowerCase());
+    return label.includes(query) || val.includes(query);
+  });
+
+  const selectedOpt = options.find(o => o.value === value);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => { setIsOpen(!isOpen); setSearch(""); }}
+        className="w-full bg-slate-850 border border-slate-700 rounded-xl p-3 text-left text-white outline-none focus:border-blue-500 transition-all flex justify-between items-center text-xs"
+      >
+        <span className="truncate">{selectedOpt ? selectedOpt.label : placeholder}</span>
+        <span className="text-[10px] text-slate-500">▼</span>
+      </button>
+      
+      {isOpen && (
+        <div className="absolute z-[999] mt-1 w-full bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-2 space-y-2 max-h-80 flex flex-col">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="検索..."
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none focus:border-blue-500 shrink-0"
+            autoFocus
+          />
+          <div className="overflow-y-auto pr-1 space-y-1 custom-scrollbar text-xs flex-1">
+            {filtered.length === 0 ? (
+              <div className="text-slate-500 p-2 text-center">該当なし</div>
+            ) : (
+              filtered.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left p-2 rounded-lg transition-colors truncate block ${opt.value === value ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                >
+                  {opt.label}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Home() {
   const [lang, setLang] = useState<"ja" | "en">("ja");
@@ -369,6 +453,66 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [upgradeResult, setUpgradeResult] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    char: true,
+    main: false,
+    sub: false,
+    sim: false
+  });
+
+  const getMainStatsSummary = () => {
+    const parts = gameId === "genshin" ? ["時の砂", "空の杯", "理の冠"] : gameId === "starrail" ? ["胴体", "脚部", "次元界オーブ", "連結縄"] : ["スロット4", "スロット5", "スロット6"];
+    const summary = parts.map(p => {
+      const stat = mainStats[p];
+      return stat ? t(stat).substring(0, 4) : "";
+    }).filter(Boolean).join("/");
+    return summary || (lang === 'ja' ? "固定のみ" : "Fixed Only");
+  };
+
+  const getChartData = () => {
+    if (!sortedResults || sortedResults.length === 0 || !result) return [];
+    const pointsCount = 20;
+    const chartData = [];
+    
+    if (result.type === "target") {
+      for (let i = 0; i <= pointsCount; i++) {
+        const percent = Math.round((i / pointsCount) * 100);
+        const idx = Math.min(sortedResults.length - 1, Math.floor((percent / 100) * (sortedResults.length - 1)));
+        const res = sortedResults[idx];
+        const d = res ? Math.ceil((res.attempts * staminaCost) / staminaPerDay) : 0;
+        chartData.push({
+          percent, 
+          value: d, 
+        });
+      }
+      return chartData;
+    } else if (result.type === "period") {
+      const sortedByScore = [...sortedResults].sort((a, b) => a.score - b.score);
+      for (let i = 0; i <= pointsCount; i++) {
+        const percent = Math.round((i / pointsCount) * 100);
+        const idx = Math.min(sortedByScore.length - 1, Math.floor((percent / 100) * (sortedByScore.length - 1)));
+        const res = sortedByScore[idx];
+        chartData.push({
+          percent, 
+          value: res ? Number(res.score.toFixed(1)) : 0, 
+        });
+      }
+      return chartData;
+    } else if (result.type === "rank") {
+      const sortedByScore = [...sortedResults].sort((a, b) => a.score - b.score);
+      for (let i = 0; i <= pointsCount; i++) {
+        const percent = Math.round((i / pointsCount) * 100);
+        const idx = Math.min(sortedByScore.length - 1, Math.floor((percent / 100) * (sortedByScore.length - 1)));
+        const res = sortedByScore[idx];
+        chartData.push({
+          percent,
+          value: res ? Number(res.score.toFixed(1)) : 0,
+        });
+      }
+      return chartData;
+    }
+    return [];
+  };
   
   const [targetSets, setTargetSets] = useState<string[]>(["", "", "", ""]);
 
@@ -638,6 +782,10 @@ export default function Home() {
       const top10Res = results[Math.floor(trials * 0.1)];
       const bottom10Res = results[Math.floor(trials * 0.9)];
       const medianBase = baselineResults.length > 0 ? baselineResults[Math.floor(baselineResults.length / 2)] : null;
+
+      const sortedMinus10 = [...results].sort((a, b) => a.attemptsMinus10 - b.attemptsMinus10);
+      const medianMinus10 = Math.ceil((sortedMinus10[Math.floor(trials / 2)].attemptsMinus10 * staminaCost) / staminaPerDay);
+      const worst5Days = Math.ceil((results[Math.floor(trials * 0.95)].attempts * staminaCost) / staminaPerDay);
   
       const finalRes = {
         type: "target",
@@ -645,6 +793,8 @@ export default function Home() {
         top10: Math.ceil((top10Res.attempts * staminaCost) / staminaPerDay),
         bottom10: Math.ceil((bottom10Res.attempts * staminaCost) / staminaPerDay),
         medianWithoutElixir: medianBase ? Math.ceil((medianBase.attempts * staminaCost) / staminaPerDay) : null,
+        medianMinus10,
+        worst5Days,
         pieces: medianRes.pieces,
         trials
       };
@@ -687,6 +837,7 @@ export default function Home() {
         const medianRes = results[Math.floor(trials / 2)];
         const top10Res = results[Math.floor(trials * 0.1)];
         const bottom10Res = results[Math.floor(trials * 0.9)];
+        const worst5Score = results[Math.floor(trials * 0.95)].score;
         const avgBonus = results.reduce((acc, r) => acc + (r.score - (r.scoreBeforeElixir || r.score)), 0) / trials;
 
         const finalRes = {
@@ -694,6 +845,7 @@ export default function Home() {
           median: medianRes.score,
           top10: top10Res.score,
           bottom10: bottom10Res.score,
+          worst5Score,
           elixirBonus: avgBonus,
           pieces: medianRes.pieces,
           top10Pieces: top10Res.pieces,
@@ -992,214 +1144,309 @@ export default function Home() {
                 </button>
               </div>
               
-              <div className="space-y-5">
-                <div className="flex flex-col gap-2">
-                  <button onClick={() => setSimMode("target")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>{t('target')}</button>
-                  <button onClick={() => setSimMode("period")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>{t('period')}</button>
-                  <button onClick={() => setSimMode("rank")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>{t('rank')}</button>
-                  <button onClick={() => setSimMode("upgrade")} className={`py-3 rounded-xl text-sm font-bold transition-all ${simMode === "upgrade" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}>{t('upgrade')}</button>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">{t('character')}</label>
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    <button onClick={() => setElementFilter("ALL")} className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${elementFilter === "ALL" ? 'bg-slate-700 text-white shadow-lg' : 'bg-slate-950 text-slate-600 border border-slate-800'}`}>ALL</button>
-                    {Array.from(new Set(config.characters.map(c => c.element))).filter(e => e !== "無" && e !== "その他").map(el => (
-                      <button key={el} onClick={() => setElementFilter(el)} className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${elementFilter === el ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-950 text-slate-600 border border-slate-800'}`}>{el}</button>
-                    ))}
+              <div className="space-y-4">
+                {/* モード切り替え (アコーディオンから出して常時表示) */}
+                <div className="flex flex-col gap-2 bg-slate-950/30 p-2.5 rounded-2xl border border-slate-800/80">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button type="button" onClick={() => setSimMode("target")} className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('target')}</button>
+                    <button type="button" onClick={() => setSimMode("period")} className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('period')}</button>
+                    <button type="button" onClick={() => setSimMode("rank")} className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('rank')}</button>
+                    <button type="button" onClick={() => setSimMode("upgrade")} className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${simMode === "upgrade" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('upgrade')}</button>
                   </div>
-                  <select value={characterName} onChange={e => setCharacterName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all">
-                    {config.characters.filter(c => elementFilter === "ALL" || c.element === elementFilter).map(c => (
-                      <option key={c.name} value={c.name}>{c.defaults ? `✨ ${t(c.name)}` : t(c.name)}</option>
-                    ))}
-                  </select>
                 </div>
 
-                <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <label className="block text-sm font-medium text-slate-400 mb-3">{t('targetSets')}</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {targetSets.map((setName, idx) => (
-                      <div key={idx} className="space-y-1">
-                        <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">
-                          {lang === 'ja' 
-                            ? (gameId === "starrail" ? (idx === 0 ? "遺物1 (大本命)" : idx === 1 ? "遺物2 (副産物)" : idx === 2 ? "オーナメント1 (大本命)" : "オーナメント2 (副産物)") : (idx === 0 ? "セット1 (大本命)" : idx === 1 ? "セット2 (副産物)" : idx === 2 ? "別秘境セット1" : "別秘境セット2"))
-                            : (gameId === "starrail" ? (idx === 0 ? "Relic 1 (Primary)" : idx === 1 ? "Relic 2 (Sub)" : idx === 2 ? "Planar 1 (Primary)" : "Planar 2 (Sub)") : (idx === 0 ? "Set 1 (Primary)" : idx === 1 ? "Set 2 (Sub)" : idx === 2 ? "Other 1" : "Other 2"))}
-                        </p>
-                        <select value={setName} onChange={e => {
-                          const val = e.target.value;
-                          const newSets = [...targetSets];
-                          newSets[idx] = val;
-                          const pair = SET_PAIRS[gameId][val];
-                          if (pair) {
-                            if (idx === 0 && !newSets[1]) newSets[1] = pair;
-                            if (idx === 2 && !newSets[3]) newSets[3] = pair;
-                          }
-                          setTargetSets(newSets);
-                        }} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none">
-                          <option value="">{lang === 'ja' ? '未選択' : 'None'}</option>
-                          {config.sets.map(s => <option key={s} value={s}>{t(s)}</option>)}
-                        </select>
+                {/* アコーディオン 1: 🎮 キャラクター設定 */}
+                <div className="border border-slate-800 rounded-2xl overflow-hidden bg-slate-900/50">
+                  <button
+                    type="button"
+                    onClick={() => setOpenSections(prev => ({ ...prev, char: !prev.char }))}
+                    className="w-full flex justify-between items-center p-3.5 bg-slate-900/80 hover:bg-slate-850 transition-all text-left border-b border-slate-800"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs text-white">① 🎮 {t('character')} & セット</span>
+                      {!openSections.char && (
+                        <span className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">
+                          {t(characterName)} / {targetSets.filter(s => s && s !== "未選択").map(s => t(s)).join(', ') || (lang === 'ja' ? 'その他' : 'Other')}
+                        </span>
+                      )}
+                    </div>
+                    {openSections.char ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                  </button>
+                  {openSections.char && (
+                    <div className="p-4 space-y-4 bg-slate-950/20">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 mb-2">{t('character')}</label>
+                        <div className="flex flex-wrap gap-1 mb-2.5">
+                          <button type="button" onClick={() => setElementFilter("ALL")} className={`px-2.5 py-1 rounded-full text-[9px] font-bold transition-all ${elementFilter === "ALL" ? 'bg-slate-700 text-white shadow-lg' : 'bg-slate-950 text-slate-600 border border-slate-800'}`}>ALL</button>
+                          {Array.from(new Set(config.characters.map(c => c.element))).filter(e => e !== "無" && e !== "その他").map(el => (
+                            <button type="button" key={el} onClick={() => setElementFilter(el)} className={`px-2.5 py-1 rounded-full text-[9px] font-bold transition-all ${elementFilter === el ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-950 text-slate-600 border border-slate-800'}`}>{el}</button>
+                          ))}
+                        </div>
+                        <SearchableSelect
+                          value={characterName}
+                          onChange={(val) => setCharacterName(val)}
+                          options={config.characters.filter(c => elementFilter === "ALL" || c.element === elementFilter).map(c => ({
+                            value: c.name,
+                            label: c.defaults ? `✨ ${t(c.name)}` : t(c.name)
+                          }))}
+                          placeholder={lang === 'ja' ? "キャラクターを選択..." : "Select Character..."}
+                        />
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+                        <label className="block text-[11px] font-bold text-slate-400 mb-2.5">{t('targetSets')}</label>
+                        <div className="grid grid-cols-1 gap-2.5">
+                          {targetSets.map((setName, idx) => (
+                            <div key={idx} className="space-y-1">
+                              <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest leading-none">
+                                {lang === 'ja' 
+                                  ? (gameId === "starrail" ? (idx === 0 ? "遺物1 (本命)" : idx === 1 ? "遺物2 (副産物)" : idx === 2 ? "オーナメント1 (本命)" : "オーナメント2 (副産物)") : (idx === 0 ? "セット1 (本命)" : idx === 1 ? "セット2 (副産物)" : idx === 2 ? "別秘境セット1" : "別秘境セット2"))
+                                  : (gameId === "starrail" ? (idx === 0 ? "Relic 1 (Primary)" : idx === 1 ? "Relic 2 (Sub)" : idx === 2 ? "Planar 1 (Primary)" : "Planar 2 (Sub)") : (idx === 0 ? "Set 1 (Primary)" : idx === 1 ? "Set 2 (Sub)" : idx === 2 ? "Other 1" : "Other 2"))}
+                              </p>
+                              <SearchableSelect
+                                value={setName}
+                                onChange={(val) => {
+                                  const newSets = [...targetSets];
+                                  newSets[idx] = val;
+                                  const pair = SET_PAIRS[gameId][val];
+                                  if (pair) {
+                                    if (idx === 0 && !newSets[1]) newSets[1] = pair;
+                                    if (idx === 2 && !newSets[3]) newSets[3] = pair;
+                                  }
+                                  setTargetSets(newSets);
+                                }}
+                                options={[
+                                  { value: "", label: lang === 'ja' ? '未選択 (None)' : 'None' },
+                                  ...config.sets.map(s => ({ value: s, label: t(s) }))
+                                ]}
+                                placeholder={lang === 'ja' ? "セットを選択..." : "Select Set..."}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <label className="block text-sm font-medium text-slate-400 mb-3">{t('mainStats')}</label>
-                  <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                    {config.slots.filter(s => s !== "未選択").map(slot => {
-                      const isFixed = slot.includes("花") || slot.includes("羽") || slot === "頭部" || slot === "手部" || slot === "スロット1" || slot === "スロット2" || slot === "スロット3";
-                      return (
-                        <div key={slot} className="flex items-center justify-between gap-4">
-                          <span className="text-xs text-slate-500 whitespace-nowrap">{t(slot)}</span>
-                          {isFixed ? (
-                            <span className="text-xs text-slate-400 bg-slate-800/30 px-3 py-1.5 rounded border border-slate-700/50 flex-1 text-right">
-                              {slot.includes("花") || slot === "頭部" || slot === "スロット1" ? t("HP(固定値)") : slot.includes("羽") || slot === "手部" || slot === "スロット2" ? t("攻撃力(固定値)") : t("防御力(固定値)")}
-                            </span>
-                          ) : (
-                            <select value={mainStats[slot] || ""} onChange={e => setMainStats({...mainStats, [slot]: e.target.value})} className="bg-slate-800 text-xs p-1.5 rounded border border-slate-700 flex-1 outline-none">
-                              {Object.keys(MAIN_PROBS[gameId][slot] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
-                            </select>
+                {/* アコーディオン 2: 🔮 メインステータス */}
+                <div className="border border-slate-800 rounded-2xl overflow-hidden bg-slate-900/50">
+                  <button
+                    type="button"
+                    onClick={() => setOpenSections(prev => ({ ...prev, main: !prev.main }))}
+                    className="w-full flex justify-between items-center p-3.5 bg-slate-900/80 hover:bg-slate-850 transition-all text-left border-b border-slate-800"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs text-white">② 🔮 {t('mainStats')}</span>
+                      {!openSections.main && (
+                        <span className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">
+                          {getMainStatsSummary()}
+                        </span>
+                      )}
+                    </div>
+                    {openSections.main ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                  </button>
+                  {openSections.main && (
+                    <div className="p-4 bg-slate-950/20">
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                        {config.slots.filter(s => s !== "未選択").map(slot => {
+                          const isFixed = slot.includes("花") || slot.includes("羽") || slot === "頭部" || slot === "手部" || slot === "スロット1" || slot === "スロット2" || slot === "スロット3";
+                          return (
+                            <div key={slot} className="flex items-center justify-between gap-4 py-1 border-b border-slate-900 last:border-0">
+                              <span className="text-xs text-slate-400 whitespace-nowrap">{t(slot)}</span>
+                              {isFixed ? (
+                                <span className="text-xs text-slate-500 bg-slate-950 px-3 py-2 rounded-lg border border-slate-800 flex-1 text-right max-w-[160px]">
+                                  {slot.includes("花") || slot === "頭部" || slot === "スロット1" ? t("HP(固定値)") : slot.includes("羽") || slot === "手部" || slot === "スロット2" ? t("攻撃力(固定値)") : t("防御力(固定値)")}
+                                </span>
+                              ) : (
+                                <select value={mainStats[slot] || ""} onChange={e => setMainStats({...mainStats, [slot]: e.target.value})} className="bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 flex-1 outline-none text-white max-w-[160px]">
+                                  {Object.keys(MAIN_PROBS[gameId][slot] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
+                                </select>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* アコーディオン 3: ⚖️ サブ重み・廻聖・エリクシル */}
+                <div className="border border-slate-800 rounded-2xl overflow-hidden bg-slate-900/50">
+                  <button
+                    type="button"
+                    onClick={() => setOpenSections(prev => ({ ...prev, sub: !prev.sub }))}
+                    className="w-full flex justify-between items-center p-3.5 bg-slate-900/80 hover:bg-slate-850 transition-all text-left border-b border-slate-800"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs text-white">③ ⚖️ サブ重み・廻聖・エリクシル</span>
+                      {!openSections.sub && (
+                        <span className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">
+                          廻聖:{useStrongbox ? "ON" : "OFF"} / {gameId === "genshin" ? `エリクシル:${elixirEnabled ? "ON" : "OFF"}` : ""}
+                        </span>
+                      )}
+                    </div>
+                    {openSections.sub ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                  </button>
+                  {openSections.sub && (
+                    <div className="p-4 space-y-4 bg-slate-950/20">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 mb-2">{t('weights')}</label>
+                        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                          {config.subStats.map(sub => (
+                            <div key={sub} className="flex flex-col gap-0.5 bg-slate-900/30 p-2 rounded-lg border border-slate-850">
+                              <label className="text-[9px] text-slate-500 whitespace-nowrap truncate">{t(sub)}</label>
+                              <input inputMode="decimal" pattern="[0-9.]*" type="number" step="0.1" value={scoreWeights[sub] || 0} onChange={e => setScoreWeights({...scoreWeights, [sub]: e.target.value === "" ? 0 : Number(e.target.value)})} className="bg-slate-850 text-xs p-1 rounded border border-slate-700 outline-none text-white w-full text-center"/>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {gameId === "genshin" && (
+                        <div className="bg-slate-950/50 p-3 rounded-xl border border-emerald-950/60">
+                          <div className="flex items-center justify-between mb-3">
+                            <label className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">✨ {t('elixir')}</label>
+                            <button type="button" onClick={() => setElixirEnabled(!elixirEnabled)} className={`w-8 h-4 rounded-full relative transition-colors ${elixirEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                              <div className={`w-2.5 h-2.5 bg-white rounded-full absolute top-0.5 transition-all ${elixirEnabled ? 'left-5' : 'left-0.5'}`} />
+                            </button>
+                          </div>
+                          {elixirEnabled && (
+                            <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+                              <div className="grid grid-cols-2 gap-2.5">
+                                <div>
+                                  <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '初期所持数' : 'Initial Count'}</p>
+                                  <input inputMode="numeric" pattern="[0-9]*" type="number" value={elixirInitialCount} onChange={e => setElixirInitialCount(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500 text-center"/>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '1Ver獲得数' : 'Per Ver (42d)'}</p>
+                                  <input inputMode="numeric" pattern="[0-9]*" type="number" value={elixirPerVersion} onChange={e => setElixirPerVersion(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500 text-center"/>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2.5">
+                                <div>
+                                  <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '部位' : 'Part'}</p>
+                                  <select value={elixirTargetPart} onChange={e => setElixirTargetPart(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                                    <option value="生の花">{t('生の花')} (1)</option>
+                                    <option value="死の羽">{t('死の羽')} (1)</option>
+                                    <option value="時の砂">{t('時の砂')} (2)</option>
+                                    <option value="空の杯">{t('空の杯')} (4)</option>
+                                    <option value="理の冠">{t('理の冠')} (3)</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'セット' : 'Set'}</p>
+                                  <select value={elixirTargetSet} onChange={e => setElixirTargetSet(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                                    {targetSets.filter(s => s && s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
+                                    {targetSets.filter(s => s && s !== "未選択").length === 0 && <option value="">{lang === 'ja' ? 'ダンジョン準拠' : 'Use Domain'}</option>}
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-1.5">
+                                <div>
+                                  <p className="text-[8px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'メイン' : 'Main'}</p>
+                                  <select value={elixirTargetMain} onChange={e => setElixirTargetMain(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                                    {Object.keys(MAIN_PROBS["genshin"]?.[elixirTargetPart] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <p className="text-[8px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'サブ1' : 'Sub 1'}</p>
+                                  <select value={elixirSub1} onChange={e => setElixirSub1(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                                    {config.subStats.map(s => <option key={s} value={s}>{t(s)}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <p className="text-[8px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'サブ2' : 'Sub 2'}</p>
+                                  <select value={elixirSub2} onChange={e => setElixirSub2(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                                    {config.subStats.map(s => <option key={s} value={s}>{t(s)}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      )}
 
-                <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-                  <label className="block text-sm font-medium text-slate-400 mb-3">{t('weights')}</label>
-                  <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                    {config.subStats.map(sub => (
-                      <div key={sub} className="flex flex-col gap-1">
-                        <label className="text-[10px] text-slate-500 whitespace-nowrap">{t(sub)}</label>
-                        <input type="number" step="0.1" value={scoreWeights[sub] || 0} onChange={e => setScoreWeights({...scoreWeights, [sub]: e.target.value === "" ? 0 : Number(e.target.value)})} className="bg-slate-800 text-xs p-1.5 rounded border border-slate-700 outline-none text-white w-full"/>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {simMode === "target" && (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-slate-400">{t('targetScore')}</label>
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {(gameId === "genshin" ? [160, 180, 200, 220, 240] : [360, 390, 420, 450, 480]).map(val => (
-                        <button
-                          key={val}
-                          type="button"
-                          onClick={() => setTargetScore(val)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${targetScore === val ? `bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/20` : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700'}`}
-                        >
-                          {val}
-                        </button>
-                      ))}
-                    </div>
-                    <input 
-                      type="number" 
-                      value={targetScore} 
-                      onChange={e => setTargetScore(e.target.value === "" ? 0 : Number(e.target.value))} 
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all"
-                    />
-                  </div>
-                )}
-
-                {(simMode === "period" || simMode === "rank" || simMode === "upgrade") && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-2">{t('farmingDays')}</label>
-                    <input type="number" value={days} onChange={e => setDays(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white"/>
-                  </div>
-                )}
-
-                {(simMode === "rank" || simMode === "upgrade") && (
-                  <div className="grid grid-cols-2 gap-2 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/50">
-                    <p className="col-span-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">{t('currentScores')}</p>
-                    {config.slots.filter(s => s !== "未選択").map(slot => (
-                      <div key={slot}>
-                        <label className="block text-[10px] text-slate-500 mb-1">{t(slot)}</label>
-                        <input type="number" value={userPartScores[slot] || 0} onChange={e => setUserPartScores({...userPartScores, [slot]: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"/>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {gameId === "genshin" && (
-                  <div className="bg-slate-950/50 p-4 rounded-2xl border border-emerald-900/50">
-                    <div className="flex items-center justify-between mb-4">
-                      <label className="text-sm font-medium text-emerald-400 flex items-center gap-2">✨ {t('elixir')}</label>
-                      <button onClick={() => setElixirEnabled(!elixirEnabled)} className={`w-10 h-5 rounded-full relative transition-colors ${elixirEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
-                        <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${elixirEnabled ? 'left-6' : 'left-1'}`} />
-                      </button>
-                    </div>
-                    {elixirEnabled && (
-                      <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '初期所持数' : 'Initial Count'}</p>
-                            <input type="number" value={elixirInitialCount} onChange={e => setElixirInitialCount(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '1Ver(42日)の獲得数' : 'Per Version (42d)'}</p>
-                            <input type="number" value={elixirPerVersion} onChange={e => setElixirPerVersion(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500"/>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '使用部位 (消費コスト)' : 'Target Part (Cost)'}</p>
-                            <select value={elixirTargetPart} onChange={e => setElixirTargetPart(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              <option value="生の花">{t('生の花')} (1)</option>
-                              <option value="死の羽">{t('死の羽')} (1)</option>
-                              <option value="時の砂">{t('時の砂')} (2)</option>
-                              <option value="空の杯">{t('空の杯')} (4)</option>
-                              <option value="理の冠">{t('理の冠')} (3)</option>
-                            </select>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'セット' : 'Set'}</p>
-                            <select value={elixirTargetSet} onChange={e => setElixirTargetSet(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              {targetSets.filter(s => s && s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
-                              {targetSets.filter(s => s && s !== "未選択").length === 0 && <option value="">{lang === 'ja' ? 'ダンジョン設定を反映' : 'Use Domain Settings'}</option>}
-                            </select>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'メイン' : 'Main'}</p>
-                            <select value={elixirTargetMain} onChange={e => setElixirTargetMain(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              {Object.keys(MAIN_PROBS["genshin"]?.[elixirTargetPart] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'サブ1' : 'Sub 1'}</p>
-                            <select value={elixirSub1} onChange={e => setElixirSub1(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              {config.subStats.map(s => <option key={s} value={s}>{t(s)}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'サブ2' : 'Sub 2'}</p>
-                            <select value={elixirSub2} onChange={e => setElixirSub2(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                              {config.subStats.map(s => <option key={s} value={s}>{t(s)}</option>)}
-                            </select>
-                          </div>
+                      <div className="bg-slate-950/50 p-3.5 rounded-xl border border-yellow-950/60">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-yellow-500 flex items-center gap-1.5">
+                            ♻️ {lang === 'ja' ? '聖遺物廻聖を利用' : `Use ${t('strongbox')}`}
+                          </label>
+                          <button type="button" onClick={() => setUseStrongbox(!useStrongbox)} className={`w-8 h-4 rounded-full relative transition-colors ${useStrongbox ? 'bg-yellow-500' : 'bg-slate-700'}`}>
+                            <div className={`w-2.5 h-2.5 bg-white rounded-full absolute top-0.5 transition-all ${useStrongbox ? 'left-5' : 'left-0.5'}`} />
+                          </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="bg-slate-950/50 p-4 rounded-2xl border border-yellow-900/50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-sm font-medium text-yellow-400 flex items-center gap-2">
-                        ♻️ {lang === 'ja' ? '聖遺物廻聖を利用する' : `Use ${t('strongbox')}`}
-                      </label>
                     </div>
-                    <button onClick={() => setUseStrongbox(!useStrongbox)} className={`w-10 h-5 rounded-full relative transition-colors ${useStrongbox ? 'bg-yellow-500' : 'bg-slate-700'}`}>
-                      <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${useStrongbox ? 'left-6' : 'left-1'}`} />
-                    </button>
-                  </div>
+                  )}
                 </div>
 
-                <button onClick={() => handleSimulate()} disabled={isSimulating} className={`w-full py-4 rounded-2xl font-black text-sm shadow-2xl transition-all ${isSimulating ? 'bg-slate-800 text-slate-600' : `bg-gradient-to-r ${config.gradient} text-white hover:scale-[1.02] active:scale-[0.98]`}`}>
+                {/* アコーディオン 4: 🎯 目標・シミュレーション設定 */}
+                <div className="border border-slate-800 rounded-2xl overflow-hidden bg-slate-900/50">
+                  <button
+                    type="button"
+                    onClick={() => setOpenSections(prev => ({ ...prev, sim: !prev.sim }))}
+                    className="w-full flex justify-between items-center p-3.5 bg-slate-900/80 hover:bg-slate-850 transition-all text-left border-b border-slate-800"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs text-white">④ 🎯 目標・現在スコア</span>
+                      {!openSections.sim && (
+                        <span className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">
+                          {simMode === "target" ? `${t('targetScore')}: ${targetScore}pt` : `${t('farmingDays')}: ${days}日`}
+                        </span>
+                      )}
+                    </div>
+                    {openSections.sim ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                  </button>
+                  {openSections.sim && (
+                    <div className="p-4 space-y-4 bg-slate-950/20">
+                      {simMode === "target" && (
+                        <div className="space-y-2">
+                          <label className="block text-xs font-bold text-slate-400">{t('targetScore')}</label>
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {(gameId === "genshin" ? [160, 180, 200, 220, 240] : [360, 390, 420, 450, 480]).map(val => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setTargetScore(val)}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border ${targetScore === val ? `bg-blue-600 border-blue-500 text-white shadow-md` : 'bg-slate-850 border-slate-700 text-slate-400 hover:text-slate-200'}`}
+                              >
+                                {val}
+                              </button>
+                            ))}
+                          </div>
+                          <input inputMode="numeric" pattern="[0-9]*" 
+                            type="number" 
+                            value={targetScore} 
+                            onChange={e => setTargetScore(e.target.value === "" ? 0 : Number(e.target.value))} 
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all text-xs"
+                          />
+                        </div>
+                      )}
+
+                      {(simMode === "period" || simMode === "rank" || simMode === "upgrade") && (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-400 mb-2">{t('farmingDays')}</label>
+                          <input inputMode="numeric" pattern="[0-9]*" type="number" value={days} onChange={e => setDays(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-xs"/>
+                        </div>
+                      )}
+
+                      {(simMode === "rank" || simMode === "upgrade") && (
+                        <div className="grid grid-cols-2 gap-2 bg-slate-950/30 p-3 rounded-xl border border-slate-800/50">
+                          <p className="col-span-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">{t('currentScores')}</p>
+                          {config.slots.filter(s => s !== "未選択").map(slot => (
+                            <div key={slot}>
+                              <label className="block text-[9px] text-slate-500 mb-0.5">{t(slot)}</label>
+                              <input inputMode="decimal" pattern="[0-9.]*" type="number" value={userPartScores[slot] || 0} onChange={e => setUserPartScores({...userPartScores, [slot]: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white text-center"/>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* シミュレーション開始ボタン */}
+                <button type="button" onClick={() => handleSimulate()} disabled={isSimulating} className={`w-full py-3.5 mt-2 rounded-2xl font-black text-sm shadow-2xl transition-all ${isSimulating ? 'bg-slate-800 text-slate-600' : `bg-gradient-to-r ${config.gradient} text-white hover:scale-[1.01] active:scale-[0.99]`}`}>
                   {isSimulating ? t('simulating').toUpperCase() : t('run').toUpperCase()}
                 </button>
               </div>
@@ -1246,7 +1493,7 @@ export default function Home() {
                   )}
                   {result && !isSimulating && (
                     <div className="w-full space-y-4 animate-in zoom-in-95 duration-300">
-                      <div className="bg-slate-900/30 p-5 rounded-[24px] border border-slate-800 mb-4">
+                      <div className="bg-slate-900/30 p-5 rounded-[24px] border border-slate-800 mb-4 w-full">
                         <div className="flex justify-between items-center mb-6">
                           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                             <Zap size={14} className="text-blue-400" /> {t('luckSlider')}
@@ -1267,8 +1514,72 @@ export default function Home() {
                         </div>
                       </div>
 
+                      {/* 累積確率曲線グラフ (AreaChart) */}
+                      {getChartData().length > 0 && (
+                        <div className="bg-slate-900/30 border border-slate-800 rounded-[24px] p-5 mb-4 w-full animate-in fade-in duration-300">
+                          <p className="text-[10px] text-slate-500 font-black uppercase tracking-wider mb-2.5">
+                            {result.type === "target" 
+                              ? (lang === "ja" ? "必要日数の累積確率分布 (左ほど豪運、右ほど悲運)" : "Cumulative Probability vs Days (Left = Lucky, Right = Unlucky)")
+                              : (lang === "ja" ? "獲得スコアの累積確率分布 (左ほど悲運、右ほど豪運)" : "Cumulative Probability vs Score (Left = Unlucky, Right = Lucky)")
+                            }
+                          </p>
+                          <div className="h-44 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={getChartData()} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                                <defs>
+                                  <linearGradient id="colorPercent" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                  </linearGradient>
+                                </defs>
+                                <XAxis 
+                                  dataKey="value" 
+                                  stroke="#475569" 
+                                  fontSize={9} 
+                                  tickLine={false}
+                                  axisLine={false}
+                                />
+                                <YAxis 
+                                  stroke="#475569" 
+                                  fontSize={9} 
+                                  tickLine={false}
+                                  axisLine={false}
+                                  tickFormatter={(v) => `${v}%`}
+                                />
+                                <Tooltip
+                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', fontSize: '10px', color: '#cbd5e1' }}
+                                  labelFormatter={(label) => result.type === "target" ? `${label} 日` : `${label} pt`}
+                                  formatter={(value) => [`${value}%`, result.type === "target" ? (lang === 'ja' ? "達成確率 (この日数以内で完了)" : "Success Probability") : (lang === 'ja' ? "達成確率 (このスコア以上になる確率)" : "Probability")]}
+                                />
+                                <Area type="monotone" dataKey="percent" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorPercent)" />
+                                <ReferenceLine 
+                                  x={(() => {
+                                    const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+                                    if (result.type === "target") {
+                                      return currentLuckRes ? Math.ceil((currentLuckRes.attempts * staminaCost) / staminaPerDay) : 0;
+                                    } else {
+                                      return currentLuckRes ? Number(currentLuckRes.score.toFixed(1)) : 0;
+                                    }
+                                  })()} 
+                                  stroke="#ef4444" 
+                                  strokeWidth={1.5}
+                                  strokeDasharray="3 3"
+                                  label={{ 
+                                    value: lang === "ja" ? "選択した運勢" : "Selected Luck", 
+                                    position: 'top', 
+                                    fill: '#f87171', 
+                                    fontSize: 8,
+                                    fontWeight: 'bold'
+                                  }} 
+                                />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      )}
+
                       {result.type === "target" && (
-                        <div className="space-y-6">
+                        <div className="space-y-6 w-full">
                           <h3 className="text-center text-xl font-bold">{lang === 'ja' ? '目標到達までの日数' : 'Estimated Days to Target'}</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[40px] text-center">
@@ -1286,11 +1597,39 @@ export default function Home() {
                               );
                             })()}
                           </div>
+
+                          {/* マイルストーン & 悲運の安心保証表示 */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-[24px] p-5 text-xs space-y-2">
+                              <h4 className="font-black text-blue-400 flex items-center gap-1.5 uppercase tracking-wider">
+                                <Target size={14} className="text-blue-400" />
+                                {lang === 'ja' ? '📈 育成マイルストーン' : '📈 Upgrade Milestone'}
+                              </h4>
+                              <p className="text-slate-300 leading-relaxed font-medium">
+                                {lang === 'ja' 
+                                  ? `目標スコアの10pt手前 (${targetScore - 10} pt) までは、平均して約 ${result.medianMinus10} 日で到達可能です。そこから最後の 10 pt を伸ばすのに、追加で約 ${result.median - result.medianMinus10} 日かかります (聖遺物厳選における典型的な停滞期です)。`
+                                  : `Reaching 10pt below target (${targetScore - 10} pt) takes about ${result.medianMinus10} days. Finishing the final 10 pt will require another ${result.median - result.medianMinus10} days (a classic plateau in gear farming).`
+                                }
+                              </p>
+                            </div>
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-[24px] p-5 text-xs space-y-2">
+                              <h4 className="font-black text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider">
+                                <Shield size={14} className="text-emerald-400" />
+                                {lang === 'ja' ? '🛡️ ハマり（悲運）の安心保証' : '🛡️ Bad Luck Protection'}
+                              </h4>
+                              <p className="text-slate-300 leading-relaxed font-medium">
+                                {lang === 'ja'
+                                  ? `極端に運が悪い下位 5% の「悲運」状態が続いた場合でも、約 ${result.worst5Days} 日厳選を続ければ、95% の高確率で目標スコアを達成可能です。いつかは必ず終わります！`
+                                  : `Even if you experience terrible RNG (bottom 5% percentile), you are 95% guaranteed to achieve your target score within ${result.worst5Days} days.`
+                                }
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       )}
 
                       {result.type === "period" && (
-                        <div className="space-y-12">
+                        <div className="space-y-12 w-full">
                           <div className="text-center space-y-4">
                             <h3 className="text-3xl font-black text-white uppercase">{lang === 'ja' ? `${days}日間の厳選期待値` : `${days} Days Expected Score`}</h3>
                             {(() => {
@@ -1312,11 +1651,39 @@ export default function Home() {
                               );
                             })()}
                           </div>
+
+                          {/* 期間シミュ向けマイルストーン */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 text-left">
+                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-[24px] p-5 text-xs space-y-2">
+                              <h4 className="font-black text-blue-400 flex items-center gap-1.5 uppercase tracking-wider">
+                                <Target size={14} className="text-blue-400" />
+                                {lang === 'ja' ? '📈 スコアの伸び代と上振れ幅' : '📈 Score Potential'}
+                              </h4>
+                              <p className="text-slate-300 leading-relaxed font-medium">
+                                {lang === 'ja'
+                                  ? `運勢が「豪運 (上位10%)」まで上振れた場合、合計スコアは ${result.top10?.toFixed(1)} pt まで伸びるポテンシャルがあります。期待値（中央値）より約 ${(result.top10 - result.median)?.toFixed(1)} pt 高くなります。`
+                                  : `If you hit a lucky streak (top 10% luck), your score could reach up to ${result.top10?.toFixed(1)} pt, which is ${(result.top10 - result.median)?.toFixed(1)} pt higher than the median.`
+                                }
+                              </p>
+                            </div>
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-[24px] p-5 text-xs space-y-2">
+                              <h4 className="font-black text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider">
+                                <Shield size={14} className="text-emerald-400" />
+                                {lang === 'ja' ? '🛡️ 最低保証スコアの目安' : '🛡️ Minimum Score Guarantee'}
+                              </h4>
+                              <p className="text-slate-300 leading-relaxed font-medium">
+                                {lang === 'ja'
+                                  ? `運勢が極めて悪い下位 5% の「悲運」状態であっても、${days} 日間厳選を行えば 95% の高確率で合計 ${result.worst5Score?.toFixed(1)} pt 以上の聖遺物セットを確保できます。`
+                                  : `Even under terrible RNG (bottom 5% percentile), you are 95% guaranteed to secure at least ${result.worst5Score?.toFixed(1)} pt total score within ${days} days.`
+                                }
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       )}
 
                       {result.type === "rank" && (
-                        <div className="space-y-8">
+                        <div className="space-y-8 w-full">
                           <div className="flex flex-col items-center text-center space-y-4">
                             <h3 className="text-xl font-bold text-white">{t('topLuck', result.percentile.toFixed(1))}</h3>
                           </div>
@@ -1343,7 +1710,7 @@ export default function Home() {
                 </button>
                 <button onClick={copyShareLink} type="button" className="flex items-center gap-2 px-8 py-3 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
                   <Link2 size={18} className="text-blue-400" />
-                  <span>{lang === 'ja' ? '共有リンクをコピー' : 'Copy Share Link'}</span>
+                  <span>{lang === 'ja' ? '設定をURLとして保存・共有' : 'Save & Share Settings via URL'}</span>
                 </button>
               </div>
             </div>
@@ -1434,9 +1801,16 @@ export default function Home() {
       </div>
         {/* --- TOAST NOTIFICATION --- */}
         {showShareToast && (
-          <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/30 text-emerald-400 px-6 py-3 rounded-full text-xs font-black tracking-widest shadow-2xl flex items-center gap-2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <Zap size={14} className="text-emerald-400 animate-pulse" />
-            <span>{lang === 'ja' ? '共有用URLをコピーしました！' : 'Copied share URL to clipboard!'}</span>
+          <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900/95 border border-emerald-500/30 text-slate-200 px-6 py-4 rounded-3xl text-[11px] font-bold shadow-2xl flex flex-col gap-1.5 z-[120] animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-sm w-[90%] text-center backdrop-blur-md">
+            <div className="flex items-center justify-center gap-2 text-emerald-400 font-black tracking-wide">
+              <Zap size={14} className="animate-pulse" />
+              <span>{lang === 'ja' ? '現在の設定を含むリンクをコピーしました！' : 'Link with current settings copied!'}</span>
+            </div>
+            <p className="text-[9px] text-slate-400 font-medium leading-relaxed">
+              {lang === 'ja' 
+                ? 'このURLをブックマークすれば、いつでもこの設定から再開できます。' 
+                : 'Bookmark this URL to resume from these settings anytime.'}
+            </p>
           </div>
         )}
         
