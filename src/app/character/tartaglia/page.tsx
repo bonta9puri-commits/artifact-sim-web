@@ -403,14 +403,26 @@ export default function TartagliaSpecialPage() {
                 </div>
 
                 {simMode === "target" && (
-                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">{t('targetScore')}</label>
-                    <input 
-                      type="number" value={targetScore} onChange={e => setTargetScore(Number(e.target.value))}
-                      className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-white font-black outline-none focus:border-sky-500 transition-all"
-                    />
-                  </div>
-                )}
+                   <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-2">
+                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('targetScore')}</label>
+                     <div className="flex flex-wrap gap-1.5">
+                       {[160, 180, 200, 220, 240].map(val => (
+                         <button
+                           key={val}
+                           type="button"
+                           onClick={() => setTargetScore(val)}
+                           className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all border ${targetScore === val ? 'bg-sky-600 border-sky-500 text-white shadow-md shadow-sky-500/20' : 'bg-slate-950 border-white/5 text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                         >
+                           {val}
+                         </button>
+                       ))}
+                     </div>
+                     <input 
+                       type="number" value={targetScore} onChange={e => setTargetScore(Number(e.target.value))}
+                       className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-white font-black outline-none focus:border-sky-500 transition-all"
+                     />
+                   </div>
+                 )}
 
                 {simMode !== "target" && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">

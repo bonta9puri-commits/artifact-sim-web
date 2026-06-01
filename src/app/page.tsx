@@ -878,9 +878,26 @@ export default function Home() {
                 </div>
 
                 {simMode === "target" && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-2">{t('targetScore')}</label>
-                    <input type="number" value={targetScore} onChange={e => setTargetScore(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white"/>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-slate-400">{t('targetScore')}</label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {(gameId === "genshin" ? [160, 180, 200, 220, 240] : [360, 390, 420, 450, 480]).map(val => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setTargetScore(val)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${targetScore === val ? `bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/20` : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-700'}`}
+                        >
+                          {val}
+                        </button>
+                      ))}
+                    </div>
+                    <input 
+                      type="number" 
+                      value={targetScore} 
+                      onChange={e => setTargetScore(e.target.value === "" ? 0 : Number(e.target.value))} 
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all"
+                    />
                   </div>
                 )}
 
