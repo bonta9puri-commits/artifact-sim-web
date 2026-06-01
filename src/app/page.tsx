@@ -127,7 +127,14 @@ export default function Home() {
     "ナヴィア": "navia",
     "クロリンデ": "clorinde",
     "エミリエ": "emilie",
-    "ニコ・リヤン": "nicole"
+    "ニコ・リヤン": "nicole",
+    "ウェンティ": "venti",
+    "クレー": "klee",
+    "ディルック": "diluc",
+    "刻晴": "keqing",
+    "モナ": "mona",
+    "アルベド": "albedo",
+    "魈": "xiao"
   };
 
   const copyShareLink = () => {
@@ -322,6 +329,13 @@ export default function Home() {
       "ナヴィア": "Navia",
       "クロリンデ": "Clorinde",
       "エミリエ": "Emilie",
+      "ウェンティ": "Venti",
+      "クレー": "Klee",
+      "ディルック": "Diluc",
+      "刻晴": "Keqing",
+      "モナ": "Mona",
+      "アルベド": "Albedo",
+      "魈": "Xiao",
       "その他": "Others",
       strongbox: "Strongbox",
       run: "Run Simulation",
@@ -593,7 +607,14 @@ export default function Home() {
         "navia": "ナヴィア",
         "clorinde": "クロリンデ",
         "emilie": "エミリエ",
-        "nicole": "ニコ・リヤン"
+        "nicole": "ニコ・リヤン",
+        "venti": "ウェンティ",
+        "klee": "クレー",
+        "diluc": "ディルック",
+        "keqing": "刻晴",
+        "mona": "モナ",
+        "albedo": "アルベド",
+        "xiao": "魈"
       };
       const charKey = urlChar.toLowerCase();
       const mappedJaName = charEnToJaMap[charKey];

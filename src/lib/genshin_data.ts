@@ -53,19 +53,64 @@ export const GENSHIN_CHARACTERS: CharacterData[] = [
     }
   },
   { name: "アルレッキーノ", element: "炎" },
-  { name: "鍾離", element: "岩" },
-  { name: "甘雨", element: "氷" },
-  { name: "胡桃", element: "炎" },
+  { 
+    name: "鍾離", 
+    element: "岩",
+    defaults: {
+      weights: { [STAT_IDS.HP_PER]: 2.0, [STAT_IDS.DEF_PER]: 0.5, [STAT_IDS.CRIT_RATE]: 0.8, [STAT_IDS.CRIT_DMG]: 0.4 },
+      mainStats: { "時の砂": STAT_IDS.HP_PER, "空の杯": STAT_IDS.HP_PER, "理の冠": STAT_IDS.HP_PER },
+      targetSets: ["千岩牢固"],
+      baseStats: { rate: 5, dmg: 50, atk: 0, hp: 120, def: 0, er: 120, em: 0, scalingMode: "hp" }
+    }
+  },
+  { 
+    name: "甘雨", 
+    element: "氷",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 1.5, [STAT_IDS.CRIT_DMG]: 2.0, [STAT_IDS.ATK_PER]: 1.0, [STAT_IDS.EM]: 0.8 },
+      mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.CRYO_DMG, "理の冠": STAT_IDS.CRIT_DMG },
+      targetSets: ["氷風を彷徨う勇士", "大地を流浪する楽団"],
+      baseStats: { rate: 5, dmg: 88.4, atk: 311, hp: 0, def: 0, er: 120, em: 80, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "胡桃", 
+    element: "炎",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.HP_PER]: 1.0, [STAT_IDS.EM]: 0.8, [STAT_IDS.ATK_PER]: 0.2 },
+      mainStats: { "時の砂": STAT_IDS.HP_PER, "空の杯": STAT_IDS.PYRO_DMG, "理の冠": STAT_IDS.CRIT_DMG },
+      targetSets: ["燃え盛る炎の魔女", "追憶のしめ縄"],
+      baseStats: { rate: 5, dmg: 88.4, atk: 100, hp: 100, def: 0, er: 110, em: 80, scalingMode: "hp" }
+    }
+  },
   { name: "神里綾華", element: "氷" },
   { name: "八重神子", element: "雷" },
   { name: "夜蘭", element: "水" },
   { name: "放浪者", element: "風" },
-  { name: "楓原万葉", element: "風" },
+  { 
+    name: "楓原万葉", 
+    element: "風",
+    defaults: {
+      weights: { [STAT_IDS.EM]: 2.0, [STAT_IDS.ER]: 1.5, [STAT_IDS.CRIT_RATE]: 0.5, [STAT_IDS.ATK_PER]: 0.5 },
+      mainStats: { "時の砂": STAT_IDS.EM, "空の杯": STAT_IDS.EM, "理の冠": STAT_IDS.EM },
+      targetSets: ["翠緑の影"],
+      baseStats: { rate: 5, dmg: 50, atk: 0, hp: 0, def: 0, er: 140, em: 250, scalingMode: "em" as any }
+    }
+  },
   { name: "珊瑚宮心海", element: "水" },
   { name: "ニィロウ", element: "水" },
   { name: "アルハイゼン", element: "草" },
   { name: "セノ", element: "雷" },
-  { name: "エウルア", element: "氷" },
+  { 
+    name: "エウルア", 
+    element: "氷",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.ATK_PER]: 1.0, [STAT_IDS.ER]: 0.5 },
+      mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.PHYSICAL_DMG, "理の冠": STAT_IDS.CRIT_RATE },
+      targetSets: ["蒼白の炎", "血染めの騎士道"],
+      baseStats: { rate: 5, dmg: 88.4, atk: 311, hp: 0, def: 0, er: 120, em: 0, scalingMode: "atk" }
+    }
+  },
   { name: "荒瀧一斗", element: "岩" },
   { name: "申鶴", element: "氷" },
   { name: "ナヴィア", element: "岩" },
@@ -82,6 +127,76 @@ export const GENSHIN_CHARACTERS: CharacterData[] = [
       mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.HYDRO_DMG, "理の冠": STAT_IDS.CRIT_RATE },
       targetSets: ["水仙の夢", "沈淪の心"],
       baseStats: { rate: 5, dmg: 50, atk: 311, hp: 0, def: 0, er: 120, em: 0, scalingMode: "atk" }
+    }
+  },
+  {
+    name: "ウェンティ",
+    element: "風",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 1.0, [STAT_IDS.CRIT_DMG]: 0.5, [STAT_IDS.EM]: 2.0, [STAT_IDS.ER]: 1.5, [STAT_IDS.ATK_PER]: 0.8 },
+      mainStats: { "時の砂": STAT_IDS.EM, "空の杯": STAT_IDS.ANEMO_DMG, "理の冠": STAT_IDS.EM },
+      targetSets: ["翠緑の影"],
+      baseStats: { rate: 5, dmg: 50, atk: 0, hp: 0, def: 0, er: 132, em: 150, scalingMode: "em" as any }
+    }
+  },
+  {
+    name: "クレー",
+    element: "炎",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.ATK_PER]: 1.0, [STAT_IDS.EM]: 0.5 },
+      mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.PYRO_DMG, "理の冠": STAT_IDS.CRIT_RATE },
+      targetSets: ["燃え盛る炎の魔女", "剣闘士のフィナーレ"],
+      baseStats: { rate: 5, dmg: 78.8, atk: 311, hp: 0, def: 0, er: 120, em: 0, scalingMode: "atk" }
+    }
+  },
+  {
+    name: "ディルック",
+    element: "炎",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.ATK_PER]: 1.0, [STAT_IDS.EM]: 0.8 },
+      mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.PYRO_DMG, "理の冠": STAT_IDS.CRIT_RATE },
+      targetSets: ["燃え盛る炎の魔女"],
+      baseStats: { rate: 24.2, dmg: 50, atk: 311, hp: 0, def: 0, er: 120, em: 80, scalingMode: "atk" }
+    }
+  },
+  {
+    name: "刻晴",
+    element: "雷",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.ATK_PER]: 1.0, [STAT_IDS.EM]: 0.5 },
+      mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.ELECTRO_DMG, "理の冠": STAT_IDS.CRIT_DMG },
+      targetSets: ["雷鳴を轟かせる男", "剣闘士のフィナーレ"],
+      baseStats: { rate: 5, dmg: 88.4, atk: 311, hp: 0, def: 0, er: 120, em: 0, scalingMode: "atk" }
+    }
+  },
+  {
+    name: "モナ",
+    element: "水",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.ER]: 1.2, [STAT_IDS.ATK_PER]: 0.8 },
+      mainStats: { "時の砂": STAT_IDS.ER, "空の杯": STAT_IDS.HYDRO_DMG, "理の冠": STAT_IDS.CRIT_RATE },
+      targetSets: ["絶縁の旗印", "旧貴族のしつけ"],
+      baseStats: { rate: 5, dmg: 50, atk: 250, hp: 0, def: 0, er: 200, em: 0, scalingMode: "atk" }
+    }
+  },
+  {
+    name: "アルベド",
+    element: "岩",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.DEF_PER]: 1.2 },
+      mainStats: { "時の砂": STAT_IDS.DEF_PER, "空の杯": STAT_IDS.GEO_DMG, "理の冠": STAT_IDS.CRIT_RATE },
+      targetSets: ["華館夢醒形骸記"],
+      baseStats: { rate: 5, dmg: 78.8, atk: 0, hp: 0, def: 120, er: 120, em: 0, scalingMode: "def" }
+    }
+  },
+  {
+    name: "魈",
+    element: "風",
+    defaults: {
+      weights: { [STAT_IDS.CRIT_RATE]: 2.0, [STAT_IDS.CRIT_DMG]: 1.0, [STAT_IDS.ATK_PER]: 1.0, [STAT_IDS.ER]: 0.6 },
+      mainStats: { "時の砂": STAT_IDS.ATK_PER, "空の杯": STAT_IDS.ANEMO_DMG, "理の冠": STAT_IDS.CRIT_RATE },
+      targetSets: ["辰砂往生録"],
+      baseStats: { rate: 24.2, dmg: 50, atk: 311, hp: 0, def: 0, er: 130, em: 0, scalingMode: "atk" }
     }
   },
   { name: "その他", element: "無" }
