@@ -1278,6 +1278,79 @@ export default function Home() {
           <Zap size={16} /> {isSimulating ? t('simulating').toUpperCase() : t('run').toUpperCase()}
         </button>
       </div>
-    </main>
+        {/* --- TUTORIAL OVERLAY --- */}
+        {tutorialStep !== null && (
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div className="bg-slate-900/95 border border-white/10 rounded-[32px] p-8 max-w-md w-full shadow-2xl text-center backdrop-blur-md relative overflow-hidden flex flex-col items-center">
+              <div className={`absolute top-[-50px] right-[-50px] w-36 h-36 rounded-full blur-[80px] opacity-20 bg-gradient-to-br ${config.gradient}`}></div>
+              
+              <button 
+                onClick={closeTutorial} 
+                className="absolute top-5 right-5 text-slate-500 hover:text-white transition-colors"
+                title={lang === "ja" ? "スキップ" : "Skip"}
+              >
+                <X size={20} />
+              </button>
+
+              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${config.gradient} flex items-center justify-center text-white mb-6 shadow-lg shadow-blue-500/10`}>
+                {React.createElement(tutorialSteps[tutorialStep].icon, { size: 32 })}
+              </div>
+
+              <h3 className="text-xl font-black text-white mb-4 tracking-tight">
+                {tutorialSteps[tutorialStep].title}
+              </h3>
+              
+              <p className="text-slate-400 text-sm font-medium leading-relaxed mb-8">
+                {tutorialSteps[tutorialStep].content}
+              </p>
+
+              {/* Progress Dots */}
+              <div className="flex gap-1.5 mb-6">
+                {tutorialSteps.map((_, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${tutorialStep === idx ? 'bg-blue-500 w-4' : 'bg-slate-700'}`}
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between w-full mt-auto gap-4">
+                <button 
+                  onClick={closeTutorial}
+                  className="text-xs font-bold text-slate-500 hover:text-slate-300 transition-colors uppercase tracking-wider"
+                >
+                  {lang === "ja" ? "スキップ" : "Skip"}
+                </button>
+                
+                <div className="flex gap-2">
+                  {tutorialStep > 0 && (
+                    <button 
+                      onClick={() => setTutorialStep(tutorialStep - 1)}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all border border-slate-700"
+                    >
+                      {lang === "ja" ? "戻る" : "Back"}
+                    </button>
+                  )}
+                  
+                  <button 
+                    onClick={() => {
+                      if (tutorialStep < tutorialSteps.length - 1) {
+                        setTutorialStep(tutorialStep + 1);
+                      } else {
+                        closeTutorial();
+                      }
+                    }}
+                    className={`px-5 py-2 bg-gradient-to-r ${config.gradient} text-white rounded-xl text-xs font-black transition-all shadow-md`}
+                  >
+                    {tutorialStep < tutorialSteps.length - 1 
+                      ? (lang === "ja" ? "次へ" : "Next")
+                      : (lang === "ja" ? "スタート！" : "Start!")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
   );
 }
