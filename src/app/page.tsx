@@ -715,6 +715,42 @@ export default function Home() {
                 </div>
               </div>
             )}
+            {/* --- CONDITIONS SUMMARY ON CARD --- */}
+            {result && (
+              <div className="z-10 w-full mb-8 bg-white/5 border border-white/10 rounded-[24px] p-5 flex flex-wrap justify-around items-center gap-3 backdrop-blur-xl">
+                {result.type === "target" ? (
+                  <div className="text-center">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "目標スコア" : "Target Score"}</p>
+                    <p className="text-xs font-black text-white">{targetScore} {t('score_unit')}</p>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "厳選日数" : "Farming Days"}</p>
+                    <p className="text-xs font-black text-white">{days} {t('days_unit')}</p>
+                  </div>
+                )}
+
+                <div className="w-px h-6 bg-white/10"></div>
+
+                <div className="text-center">
+                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">
+                    {gameId === "genshin" 
+                      ? (lang === "ja" ? "1日の消費樹脂" : "Resin / Day")
+                      : gameId === "starrail"
+                        ? (lang === "ja" ? "1日の消費開拓力" : "Stamina / Day")
+                        : (lang === "ja" ? "1日の消費バッテリー" : "Battery / Day")}
+                  </p>
+                  <p className="text-xs font-black text-white">{staminaPerDay}</p>
+                </div>
+
+                <div className="w-px h-6 bg-white/10"></div>
+
+                <div className="text-center">
+                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "聖遺物廻聖" : "Strongbox"}</p>
+                  <p className={`text-xs font-black ${useStrongbox ? "text-emerald-400" : "text-slate-400"}`}>{useStrongbox ? "ON" : "OFF"}</p>
+                </div>
+              </div>
+            )}
             {result && result.pieces && (
               <div className="z-10 w-full mb-12">
                 <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] text-center mb-6">Equipped Pieces Summary</p>
