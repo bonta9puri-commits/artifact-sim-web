@@ -670,8 +670,8 @@ export default function Home() {
                         <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mb-2">LUCK: TOP 10%</p>
                         <p className="text-3xl font-black text-white leading-none tracking-tighter">
                           {result.type === "target" 
-                            ? `+${((1 - result.top10 / result.median) * 100).toFixed(0)}%`
-                            : `+${((result.top10 / result.median - 1) * 100).toFixed(0)}%`
+                            ? `${result.top10} ${t('days_unit')}`
+                            : `${result.top10.toFixed(1)} ${t('score_unit')}`
                           }
                         </p>
                       </div>
@@ -679,8 +679,8 @@ export default function Home() {
                         <p className="text-[9px] text-rose-400 font-black uppercase tracking-widest mb-2">LUCK: BOTTOM 10%</p>
                         <p className="text-3xl font-black text-white leading-none tracking-tighter">
                           {result.type === "target"
-                            ? `-${((result.bottom10 / result.median - 1) * 100).toFixed(0)}%`
-                            : `-${((1 - result.bottom10 / result.median) * 100).toFixed(0)}%`
+                            ? `${result.bottom10} ${t('days_unit')}`
+                            : `${result.bottom10.toFixed(1)} ${t('score_unit')}`
                           }
                         </p>
                       </div>
