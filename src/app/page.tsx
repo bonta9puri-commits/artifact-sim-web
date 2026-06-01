@@ -759,11 +759,19 @@ export default function Home() {
             <h1 className={`text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r ${config.gradient}`}>
               {config.name} {config.equipName}Sim
             </h1>
-            <p className="text-slate-400 mt-1 text-sm font-medium">
+            <p className="text-slate-400 mt-1 text-sm font-medium max-w-2xl leading-relaxed">
               {lang === 'ja' 
-                ? `目標到達までの${gameId === "genshin" ? "樹脂" : "スタミナ"}を徹底シミュレート` 
-                : `Thoroughly simulate ${gameId === "genshin" ? "Resin" : "Stamina"} to reach your target`}
+                ? "祝聖エリクシルの短縮効果や聖遺物廻聖（リサイクル）効率、運勢のブレまで考慮し、目標達成に必要な日数やビルド更新確率を極めて高精度に数学的診断します。" 
+                : "Mathematically diagnoses your target score timeline and build upgrade chances with high precision by factoring in Sanctifying Elixirs, Strongbox recycling, and luck distribution."}
             </p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                {lang === 'ja' ? '✨ エリクシル・廻聖（リサイクル）対応' : '✨ Elixir & Strongbox Supported'}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                {lang === 'ja' ? '📈 運勢のブレを網羅した統計シミュレータ' : '📈 Luck-Percentile Model'}
+              </span>
+            </div>
           </div>
           <button onClick={() => setIsDrawerOpen(true)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
             <LayoutGrid size={24} />
