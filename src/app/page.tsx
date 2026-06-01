@@ -10,10 +10,55 @@ import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effe
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis } from 'recharts';
-import { Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2 } from 'lucide-react';
+import { Sparkles, Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2 } from 'lucide-react';
 
 export default function Home() {
   const [lang, setLang] = useState<"ja" | "en">("ja");
+  const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+
+  const tutorialSteps = [
+    {
+      title: lang === "ja" ? "✨ 聖遺物厳選解析システムへようこそ！" : "✨ Welcome to the Artifact Simulator!",
+      content: lang === "ja" 
+        ? "本ツールは、原神・崩壊スターレイル・ゼンレスゾーンゼロの厳選期間や確率を、祝聖エリクシルや廻聖のリサイクル効率まで含めて数学的に解析できるシミュレーターです。"
+        : "This tool mathematically simulates your gear timeline and upgrade chances, fully factoring in Sanctifying Elixirs, Strongbox recycling, and luck distribution.",
+      icon: Sparkles
+    },
+    {
+      title: lang === "ja" ? "🎮 ゲームとキャラクターの選択" : "🎮 Select Game & Character",
+      content: lang === "ja"
+        ? "上部のタブからゲーム（原神/スタレ/ゼンゼロ）を選択し、キャラクターを選択してください。キャラを選ぶと、推奨されるステータス重みやセットが自動適用されます。"
+        : "Switch games from the top tabs and select a character. Recommended weights, main stats, and sets will be applied automatically.",
+      icon: LayoutGrid
+    },
+    {
+      title: lang === "ja" ? "📊 4つの診断モード" : "📊 4 Simulation Modes",
+      content: lang === "ja"
+        ? "『目標スコア診断』『期間シミュ』『ランク診断』『更新確率診断』の4つのモードを切り替え可能。目標日数やビルドを更新できる確率など、目的に合わせて診断できます。"
+        : "Switch between Target Score, Farming Sim, Build Rank, and Upgrade Chance modes to analyze different aspects of your gear progression.",
+      icon: Target
+    },
+    {
+      title: lang === "ja" ? "⚙️ 設定のカスタマイズと実行" : "⚙️ Customize & Run",
+      content: lang === "ja"
+        ? "狙いのセット、メインステータス、サブステ重み、エリクシル、そして『1日の消費スタミナ』を設定し、『シミュレーション開始』を押して並行世界のドロップ結果を解析しましょう！"
+        : "Adjust target sets, main stats, substat weights, Elixirs, and Resin/Stamina per day, then press 'Run Simulation' to execute the mathematical analysis!",
+      icon: Settings2
+    }
+  ];
+
+  useEffect(() => {
+    const completed = localStorage.getItem('sim_tutorial_completed_v1');
+    if (!completed) {
+      setTutorialStep(0);
+    }
+  }, []);
+
+  const closeTutorial = () => {
+    localStorage.setItem('sim_tutorial_completed_v1', 'true');
+    setTutorialStep(null);
+  };
+
 
   const translations: any = {
     ja: {
@@ -730,6 +775,13 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setTutorialStep(0)}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 rounded-full border border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-colors"
+            >
+              <Sparkles size={12} className="text-blue-400" />
+              {lang === 'ja' ? 'ツアー開始' : 'Quick Tour'}
+            </button>
             <Link 
               href="/blog"
               className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 rounded-full border border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-emerald-400 transition-colors"
@@ -1165,7 +1217,20 @@ export default function Home() {
               <button onClick={() => setIsDrawerOpen(false)} className="text-slate-500 hover:text-white">✕</button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-              <div className="mb-6">
+              <div className="mb-6 space-y-3">
+                <button 
+                  onClick={() => { setTutorialStep(0); setIsDrawerOpen(false); }}
+                  className="w-full flex items-center justify-between p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl group hover:bg-blue-500/20 transition-all text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <Sparkles size={20} className="text-blue-400" />
+                    <div>
+                      <p className="text-sm font-black text-white">{lang === 'ja' ? 'クイックツアー' : 'Quick Tour'}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Interactive Guide</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-blue-400 group-hover:translate-x-1 transition-transform" />
+                </button>
                 <Link 
                   href="/blog" 
                   onClick={() => setIsDrawerOpen(false)}
