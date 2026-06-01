@@ -10,10 +10,59 @@ import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effe
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis } from 'recharts';
-import { Sparkles, Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2 } from 'lucide-react';
+import { Link2, Sparkles, Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2 } from 'lucide-react';
 
 export default function Home() {
   const [lang, setLang] = useState<"ja" | "en">("ja");
+  const [showShareToast, setShowShareToast] = useState(false);
+
+  const charJaToEnMap: Record<string, string> = {
+    "ヌヴィレット": "neuvillette",
+    "フリーナ": "furina",
+    "ナヒーダ": "nahida",
+    "雷電将軍": "raiden",
+    "鍾離": "zhongli",
+    "甘雨": "ganyu",
+    "胡桃": "hutao",
+    "神里綾華": "ayaka",
+    "八重神子": "yae",
+    "夜蘭": "yelan",
+    "放浪者": "wanderer",
+    "ムアラニ": "mualani",
+    "キィニチ": "kinich",
+    "シロネン": "xilonen",
+    "タルタリヤ": "tartaglia",
+    "楓原万葉": "kazuha",
+    "珊瑚宮心海": "kokomi",
+    "ニィロウ": "nilou",
+    "アルハイゼン": "alhaitham",
+    "セノ": "cyno",
+    "エウルア": "eula",
+    "荒瀧一斗": "itto",
+    "申鶴": "shenhe",
+    "ナヴィア": "navia",
+    "クロリンデ": "clorinde",
+    "エミリエ": "emilie",
+    "ニコ・リヤン": "nicole"
+  };
+
+  const copyShareLink = () => {
+    if (typeof window === 'undefined') return;
+    const charKey = charJaToEnMap[characterName] || characterName.toLowerCase();
+    const params = new URLSearchParams();
+    params.set('game', gameId);
+    params.set('char', charKey);
+    params.set('score', targetScore.toString());
+    params.set('resin', staminaPerDay.toString());
+    params.set('recycle', useStrongbox ? '1' : '0');
+
+    const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    });
+  };
+
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
 
   const tutorialSteps = [
@@ -339,20 +388,88 @@ export default function Home() {
 
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // 設定のロード
+    // 設定のロード (URLパラメータ & localStorage)
   useEffect(() => {
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const urlGame = urlParams?.get('game');
+    
+    // URLのgameIdが現在のgameIdと異なる場合は、gameIdを切り替えて次のuseEffectサイクルに引き渡す
+    if (urlGame && urlGame !== gameId && ["genshin", "starrail", "zzz"].includes(urlGame)) {
+      setGameId(urlGame as GameId);
+      return;
+    }
+
     const savedSettings = localStorage.getItem(`sim_settings_${gameId}`);
+    let loadedSettings: any = {};
     if (savedSettings) {
       try {
-        const parsed = JSON.parse(savedSettings);
-        if (parsed.targetScore) setTargetScore(parsed.targetScore);
-        if (parsed.scoreWeights) setScoreWeights(parsed.scoreWeights);
-        if (parsed.mainStats) setMainStats(parsed.mainStats);
-        if (parsed.userPartScores) setUserPartScores(parsed.userPartScores);
+        loadedSettings = JSON.parse(savedSettings);
       } catch (e) {
         console.error("Failed to load settings", e);
       }
-    } else {
+    }
+
+    // URLパラメータの適用 (最優先)
+    const urlChar = urlParams?.get('char');
+    const urlScore = urlParams?.get('score');
+    const urlResin = urlParams?.get('resin');
+    const urlRecycle = urlParams?.get('recycle');
+
+    if (urlScore) loadedSettings.targetScore = Number(urlScore);
+    if (urlResin) loadedSettings.staminaPerDay = Number(urlResin);
+    if (urlRecycle) setUseStrongbox(urlRecycle === '1');
+
+    if (urlChar) {
+      const charEnToJaMap: Record<string, string> = {
+        "neuvillette": "ヌヴィレット",
+        "furina": "フリーナ",
+        "nahida": "ナヒーダ",
+        "raiden": "雷電将軍",
+        "raiden_shogun": "雷電将軍",
+        "zhongli": "鍾離",
+        "ganyu": "甘雨",
+        "hutao": "胡桃",
+        "hu_tao": "胡桃",
+        "ayaka": "神里綾華",
+        "yae": "八重神子",
+        "yelan": "夜蘭",
+        "wanderer": "放浪者",
+        "mualani": "ムアラニ",
+        "kinich": "キィニチ",
+        "xilonen": "シロネン",
+        "tartaglia": "タルタリヤ",
+        "kazuha": "楓原万葉",
+        "kokomi": "珊瑚宮心海",
+        "nilou": "ニィロウ",
+        "alhaitham": "アルハイゼン",
+        "cyno": "セノ",
+        "eula": "エウルア",
+        "itto": "荒瀧一斗",
+        "shenhe": "申鶴",
+        "navia": "ナヴィア",
+        "clorinde": "クロリンデ",
+        "emilie": "エミリエ",
+        "nicole": "ニコ・リヤン"
+      };
+      const charKey = urlChar.toLowerCase();
+      const mappedJaName = charEnToJaMap[charKey];
+      const configForGame = GAME_CONFIGS[gameId];
+      if (mappedJaName && configForGame.characters.some(c => c.name === mappedJaName)) {
+        setCharacterName(mappedJaName);
+      } else {
+        const found = configForGame.characters.find(c => c.name.toLowerCase() === charKey);
+        if (found) setCharacterName(found.name);
+      }
+    }
+
+    // 各ステートへの反映
+    if (loadedSettings.targetScore) setTargetScore(loadedSettings.targetScore);
+    if (loadedSettings.scoreWeights) setScoreWeights(loadedSettings.scoreWeights);
+    if (loadedSettings.mainStats) setMainStats(loadedSettings.mainStats);
+    if (loadedSettings.userPartScores) setUserPartScores(loadedSettings.userPartScores);
+    if (loadedSettings.staminaPerDay) setStaminaPerDay(loadedSettings.staminaPerDay);
+
+    if (!savedSettings) {
       // 初期値設定
       const initialMain: Record<string, string> = {};
       config.slots.forEach(s => {
@@ -376,11 +493,7 @@ export default function Home() {
       });
       setMainStats(initialMain);
       
-      if (gameId === "genshin") {
-        setTargetScore(180);
-      } else {
-        setTargetScore(420);
-      }
+      setTargetScore(gameId === "genshin" ? 180 : 420);
       
       const initialWeights: Record<string, number> = {};
       config.subStats.forEach(s => {
@@ -399,14 +512,15 @@ export default function Home() {
         }
       });
       setUserPartScores(initialPartScores);
+      setStaminaPerDay(gameId === "genshin" ? 180 : 240);
     }
   }, [gameId, config]);
 
-  // 設定の保存
+    // 設定の保存
   useEffect(() => {
-    const settings = { targetScore, scoreWeights, mainStats, userPartScores };
+    const settings = { targetScore, scoreWeights, mainStats, userPartScores, staminaPerDay };
     localStorage.setItem(`sim_settings_${gameId}`, JSON.stringify(settings));
-  }, [gameId, targetScore, scoreWeights, mainStats, userPartScores]);
+  }, [gameId, targetScore, scoreWeights, mainStats, userPartScores, staminaPerDay]);
 
   // 履歴のロード
   useEffect(() => {
@@ -1227,6 +1341,10 @@ export default function Home() {
                   <Share2 size={18} />
                   <span>{t('share')}</span>
                 </button>
+                <button onClick={copyShareLink} type="button" className="flex items-center gap-2 px-8 py-3 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                  <Link2 size={18} className="text-blue-400" />
+                  <span>{lang === 'ja' ? '共有リンクをコピー' : 'Copy Share Link'}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1314,6 +1432,14 @@ export default function Home() {
           <Zap size={16} /> {isSimulating ? t('simulating').toUpperCase() : t('run').toUpperCase()}
         </button>
       </div>
+        {/* --- TOAST NOTIFICATION --- */}
+        {showShareToast && (
+          <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/30 text-emerald-400 px-6 py-3 rounded-full text-xs font-black tracking-widest shadow-2xl flex items-center gap-2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <Zap size={14} className="text-emerald-400 animate-pulse" />
+            <span>{lang === 'ja' ? '共有用URLをコピーしました！' : 'Copied share URL to clipboard!'}</span>
+          </div>
+        )}
+        
         {/* --- TUTORIAL OVERLAY --- */}
         {tutorialStep !== null && (
           <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4">

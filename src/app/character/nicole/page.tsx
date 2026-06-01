@@ -40,6 +40,21 @@ export default function NicoleSpecialPage() {
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
 
   const [lang, setLang] = useState<"ja" | "en">("ja");
+  const [showShareToast, setShowShareToast] = useState(false);
+
+  const copyShareLink = () => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams();
+    params.set('score', targetScore.toString());
+    params.set('resin', staminaPerDay.toString());
+    
+    const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    });
+  };
+
 
   const translations: any = {
     ja: {
@@ -199,6 +214,17 @@ export default function NicoleSpecialPage() {
   };
 
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // URLパラメータのロード
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const urlScore = params.get('score');
+    const urlResin = params.get('resin');
+
+    if (urlScore) setTargetScore(Number(urlScore));
+    if (urlResin) setStaminaPerDay(Number(urlResin));
+  }, []);
 
   useEffect(() => {
     const initial: any = {};
