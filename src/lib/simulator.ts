@@ -394,13 +394,43 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
   return { total: 0, substatTotal: 0, pieces: {} };
 }
 
+function getDefaultSetForSlot(gameId: GameId, part: string, targetSets: string[]): string {
+  const t0 = targetSets[0] && targetSets[0] !== "未選択" ? targetSets[0] : "その他";
+  const t2 = targetSets[2] && targetSets[2] !== "未選択" ? targetSets[2] : "その他";
+  if (gameId === "starrail") {
+    const isOrnament = part === "次元界オーブ" || part === "連結縄";
+    return isOrnament ? t2 : t0;
+  } else if (gameId === "zzz") {
+    const isSlot56 = part === "スロット5" || part === "スロット6";
+    return isSlot56 ? t2 : t0;
+  }
+  return t0;
+}
+
 // シミュレーション (目標スコア)
-export function simulateUntilScore(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[], elixirConfig?: ElixirConfig | null) {
+export function simulateUntilScore(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[], elixirConfig?: ElixirConfig | null, initialScores?: Record<string, number> | null) {
   const parts = Object.keys(MAIN_PROBS[gameId]);
   const bestPieces: Record<string, Record<string, any>> = {};
   parts.forEach(p => {
     bestPieces[p] = { "any": null };
     targetSets.forEach(s => { if(s && s !== "未選択") bestPieces[p][s] = null; });
+    
+    if (initialScores && initialScores[p] !== undefined && initialScores[p] > 0) {
+      const initScore = initialScores[p];
+      const defaultSet = getDefaultSetForSlot(gameId, p, targetSets);
+      const dummyPiece = {
+        part: p,
+        main: mainStats[p] || "",
+        score: initScore,
+        substats: {},
+        isTargetSet: defaultSet !== "その他",
+        setName: defaultSet,
+        isOrnament: gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄"),
+        isInitial: true
+      };
+      bestPieces[p][defaultSet] = dummyPiece;
+      bestPieces[p]["any"] = dummyPiece;
+    }
   });
   
   let attempts = 0;
@@ -570,12 +600,29 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
 }
 
 // シミュレーション (固定期間)
-export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, staminaPerDay: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[], elixirConfig?: ElixirConfig | null) {
+export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, staminaPerDay: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[], elixirConfig?: ElixirConfig | null, initialScores?: Record<string, number> | null) {
   const parts = Object.keys(MAIN_PROBS[gameId]);
   const bestPieces: Record<string, Record<string, any>> = {};
   parts.forEach(p => {
     bestPieces[p] = { "any": null };
     targetSets.forEach(s => { if(s && s !== "未選択") bestPieces[p][s] = null; });
+
+    if (initialScores && initialScores[p] !== undefined && initialScores[p] > 0) {
+      const initScore = initialScores[p];
+      const defaultSet = getDefaultSetForSlot(gameId, p, targetSets);
+      const dummyPiece = {
+        part: p,
+        main: mainStats[p] || "",
+        score: initScore,
+        substats: {},
+        isTargetSet: defaultSet !== "other",
+        setName: defaultSet,
+        isOrnament: gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄"),
+        isInitial: true
+      };
+      bestPieces[p][defaultSet] = dummyPiece;
+      bestPieces[p]["any"] = dummyPiece;
+    }
   });
   
   let recycleQueue = 0;

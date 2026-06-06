@@ -779,11 +779,11 @@ export default function Home() {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
-        const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig);
+        const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig, userPartScores);
         results.push(res);
         
         if (elixirEnabled && i < 50) {
-          const base = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, { ...elixirConfig, enabled: false });
+          const base = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, { ...elixirConfig, enabled: false }, userPartScores);
           baselineResults.push(base);
         }
 
@@ -841,7 +841,7 @@ export default function Home() {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
-        const res = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig);
+        const res = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig, userPartScores);
         results.push(res);
         if (res.godPieces && res.godPieces.length > 0) {
           collectedGods.push(...res.godPieces);
@@ -1451,17 +1451,15 @@ export default function Home() {
                         </div>
                       )}
 
-                      {(simMode === "rank" || simMode === "upgrade") && (
-                        <div className="grid grid-cols-2 gap-2 bg-slate-950/30 p-3 rounded-xl border border-slate-800/50">
-                          <p className="col-span-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">{t('currentScores')}</p>
-                          {config.slots.filter(s => s !== "未選択").map(slot => (
-                            <div key={slot}>
-                              <label className="block text-[9px] text-slate-500 mb-0.5">{t(slot)}</label>
-                              <input inputMode="decimal" pattern="[0-9.]*" type="number" value={userPartScores[slot] || 0} onChange={e => setUserPartScores({...userPartScores, [slot]: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white text-center"/>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <div className="grid grid-cols-2 gap-2 bg-slate-950/30 p-3 rounded-xl border border-slate-800/50">
+                        <p className="col-span-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">{t('currentScores')}</p>
+                        {config.slots.filter(s => s !== "未選択").map(slot => (
+                          <div key={slot}>
+                            <label className="block text-[9px] text-slate-500 mb-0.5">{t(slot)}</label>
+                            <input inputMode="decimal" pattern="[0-9.]*" type="number" value={userPartScores[slot] || 0} onChange={e => setUserPartScores({...userPartScores, [slot]: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white text-center"/>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
