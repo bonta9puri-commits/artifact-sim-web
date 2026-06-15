@@ -31,17 +31,116 @@ export const STARRAIL_CHARACTERS: CharacterData[] = [
       baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
     }
   },
-  { name: "ブローニャ", element: "風" },
-  { name: "ゼーレ", element: "量子" },
-  { name: "鏡流", element: "氷" },
-  { name: "飲月", element: "虚数" },
-  { name: "花火", element: "量子" },
-  { name: "アベンチュリン", element: "虚数" },
-  { name: "ロビン", element: "物理" },
-  { name: "雲璃", element: "物理" },
-  { name: "カフカ", element: "雷" },
-  { name: "ブラックスワン", element: "風" },
-  { name: "ルアン・メェイ", element: "氷" },
+  { 
+    name: "ブローニャ", 
+    element: "風",
+    defaults: {
+      weights: { "会心ダメージ": 2.0, "速度": 1.5, "HP%": 0.8, "防御力%": 0.8 },
+      mainStats: { "胴体": "会心ダメージ", "脚部": "速度", "次元界オーブ": "防御力%", "連結縄": "EP回復効率" },
+      targetSets: ["仮想空間を彷徨うメッセンジャー", "折れた竜骨"],
+      baseStats: { rate: 5, dmg: 50, atk: 1200, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "ゼーレ", 
+    element: "量子",
+    defaults: {
+      weights: { "会心率": 2.0, "会心ダメージ": 1.0, "攻撃力%": 1.0, "速度": 0.5 },
+      mainStats: { "胴体": "会心率", "脚部": "攻撃力%", "次元界オーブ": "量子ダメージ", "連結縄": "攻撃力%" },
+      targetSets: ["星の如く輝く天才", "宇宙封印ステーション"],
+      baseStats: { rate: 5, dmg: 50, atk: 1250, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "鏡流", 
+    element: "氷",
+    defaults: {
+      weights: { "会心ダメージ": 2.0, "会心率": 0.8, "攻撃力%": 1.0, "速度": 1.0 },
+      mainStats: { "胴体": "会心ダメージ", "脚部": "速度", "次元界オーブ": "氷ダメージ", "連結縄": "攻撃力%" },
+      targetSets: ["雪の密林の狩人", "星々の競技場"],
+      baseStats: { rate: 5, dmg: 50, atk: 1300, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "飲月", 
+    element: "虚数",
+    defaults: {
+      weights: { "会心率": 2.0, "会心ダメージ": 1.0, "攻撃力%": 1.0, "速度": 0.5 },
+      mainStats: { "胴体": "会心率", "脚部": "攻撃力%", "次元界オーブ": "虚数ダメージ", "連結縄": "攻撃力%" },
+      targetSets: ["荒地で盗みを働く廃土客", "星々の競技場"],
+      baseStats: { rate: 5, dmg: 50, atk: 1300, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "花火", 
+    element: "量子",
+    defaults: {
+      weights: { "会心ダメージ": 2.0, "速度": 1.5, "HP%": 0.8, "防御力%": 0.8 },
+      mainStats: { "胴体": "会心ダメージ", "脚部": "速度", "次元界オーブ": "HP%", "連結縄": "EP回復効率" },
+      targetSets: ["仮想空間を彷徨うメッセンジャー", "折れた竜骨"],
+      baseStats: { rate: 5, dmg: 50, atk: 1100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "アベンチュリン", 
+    element: "虚数",
+    defaults: {
+      weights: { "防御力%": 2.0, "会心ダメージ": 1.0, "会心率": 0.8, "速度": 0.8 },
+      mainStats: { "胴体": "会心ダメージ", "脚部": "防御力%", "次元界オーブ": "防御力%", "連結縄": "防御力%" },
+      targetSets: ["純庭教会の聖騎士", "折れた竜骨"],
+      baseStats: { rate: 5, dmg: 50, def: 1200, hp: 0, er: 100, em: 0, scalingMode: "def" }
+    }
+  },
+  { 
+    name: "ロビン", 
+    element: "物理",
+    defaults: {
+      weights: { "攻撃力%": 2.0, "速度": 0.5, "HP%": 0.5 },
+      mainStats: { "胴体": "攻撃力%", "脚部": "攻撃力%", "次元界オーブ": "攻撃力%", "連結縄": "EP回復効率" },
+      targetSets: ["草の穂ガンマン", "折れた竜骨"],
+      baseStats: { rate: 5, dmg: 50, atk: 1250, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "雲璃", 
+    element: "物理",
+    defaults: {
+      weights: { "会心率": 2.0, "会心ダメージ": 1.0, "攻撃力%": 1.0, "速度": 0.3 },
+      mainStats: { "胴体": "会心率", "脚部": "攻撃力%", "次元界オーブ": "物理ダメージ", "連結縄": "攻撃力%" },
+      targetSets: ["風雲を薙ぎ払う勇烈", "自転が止まったサルソット"],
+      baseStats: { rate: 5, dmg: 50, atk: 1250, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "カフカ", 
+    element: "雷",
+    defaults: {
+      weights: { "攻撃力%": 2.0, "速度": 1.5, "効果命中": 0.5, "撃破特効": 0.3 },
+      mainStats: { "胴体": "攻撃力%", "脚部": "速度", "次元界オーブ": "雷ダメージ", "連結縄": "攻撃力%" },
+      targetSets: ["重きを背負う異端者", "宇宙封印ステーション"],
+      baseStats: { rate: 5, dmg: 50, atk: 1250, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "ブラックスワン", 
+    element: "風",
+    defaults: {
+      weights: { "効果命中": 2.0, "攻撃力%": 1.0, "速度": 1.5, "撃破特効": 0.3 },
+      mainStats: { "胴体": "効果命中", "脚部": "速度", "次元界オーブ": "風ダメージ", "連結縄": "攻撃力%" },
+      targetSets: ["重きを背負う異端者", "汎銀河商事会社"],
+      baseStats: { rate: 5, dmg: 50, atk: 1200, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
+  { 
+    name: "ルアン・メェイ", 
+    element: "氷",
+    defaults: {
+      weights: { "撃破特効": 2.0, "速度": 1.5, "HP%": 0.8, "防御力%": 0.8 },
+      mainStats: { "胴体": "HP%", "脚部": "速度", "次元界オーブ": "HP%", "連結縄": "EP回復効率" },
+      targetSets: ["流星 of 跡を追う怪盗" /* 正しくは "流星の跡を追う怪盗" */, "折れた竜骨"],
+      baseStats: { rate: 5, dmg: 50, atk: 1000, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
+    }
+  },
   { name: "その他", element: "無" }
 ];
 

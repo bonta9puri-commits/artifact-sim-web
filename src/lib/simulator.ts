@@ -786,3 +786,136 @@ export function compareRecycleEfficiency(gameId: GameId, target: number, scoreWe
     daysSaved: daysSaved,
   };
 }
+
+// 聖遺物の個別強化（跳ね）シミュレーション
+export interface SubstatUpgradeInput {
+  name: string;
+  value: number;
+}
+
+export function simulateUpgradeProgress(
+  gameId: GameId,
+  initialOptCount: number, // 3 または 4
+  currentLevel: number,
+  currentSubs: SubstatUpgradeInput[],
+  scoreWeights: Record<string, number>,
+  subPool: string[],
+  mainStat: string,
+  targetScore: number,
+  trials: number = 10000
+) {
+  // 1. 各ゲームにおける強化タイミングの特定
+  const maxLevel = gameId === "genshin" ? 20 : 15;
+  const upgradeInterval = gameId === "genshin" ? 4 : 3;
+  
+  // 残りの強化タイミング（レベル）の特定
+  const upgradeLevels: number[] = [];
+  for (let lv = upgradeInterval; lv <= maxLevel; lv += upgradeInterval) {
+    if (lv > currentLevel) {
+      upgradeLevels.push(lv);
+    }
+  }
+
+  // サブステプールからメインと重複しているものを除外
+  const availablePool = subPool.filter(s => s !== mainStat && s !== "未選択");
+  const gameSubWeights = SUB_WEIGHTS[gameId] || {};
+
+  const results: { score: number; subs: Record<string, number>; rolls: Record<string, number> }[] = [];
+
+  for (let t = 0; t < trials; t++) {
+    // 現在のステータスの複製
+    const subs: Record<string, number> = {};
+    const rolls: Record<string, number> = {}; // 各サブステが何回跳ねたかの記録
+    
+    currentSubs.forEach(sub => {
+      if (sub.name && sub.name !== "未選択") {
+        subs[sub.name] = sub.value;
+        rolls[sub.name] = 0;
+      }
+    });
+
+    // 強化シミュレーション実行
+    upgradeLevels.forEach(lv => {
+      const activeSubs = Object.keys(subs);
+      
+      // 3オプで枠追加が必要な場合（オプション数が4未満の場合）
+      if (activeSubs.length < 4) {
+        // 残りプールから抽選して追加
+        const tempPool = availablePool.filter(s => !activeSubs.includes(s));
+        if (tempPool.length > 0) {
+          const probs: Record<string, number> = {};
+          tempPool.forEach(s => probs[s] = gameSubWeights[s] || 10);
+          const newSub = weightedRandom(probs);
+          if (newSub) {
+            // 新規追加。初期値は最低値または平均値。
+            // ここでは標準の1回の出現値を設定。
+            const initialVal = getSubstatValue(gameId, newSub);
+            subs[newSub] = initialVal;
+            rolls[newSub] = 0; // 追加された時点ではまだ跳ね回数は0
+          }
+        }
+      } else {
+        // すでに4つある場合は、4つのうちいずれか1つを等確率で強化
+        const targetSub = activeSubs[Math.floor(Math.random() * activeSubs.length)];
+        const addVal = getSubstatValue(gameId, targetSub);
+        subs[targetSub] = (subs[targetSub] || 0) + addVal;
+        rolls[targetSub] = (rolls[targetSub] || 0) + 1;
+      }
+    });
+
+    // 最終スコアの計算
+    let score = 0;
+    Object.entries(subs).forEach(([subName, subVal]) => {
+      const weight = scoreWeights[subName] || 0;
+      score += subVal * weight;
+    });
+
+    results.push({ score, subs, rolls });
+  }
+
+  // スコア順にソート (昇順)
+  results.sort((a, b) => a.score - b.score);
+
+  // 主要統計の抽出
+  const medianIdx = Math.floor(trials / 2);
+  const top10Idx = Math.floor(trials * 0.9); // 上位10%
+  const bottom10Idx = Math.floor(trials * 0.1); // 下位10%
+  const worst5Idx = Math.floor(trials * 0.05); // 下位5%
+  const bestIdx = trials - 1;
+
+  const medianRes = results[medianIdx];
+  const top10Res = results[top10Idx];
+  const bottom10Res = results[bottom10Idx];
+  const worst5Res = results[worst5Idx];
+  const bestRes = results[bestIdx];
+
+  // 目標スコア達成確率
+  const successCount = results.filter(r => r.score >= targetScore).length;
+  const successRate = (successCount / trials) * 100;
+
+  // 平均跳ね回数の集計 (全試行の平均)
+  const avgRolls: Record<string, number> = {};
+  results.forEach(r => {
+    Object.entries(r.rolls).forEach(([subName, rollCount]) => {
+      avgRolls[subName] = (avgRolls[subName] || 0) + rollCount;
+    });
+  });
+  Object.keys(avgRolls).forEach(subName => {
+    avgRolls[subName] = avgRolls[subName] / trials;
+  });
+
+  return {
+    type: "roll",
+    median: medianRes.score,
+    top10: top10Res.score,
+    bottom10: bottom10Res.score,
+    worst5: worst5Res.score,
+    best: bestRes.score,
+    successRate,
+    medianSubs: medianRes.subs,
+    medianRolls: medianRes.rolls,
+    avgRolls,
+    rawScores: results.map(r => r.score) // ヒストグラム表示用
+  };
+}
+

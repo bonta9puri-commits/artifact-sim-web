@@ -4,8 +4,9 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { GAME_CONFIGS, GameId, GameConfig } from '@/lib/game_data';
 import { GENSHIN_CHARACTERS, GENSHIN_MAIN_STATS, GENSHIN_SUB_STATS, GENSHIN_SETS, GENSHIN_SLOTS } from "@/lib/genshin_data";
+import { calculateTotalStats, calculateDamageExpectation, DEFAULT_BASE_STATS, MAIN_STAT_VALUES } from "@/lib/stats_values";
 import { STAT_IDS } from "@/lib/stats";
-import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, ElixirConfig, MAIN_PROBS } from "@/lib/simulator";
+import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, ElixirConfig, MAIN_PROBS, simulateUpgradeProgress } from "@/lib/simulator";
 import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effects';
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
@@ -154,6 +155,171 @@ export default function Home() {
     });
   };
 
+  const estimateCurrentArtifactStats = () => {
+    const charData = config.characters.find(c => c.name === characterName);
+    
+    // 1. メインステータスによる上昇値の計算
+    const mainStatsTotal: Record<string, number> = {};
+    config.slots.filter(s => s !== "未選択").forEach(slot => {
+      let mainStat = mainStats[slot];
+      if (gameId === "genshin") {
+        if (slot.includes("花")) mainStat = STAT_IDS.HP_FLAT;
+        else if (slot.includes("羽")) mainStat = STAT_IDS.ATK_FLAT;
+      } else if (gameId === "starrail") {
+        if (slot === "頭部") mainStat = STAT_IDS.HP_FLAT;
+        else if (slot === "手部") mainStat = STAT_IDS.ATK_FLAT;
+      } else if (gameId === "zzz") {
+        if (slot === "スロット1") mainStat = STAT_IDS.HP_FLAT;
+        else if (slot === "スロット2") mainStat = STAT_IDS.ATK_FLAT;
+        else if (slot === "スロット3") mainStat = STAT_IDS.DEF_FLAT;
+      }
+
+      const mainVal = MAIN_STAT_VALUES[gameId]?.[mainStat] || 0;
+      if (mainVal > 0 && mainStat) {
+        mainStatsTotal[mainStat] = (mainStatsTotal[mainStat] || 0) + mainVal;
+      }
+    });
+
+    // 2. サブステータスによる上昇値の計算（現在スコアから擬似配分）
+    const subStatsTotal: Record<string, number> = {};
+    const totalSubScore = config.slots
+      .filter(s => s !== "未選択")
+      .reduce((acc, slot) => acc + (userPartScores[slot] || 0), 0);
+
+    const totalWeight = Object.entries(scoreWeights)
+      .filter(([sub]) => sub !== "未選択")
+      .reduce((acc, [_, w]) => acc + w, 0);
+
+    if (totalWeight > 0 && totalSubScore > 0) {
+      Object.entries(scoreWeights).forEach(([sub, weight]) => {
+        if (sub === "未選択" || weight <= 0) return;
+
+        const subScoreAllocated = totalSubScore * (weight / totalWeight);
+
+        let val = 0;
+        if (gameId === "genshin") {
+          if (sub === STAT_IDS.CRIT_RATE) {
+            val = subScoreAllocated / 2.0;
+          } else {
+            val = subScoreAllocated / 1.0;
+          }
+        } else if (gameId === "starrail") {
+          const rolls = (subScoreAllocated * 9) / 50;
+          const avgRoll = sub === STAT_IDS.CRIT_RATE ? 2.9 : sub === STAT_IDS.CRIT_DMG ? 5.8 : sub === STAT_IDS.SPEED ? 2.3 : 3.9;
+          val = rolls * avgRoll;
+        } else if (gameId === "zzz") {
+          const rolls = (subScoreAllocated * 7) / 100;
+          const zzzSubVals: Record<string, number> = {
+            [STAT_IDS.CRIT_RATE]: 2.4, [STAT_IDS.CRIT_DMG]: 4.8, [STAT_IDS.ATK_PER]: 3.0, [STAT_IDS.HP_PER]: 3.0, [STAT_IDS.DEF_PER]: 4.8,
+            [STAT_IDS.ATK_FLAT]: 19, [STAT_IDS.HP_FLAT]: 112, [STAT_IDS.DEF_FLAT]: 15, [STAT_IDS.AM_MAS]: 9, [STAT_IDS.AM_PRO]: 9, [STAT_IDS.PEN_FLAT]: 9, [STAT_IDS.IMPACT]: 1.2,
+          };
+          const baseValue = zzzSubVals[sub] || 1;
+          val = rolls * baseValue;
+        }
+
+        if (val > 0) {
+          subStatsTotal[sub] = val;
+        }
+      });
+    }
+
+    const totals: Record<string, number> = {};
+    const allStatKeys = new Set([...Object.keys(mainStatsTotal), ...Object.keys(subStatsTotal)]);
+    allStatKeys.forEach(k => {
+      totals[k] = (mainStatsTotal[k] || 0) + (subStatsTotal[k] || 0);
+    });
+
+    return totals;
+  };
+
+  const shareOnX = () => {
+    if (typeof window === 'undefined' || !result) return;
+
+    const charKey = charJaToEnMap[characterName] || characterName.toLowerCase();
+    const params = new URLSearchParams();
+    params.set('game', gameId);
+    params.set('char', charKey);
+    params.set('score', targetScore.toString());
+    params.set('resin', staminaPerDay.toString());
+    params.set('recycle', useStrongbox ? '1' : '0');
+
+    const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    const gameName = GAME_CONFIGS[gameId].name;
+    const charNameTranslated = t(characterName);
+
+    // 聖遺物で伸びたステータスのサマリーを作成
+    let statsSummary = "";
+    if (result.pieces) {
+      const totals = calculateTotalStats(gameId, result.pieces);
+      const statStrings: string[] = [];
+      const mainStatsToDisplay = [
+        { id: STAT_IDS.CRIT_RATE, name: t(STAT_IDS.CRIT_RATE), isPercent: true },
+        { id: STAT_IDS.CRIT_DMG, name: t(STAT_IDS.CRIT_DMG), isPercent: true },
+        { id: STAT_IDS.ATK_PER, name: t(STAT_IDS.ATK_PER), isPercent: true },
+        { id: STAT_IDS.HP_PER, name: t(STAT_IDS.HP_PER), isPercent: true },
+        { id: STAT_IDS.DEF_PER, name: t(STAT_IDS.DEF_PER), isPercent: true },
+        { id: STAT_IDS.ER, name: t(STAT_IDS.ER), isPercent: true },
+        { id: STAT_IDS.EM, name: t(STAT_IDS.EM), isPercent: false },
+        { id: STAT_IDS.SPEED, name: t(STAT_IDS.SPEED), isPercent: false },
+        { id: STAT_IDS.BREAK_EFFECT, name: t(STAT_IDS.BREAK_EFFECT), isPercent: true },
+        { id: STAT_IDS.AM_MAS, name: t(STAT_IDS.AM_MAS), isPercent: false },
+      ];
+      mainStatsToDisplay.forEach(stat => {
+        const val = totals[stat.id] || 0;
+        if (val > 0) {
+          const valStr = stat.isPercent ? `+${val.toFixed(1)}%` : `+${Math.round(val)}`;
+          statStrings.push(`${stat.name}${valStr}`);
+        }
+      });
+      if (statStrings.length > 0) {
+        statsSummary = lang === "ja"
+          ? `\n(主要ステータス: ${statStrings.slice(0, 3).join(", ")})`
+          : `\n(Stats: ${statStrings.slice(0, 3).join(", ")})`;
+      }
+    }
+
+    let text = "";
+    if (result.type === "target") {
+      const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+      const currentDays = currentLuckRes ? Math.ceil((currentLuckRes.attempts * staminaCost) / staminaPerDay) : result.median;
+      text = lang === "ja"
+        ? `【${gameName}】${charNameTranslated}の目標スコア${targetScore}pt達成に必要な日数は、私の運勢（上位${luckPercentile}%）だと「約${currentDays}日」でした！${statsSummary}`
+        : `[${gameName}] It takes about ${currentDays} days to reach my target score of ${targetScore}pt for ${charNameTranslated}! (Top ${luckPercentile}% Luck)${statsSummary}`;
+    } else if (result.type === "period") {
+      const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+      const currentScore = currentLuckRes ? currentLuckRes.score : result.median;
+      text = lang === "ja"
+        ? `【${gameName}】${charNameTranslated}の聖遺物を${days}日間厳選した時の獲得スコア期待値は、私の運勢（上位${luckPercentile}%）だと「${currentScore.toFixed(1)}pt」でした！${statsSummary}`
+        : `[${gameName}] My expected score after ${days} days farming for ${charNameTranslated} is ${currentScore.toFixed(1)}pt! (Top ${luckPercentile}% Luck)${statsSummary}`;
+    } else if (result.type === "rank") {
+      text = lang === "ja"
+        ? `【${gameName}】${charNameTranslated}の聖遺物ビルド実力（勝率）は「上位${result.percentile.toFixed(1)}%」でした！${statsSummary}`
+        : `[${gameName}] My build rank for ${charNameTranslated} is in the Top ${result.percentile.toFixed(1)}%!${statsSummary}`;
+    } else if (result.type === "upgrade") {
+      text = lang === "ja"
+        ? `【${gameName}】${charNameTranslated}の聖遺物を${days}日間厳選した時のビルド更新確率は「${upgradeResult?.overallProb.toFixed(1)}%」でした！${statsSummary}`
+        : `[${gameName}] My build upgrade chance after ${days} days for ${charNameTranslated} is ${upgradeResult?.overallProb.toFixed(1)}%!${statsSummary}`;
+    } else if (result.type === "damage") {
+      const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+      const afterDmg = currentLuckRes ? (currentLuckRes.damage || 0) : result.median;
+      const diffPercent = result.currentDmg > 0 ? ((afterDmg - result.currentDmg) / result.currentDmg) * 100 : 0;
+      const plusSign = diffPercent >= 0 ? "+" : "";
+      text = lang === "ja"
+        ? `【${gameName}】${charNameTranslated}の聖遺物を${days}日間厳選した時のダメージ期待値は、私の運勢（上位${luckPercentile}%）だと「${plusSign}${diffPercent.toFixed(1)}%」アップ（期待値: ${Math.round(afterDmg).toLocaleString()}）でした！${statsSummary}`
+        : `[${gameName}] My expected damage after ${days} days farming for ${charNameTranslated} increased by ${plusSign}${diffPercent.toFixed(1)}%! (Expected DMG: ${Math.round(afterDmg).toLocaleString()}, Top ${luckPercentile}% Luck)${statsSummary}`;
+    } else if (result.type === "roll") {
+      text = lang === "ja"
+        ? `【${gameName}】${charNameTranslated}の聖遺物強化確率診断の結果、目標スコア${rollTargetScore}ptの達成確率は「${result.successRate.toFixed(1)}%」（期待値: ${result.median.toFixed(1)}pt）でした！`
+        : `[${gameName}] My artifact upgrade simulation results for ${charNameTranslated}: Chance to reach target ${rollTargetScore}pt is ${result.successRate.toFixed(1)}%! (Expected: ${result.median.toFixed(1)}pt)`;
+    }
+
+    const hashtag = gameId === "genshin" ? "原神" : gameId === "starrail" ? "崩壊スターレイル" : "ゼンゼロ";
+    const tweetText = `${text}\n#${hashtag} #聖遺物厳選シミュレータ\n`;
+    
+    const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(shareUrl)}`;
+    window.open(xUrl, '_blank');
+  };
+
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
 
   const tutorialSteps = [
@@ -206,6 +372,8 @@ export default function Home() {
       period: "期間シミュ",
       rank: "ランク診断",
       upgrade: "更新確率診断",
+      damage: "ダメージ比較",
+      roll: "強化シミュ",
       settings: "設定",
       character: "キャラクター",
       targetSets: "狙いのセット (ダンジョン別)",
@@ -287,6 +455,8 @@ export default function Home() {
       period: "Farming Sim",
       rank: "Build Rank",
       upgrade: "Build Upgrade Chance",
+      damage: "Damage Compare",
+      roll: "Roll Sim",
       settings: "Settings",
       character: "Character",
       targetSets: "Target Sets (by Domain)",
@@ -414,7 +584,25 @@ export default function Home() {
   const [gameId, setGameId] = useState<GameId>("genshin");
   const config = GAME_CONFIGS[gameId];
   
-  const [simMode, setSimMode] = useState<"target" | "period" | "rank" | "upgrade">("target");
+  const [simMode, setSimMode] = useState<"target" | "period" | "rank" | "upgrade" | "damage" | "roll">("target");
+
+  // Damage Mode Stats
+  const [currentCritRate, setCurrentCritRate] = useState(60);
+  const [currentCritDmg, setCurrentCritDmg] = useState(120);
+  const [currentBaseVal, setCurrentBaseVal] = useState(1500);
+  const [currentDmgBonus, setCurrentDmgBonus] = useState(46.6);
+
+  // Roll Mode Stats
+  const [rollInitialOpt, setRollInitialOpt] = useState<number>(4);
+  const [rollCurrentLevel, setRollCurrentLevel] = useState<number>(0);
+  const [rollMainStat, setRollMainStat] = useState<string>("");
+  const [rollSubs, setRollSubs] = useState<Array<{ name: string; value: number }>>([
+    { name: "", value: 0 },
+    { name: "", value: 0 },
+    { name: "", value: 0 },
+    { name: "", value: 0 }
+  ]);
+  const [rollTargetScore, setRollTargetScore] = useState<number>(35);
 
   // 診断モード用スコア入力UIの更新
   useEffect(() => {
@@ -435,6 +623,18 @@ export default function Home() {
       if (d.weights) setScoreWeights(d.weights);
       if (d.mainStats) setMainStats(d.mainStats);
       if (d.targetSets) setTargetSets(d.targetSets);
+
+      // ダメージモード初期ステータスの調整
+      const scaling = d.baseStats?.scalingMode || "atk";
+      if (scaling === "hp") setCurrentBaseVal(35000);
+      else if (scaling === "def") setCurrentBaseVal(2000);
+      else if (scaling === "em") setCurrentBaseVal(800);
+      else setCurrentBaseVal(1800);
+      
+      // キャラクターにベース会心が設定されている場合はそれにプラスして標準武器分(例えば会心率60/会心ダメ120程度)を設定
+      setCurrentCritRate(charData.name.includes("フリーナ") ? 74.2 : 60);
+      setCurrentCritDmg(charData.name.includes("ヌヴィレット") ? 138.4 : 120);
+      setCurrentDmgBonus(46.6);
     }
   }, [characterName, gameId]);
 
@@ -513,6 +713,18 @@ export default function Home() {
       }
       return chartData;
     } else if (result.type === "rank") {
+      const sortedByScore = [...sortedResults].sort((a, b) => a.score - b.score);
+      for (let i = 0; i <= pointsCount; i++) {
+        const percent = Math.round((i / pointsCount) * 100);
+        const idx = Math.min(sortedByScore.length - 1, Math.floor((percent / 100) * (sortedByScore.length - 1)));
+        const res = sortedByScore[idx];
+        chartData.push({
+          percent,
+          value: res ? Number(res.score.toFixed(1)) : 0,
+        });
+      }
+      return chartData;
+    } else if (result.type === "roll") {
       const sortedByScore = [...sortedResults].sort((a, b) => a.score - b.score);
       for (let i = 0; i <= pointsCount; i++) {
         const percent = Math.round((i / pointsCount) * 100);
@@ -759,6 +971,35 @@ export default function Home() {
       return;
     }
 
+    if (simMode === "roll") {
+      setSimProgress(10);
+      await new Promise(r => setTimeout(r, 1));
+      
+      const filteredSubs = rollSubs
+        .filter(sub => sub.name && sub.name !== "未選択")
+        .map(sub => ({ name: sub.name, value: sub.value }));
+
+      const finalRes = simulateUpgradeProgress(
+        gameId,
+        rollInitialOpt,
+        rollCurrentLevel,
+        filteredSubs,
+        scoreWeights,
+        subPool,
+        rollMainStat,
+        rollTargetScore,
+        trials
+      );
+
+      setSortedResults(finalRes.rawScores.map(score => ({ score })));
+      setLuckPercentile(50);
+      setResult(finalRes);
+      saveHistory(finalRes);
+      setSimProgress(100);
+      setIsSimulating(false);
+      return;
+    }
+
     if (simMode === "target") {
       const elixirConfig = {
         enabled: elixirEnabled,
@@ -822,7 +1063,7 @@ export default function Home() {
       setResult(finalRes);
       saveHistory(finalRes);
     } else {
-      const activeDays = (simMode === "period" ? (overrideDays || days) : days);
+      const activeDays = (simMode === "period" || simMode === "damage" ? (overrideDays || days) : days);
       const totalAttempts = Math.floor((activeDays * staminaPerDay) / staminaCost);
       const elixirConfig = {
         enabled: elixirEnabled,
@@ -834,27 +1075,169 @@ export default function Home() {
         sub1: elixirSub1,
         sub2: elixirSub2
       };
+
+      // damageモード特有の逆算処理
+      let baseWhite = 800;
+      let percentStatId: string = STAT_IDS.ATK_PER;
+      let flatStatId: string = STAT_IDS.ATK_FLAT;
+      let baseOtherVal = 0;
+      let baseOtherCritRate = 0;
+      let baseOtherCritDmg = 0;
+      let baseOtherDmgBonus = 0;
+      let dmgBonusStatId: string = STAT_IDS.PYRO_DMG;
+      let currentDmg = 0;
+
+      if (simMode === "damage") {
+        const charData = config.characters.find(c => c.name === characterName);
+        const bStats = charData?.defaults?.baseStats || {};
+        const scaling = bStats.scalingMode || "atk";
+        
+        if (scaling === "hp") {
+          baseWhite = bStats.hp || DEFAULT_BASE_STATS.hp;
+          percentStatId = STAT_IDS.HP_PER;
+          flatStatId = STAT_IDS.HP_FLAT;
+        } else if (scaling === "def") {
+          baseWhite = bStats.def || DEFAULT_BASE_STATS.def;
+          percentStatId = STAT_IDS.DEF_PER;
+          flatStatId = STAT_IDS.DEF_FLAT;
+        } else if (scaling === "em") {
+          baseWhite = 1;
+          percentStatId = "none";
+          flatStatId = STAT_IDS.EM;
+        } else {
+          baseWhite = bStats.atk || DEFAULT_BASE_STATS.atk;
+          percentStatId = STAT_IDS.ATK_PER;
+          flatStatId = STAT_IDS.ATK_FLAT;
+        }
+
+        const currentArtStats = estimateCurrentArtifactStats();
+        const currentArtValFlat = currentArtStats[flatStatId] || 0;
+        const currentArtValPer = currentArtStats[percentStatId] || 0;
+        const currentArtValTotal = currentArtValFlat + (currentArtValPer * baseWhite) / 100;
+
+        const currentArtCritRate = currentArtStats[STAT_IDS.CRIT_RATE] || 0;
+        const currentArtCritDmg = currentArtStats[STAT_IDS.CRIT_DMG] || 0;
+        
+        const elementalDmgKeys = [
+          STAT_IDS.PYRO_DMG, STAT_IDS.HYDRO_DMG, STAT_IDS.ANEMO_DMG, STAT_IDS.ELECTRO_DMG,
+          STAT_IDS.DENDRO_DMG, STAT_IDS.CRYO_DMG, STAT_IDS.GEO_DMG, STAT_IDS.PHYSICAL_DMG
+        ];
+        const cupMain = mainStats["空の杯"] || mainStats["次元界オーブ"] || mainStats["スロット5"] || "";
+        const matchedDmgBonus = elementalDmgKeys.find(k => k === cupMain);
+        if (matchedDmgBonus) {
+          dmgBonusStatId = matchedDmgBonus;
+        }
+        const currentArtDmgBonus = currentArtStats[dmgBonusStatId] || 0;
+
+        baseOtherVal = currentBaseVal - currentArtValTotal;
+        baseOtherCritRate = currentCritRate - currentArtCritRate;
+        baseOtherCritDmg = currentCritDmg - currentArtCritDmg;
+        baseOtherDmgBonus = currentDmgBonus - currentArtDmgBonus;
+        currentDmg = calculateDamageExpectation(currentBaseVal, currentCritRate, currentCritDmg, currentDmgBonus);
+      }
+
       let collectedGods: any[] = [];
-      const results: {score: number, pieces: any, godPieces?: any[], scoreBeforeElixir?: number}[] = [];
+      const results: {
+        score: number, 
+        pieces: any, 
+        godPieces?: any[], 
+        scoreBeforeElixir?: number,
+        damage?: number,
+        afterStats?: any
+      }[] = [];
+
       for (let i = 0; i < trials; i++) {
         if (i % 10 === 0) {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
-        const res = simulateFixedAttempts(gameId, totalAttempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig, userPartScores);
-        results.push(res);
+        const res = simulateFixedAttempts(
+          gameId,
+          totalAttempts,
+          staminaPerDay,
+          scoreWeights,
+          subPool,
+          useStrongbox,
+          mainStats,
+          targetSets,
+          elixirConfig,
+          simMode === "period" || simMode === "damage" ? userPartScores : null
+        );
+
+        let trialDmg = 0;
+        let trialStats: any = null;
+
+        if (simMode === "damage") {
+          const afterArtStats = calculateTotalStats(gameId, res.pieces);
+          const afterArtValFlat = afterArtStats[flatStatId] || 0;
+          const afterArtValPer = afterArtStats[percentStatId] || 0;
+          const afterArtValTotal = afterArtValFlat + (afterArtValPer * baseWhite) / 100;
+
+          const afterArtCritRate = afterArtStats[STAT_IDS.CRIT_RATE] || 0;
+          const afterArtCritDmg = afterArtStats[STAT_IDS.CRIT_DMG] || 0;
+          const afterArtDmgBonus = afterArtStats[dmgBonusStatId] || 0;
+
+          const afterTotalVal = baseOtherVal + afterArtValTotal;
+          const afterTotalCritRate = baseOtherCritRate + afterArtCritRate;
+          const afterTotalCritDmg = baseOtherCritDmg + afterArtCritDmg;
+          const afterTotalDmgBonus = baseOtherDmgBonus + afterArtDmgBonus;
+
+          trialDmg = calculateDamageExpectation(afterTotalVal, afterTotalCritRate, afterTotalCritDmg, afterTotalDmgBonus);
+          trialStats = {
+            baseVal: afterTotalVal,
+            critRate: afterTotalCritRate,
+            critDmg: afterTotalCritDmg,
+            dmgBonus: afterTotalDmgBonus
+          };
+        }
+
+        results.push({
+          ...res,
+          damage: trialDmg,
+          afterStats: trialStats
+        });
+
         if (res.godPieces && res.godPieces.length > 0) {
           collectedGods.push(...res.godPieces);
           setLatestGodPiece(res.godPieces[res.godPieces.length - 1]);
         }
       }
-      results.sort((a, b) => b.score - a.score);
+
+      if (simMode === "damage") {
+        results.sort((a, b) => (b.damage || 0) - (a.damage || 0));
+      } else {
+        results.sort((a, b) => b.score - a.score);
+      }
+
       setSortedResults(results);
       setLuckPercentile(50);
       collectedGods.sort((a, b) => b.score - a.score);
       setAllGodPieces(collectedGods.slice(0, 10));
       
-      if (simMode === "period") {
+      if (simMode === "damage") {
+        const medianRes = results[Math.floor(trials / 2)];
+        const top10Res = results[Math.floor(trials * 0.1)];
+        const bottom10Res = results[Math.floor(trials * 0.9)];
+        const worst5Dmg = results[Math.floor(trials * 0.95)].damage || 0;
+
+        const finalRes = {
+          type: "damage",
+          currentDmg,
+          median: medianRes.damage || 0,
+          top10: top10Res.damage || 0,
+          bottom10: bottom10Res.damage || 0,
+          worst5Dmg,
+          pieces: medianRes.pieces,
+          top10Pieces: top10Res.pieces,
+          bottom10Pieces: bottom10Res.pieces,
+          medianStats: medianRes.afterStats,
+          top10Stats: top10Res.afterStats,
+          bottom10Stats: bottom10Res.afterStats,
+          trials
+        };
+        setResult(finalRes);
+        saveHistory(finalRes);
+      } else if (simMode === "period") {
         const medianRes = results[Math.floor(trials / 2)];
         const top10Res = results[Math.floor(trials * 0.1)];
         const bottom10Res = results[Math.floor(trials * 0.9)];
@@ -932,14 +1315,20 @@ export default function Home() {
               <div className="z-10 w-full flex flex-col items-center mb-12">
                 <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[50px] p-10 w-full flex flex-col items-center shadow-2xl relative ring-1 ring-white/5">
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">
-                    {result.type === "target" ? "Expected Days to Reach Target" : result.type === "period" ? `${days} Days Farm Result` : result.type === "upgrade" ? `${days} Days Upgrade Prob.` : "Build Performance Rank"}
+                    {result.type === "target" ? "Expected Days to Reach Target" : result.type === "period" ? `${days} Days Farm Result` : result.type === "upgrade" ? `${days} Days Upgrade Prob.` : result.type === "damage" ? `${days} Days Damage Compare` : result.type === "roll" ? "Artifact Upgrade Success Rate" : "Build Performance Rank"}
                   </p>
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-8xl font-black text-white tracking-tighter drop-shadow-2xl">
-                      {result.type === "rank" ? result.percentile.toFixed(1) : result.type === "upgrade" ? upgradeResult?.overallProb.toFixed(1) : (result.type === "target" ? result.median.toFixed(0) : result.median.toFixed(2))}
+                      {result.type === "rank" ? result.percentile.toFixed(1) 
+                       : result.type === "upgrade" ? upgradeResult?.overallProb.toFixed(1) 
+                       : result.type === "roll" ? result.successRate.toFixed(1)
+                       : result.type === "damage" ? (() => {
+                        const diffPercent = ((result.median - result.currentDmg) / result.currentDmg) * 100;
+                        return `+${diffPercent.toFixed(1)}`;
+                      })() : (result.type === "target" ? result.median.toFixed(0) : result.median.toFixed(2))}
                     </span>
                     <span className="text-2xl font-black text-slate-500 uppercase tracking-widest">
-                      {result.type === "rank" || result.type === "upgrade" ? "%" : result.type === "target" ? "Days" : "Score"}
+                      {result.type === "rank" || result.type === "upgrade" || result.type === "damage" || result.type === "roll" ? "%" : result.type === "target" ? "Days" : "Score"}
                     </span>
                   </div>
                   {result.type === "target" && result.medianWithoutElixir && (
@@ -949,26 +1338,54 @@ export default function Home() {
                     </p>
                   )}
                   <p className="text-sm font-black text-blue-400 mb-8 tracking-wider">
-                    {result.type === "rank" ? "TOP PERCENTILE" : result.type === "upgrade" ? "UPGRADE CHANCE" : "ESTIMATED AVERAGE"}
+                    {result.type === "rank" ? "TOP PERCENTILE" : (result.type === "upgrade" || result.type === "roll") ? "SUCCESS RATE" : "ESTIMATED AVERAGE"}
                   </p>
-                  {(result.type === "target" || result.type === "period") && (
+                  {(result.type === "target" || result.type === "period" || result.type === "damage") && (
                     <div className="w-full grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
                       <div className="text-center">
-                        <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mb-2">LUCK: TOP 10%</p>
+                        <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mb-2">
+                          {result.type === "damage" ? "LUCK: TOP 10% DMG" : "LUCK: TOP 10%"}
+                        </p>
                         <p className="text-3xl font-black text-white leading-none tracking-tighter">
                           {result.type === "target" 
                             ? `${result.top10} ${t('days_unit')}`
-                            : `${result.top10.toFixed(1)} ${t('score_unit')}`
+                            : result.type === "damage"
+                              ? `${Math.round(result.top10).toLocaleString()}`
+                              : `${result.top10.toFixed(1)} ${t('score_unit')}`
                           }
                         </p>
                       </div>
                       <div className="text-center border-l border-white/10">
-                        <p className="text-[9px] text-rose-400 font-black uppercase tracking-widest mb-2">LUCK: BOTTOM 10%</p>
+                        <p className="text-[9px] text-rose-400 font-black uppercase tracking-widest mb-2">
+                          {result.type === "damage" ? "LUCK: BOTTOM 10% DMG" : "LUCK: BOTTOM 10%"}
+                        </p>
                         <p className="text-3xl font-black text-white leading-none tracking-tighter">
                           {result.type === "target"
                             ? `${result.bottom10} ${t('days_unit')}`
-                            : `${result.bottom10.toFixed(1)} ${t('score_unit')}`
+                            : result.type === "damage"
+                              ? `${Math.round(result.bottom10).toLocaleString()}`
+                              : `${result.bottom10.toFixed(1)} ${t('score_unit')}`
                           }
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {result.type === "roll" && (
+                    <div className="w-full grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
+                      <div className="text-center">
+                        <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mb-2">
+                          {lang === "ja" ? "理論上最高" : "MAX POTENTIAL"}
+                        </p>
+                        <p className="text-3xl font-black text-white leading-none tracking-tighter">
+                          {result.best.toFixed(1)} {t('score_unit')}
+                        </p>
+                      </div>
+                      <div className="text-center border-l border-white/10">
+                        <p className="text-[9px] text-rose-400 font-black uppercase tracking-widest mb-2">
+                          {lang === "ja" ? "最低保証" : "WORST CASE"}
+                        </p>
+                        <p className="text-3xl font-black text-white leading-none tracking-tighter">
+                          {result.worst5.toFixed(1)} {t('score_unit')}
                         </p>
                       </div>
                     </div>
@@ -1010,6 +1427,16 @@ export default function Home() {
                     <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "目標スコア" : "Target Score"}</p>
                     <p className="text-xs font-black text-white">{targetScore} {t('score_unit')}</p>
                   </div>
+                ) : result.type === "damage" ? (
+                  <div className="text-center">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "現在の期待値" : "Current Expected DMG"}</p>
+                    <p className="text-xs font-black text-white">{Math.round(result.currentDmg).toLocaleString()}</p>
+                  </div>
+                ) : result.type === "roll" ? (
+                  <div className="text-center">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "目標スコア" : "Target Score"}</p>
+                    <p className="text-xs font-black text-white">{rollTargetScore} {t('score_unit')}</p>
+                  </div>
                 ) : (
                   <div className="text-center">
                     <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "厳選日数" : "Farming Days"}</p>
@@ -1019,23 +1446,37 @@ export default function Home() {
 
                 <div className="w-px h-6 bg-white/10"></div>
 
-                <div className="text-center">
-                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">
-                    {gameId === "genshin" 
-                      ? (lang === "ja" ? "1日の消費樹脂" : "Resin / Day")
-                      : gameId === "starrail"
-                        ? (lang === "ja" ? "1日の消費開拓力" : "Stamina / Day")
-                        : (lang === "ja" ? "1日の消費バッテリー" : "Battery / Day")}
-                  </p>
-                  <p className="text-xs font-black text-white">{staminaPerDay}</p>
-                </div>
+                {result.type === "roll" ? (
+                  <div className="text-center">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "初期オプ数" : "Initial Options"}</p>
+                    <p className="text-xs font-black text-white">{rollInitialOpt}オプ</p>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">
+                      {gameId === "genshin" 
+                        ? (lang === "ja" ? "1日の消費樹脂" : "Resin / Day")
+                        : gameId === "starrail"
+                          ? (lang === "ja" ? "1日の消費開拓力" : "Stamina / Day")
+                          : (lang === "ja" ? "1日の消費バッテリー" : "Battery / Day")}
+                    </p>
+                    <p className="text-xs font-black text-white">{staminaPerDay}</p>
+                  </div>
+                )}
 
                 <div className="w-px h-6 bg-white/10"></div>
 
-                <div className="text-center">
-                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "聖遺物廻聖" : "Strongbox"}</p>
-                  <p className={`text-xs font-black ${useStrongbox ? "text-emerald-400" : "text-slate-400"}`}>{useStrongbox ? "ON" : "OFF"}</p>
-                </div>
+                {result.type === "roll" ? (
+                  <div className="text-center">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "現在レベル" : "Current Level"}</p>
+                    <p className="text-xs font-black text-white">Lv{rollCurrentLevel}</p>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">{lang === "ja" ? "聖遺物廻聖" : "Strongbox"}</p>
+                    <p className={`text-xs font-black ${useStrongbox ? "text-emerald-400" : "text-slate-400"}`}>{useStrongbox ? "ON" : "OFF"}</p>
+                  </div>
+                )}
               </div>
             )}
             {result && result.pieces && (
@@ -1070,6 +1511,52 @@ export default function Home() {
                     <p className="text-[7px] text-emerald-700 font-black uppercase tracking-widest">TARGET</p>
                     <p className="text-2xl font-black text-emerald-400 tracking-tighter">{targetScore}</p>
                     <p className="text-[7px] text-emerald-600/80 font-bold uppercase">GOAL</p>
+                  </div>
+                </div>
+                {/* ステータス上昇値の合計表示 */}
+                {(() => {
+                  const totals = calculateTotalStats(gameId, result.pieces);
+                  const displayStats = Object.entries(totals).filter(([_, v]) => v > 0);
+                  if (displayStats.length === 0) return null;
+                  return (
+                    <div className="mt-5 bg-white/5 border border-white/10 rounded-2xl p-4 text-left w-full backdrop-blur-xl">
+                      <p className="text-[7px] text-slate-500 font-bold uppercase tracking-[0.2em] mb-2 text-center">{lang === 'ja' ? '聖遺物による合計ステータス上昇値' : 'Total Stats from Artifacts'}</p>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        {displayStats.map(([statId, val]) => {
+                          const isPercent = statId !== STAT_IDS.HP_FLAT && statId !== STAT_IDS.ATK_FLAT && statId !== STAT_IDS.DEF_FLAT && statId !== STAT_IDS.EM && statId !== STAT_IDS.SPEED && statId !== STAT_IDS.AM_MAS;
+                          return (
+                            <div key={statId} className="flex justify-between items-center text-[8px] font-bold border-b border-white/5 py-0.5">
+                              <span className="text-slate-400 truncate max-w-[80px]">{t(statId)}</span>
+                              <span className="text-white">+{isPercent ? val.toFixed(1) + '%' : Math.round(val)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+            {result && result.type === "roll" && (
+              <div className="z-10 w-full mb-12">
+                <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] text-center mb-4">Expected Substats after Upgrade</p>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-left w-full backdrop-blur-xl">
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {Object.entries(result.medianSubs).map(([subName, finalVal]: [string, any]) => {
+                      const initialVal = rollSubs.find(s => s.name === subName)?.value || 0;
+                      const avgRollCount = result.avgRolls[subName] || 0;
+                      const isPercent = subName.includes("%") || subName.includes("率") || subName.includes("ダメ");
+                      return (
+                        <div key={subName} className="flex justify-between items-center text-[9px] font-bold border-b border-white/5 py-1">
+                          <span className="text-slate-400 truncate max-w-[120px]">{t(subName)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500 text-[8px]">{initialVal > 0 ? (isPercent ? `${initialVal.toFixed(1)}%` : Math.round(initialVal)) : "-"} ➔</span>
+                            <span className="text-white font-black">{isPercent ? `${finalVal.toFixed(1)}%` : Math.round(finalVal)}</span>
+                            <span className="text-blue-400 text-[8px] bg-blue-500/10 px-1.5 py-0.5 rounded ml-1">+{avgRollCount.toFixed(1)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1168,11 +1655,13 @@ export default function Home() {
               <div className="space-y-4">
                 {/* モード切り替え (アコーディオンから出して常時表示) */}
                 <div className="flex flex-col gap-2 bg-slate-950/30 p-2.5 rounded-2xl border border-slate-800/80">
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button type="button" onClick={() => setSimMode("target")} className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('target')}</button>
-                    <button type="button" onClick={() => setSimMode("period")} className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('period')}</button>
-                    <button type="button" onClick={() => setSimMode("rank")} className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('rank')}</button>
-                    <button type="button" onClick={() => setSimMode("upgrade")} className={`py-2 px-1 rounded-xl text-xs font-bold transition-all ${simMode === "upgrade" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('upgrade')}</button>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button type="button" onClick={() => setSimMode("target")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('target')}</button>
+                    <button type="button" onClick={() => setSimMode("period")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('period')}</button>
+                    <button type="button" onClick={() => setSimMode("rank")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('rank')}</button>
+                    <button type="button" onClick={() => setSimMode("upgrade")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "upgrade" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('upgrade')}</button>
+                    <button type="button" onClick={() => setSimMode("damage")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "damage" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('damage')}</button>
+                    <button type="button" onClick={() => setSimMode("roll")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "roll" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('roll')}</button>
                   </div>
                 </div>
 
@@ -1444,22 +1933,126 @@ export default function Home() {
                         </div>
                       )}
 
-                      {(simMode === "period" || simMode === "rank" || simMode === "upgrade") && (
+                      {(simMode === "period" || simMode === "rank" || simMode === "upgrade" || simMode === "damage") && (
                         <div>
                           <label className="block text-xs font-bold text-slate-400 mb-2">{t('farmingDays')}</label>
                           <input inputMode="numeric" pattern="[0-9]*" type="number" value={days} onChange={e => setDays(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-xs"/>
                         </div>
                       )}
 
-                      <div className="grid grid-cols-2 gap-2 bg-slate-950/30 p-3 rounded-xl border border-slate-800/50">
-                        <p className="col-span-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">{t('currentScores')}</p>
-                        {config.slots.filter(s => s !== "未選択").map(slot => (
-                          <div key={slot}>
-                            <label className="block text-[9px] text-slate-500 mb-0.5">{t(slot)}</label>
-                            <input inputMode="decimal" pattern="[0-9.]*" type="number" value={userPartScores[slot] || 0} onChange={e => setUserPartScores({...userPartScores, [slot]: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white text-center"/>
+                      {simMode === "damage" && (() => {
+                        const charData = config.characters.find(c => c.name === characterName);
+                        const scaling = charData?.defaults?.baseStats?.scalingMode || "atk";
+                        const labelName = scaling === "hp" ? (lang === "ja" ? "現在の合計HP" : "Current HP")
+                                        : scaling === "def" ? (lang === "ja" ? "現在の合計防御力" : "Current DEF")
+                                        : scaling === "em" ? (lang === "ja" ? "現在の合計元素熟知" : "Current EM")
+                                        : (lang === "ja" ? "現在の合計攻撃力" : "Current ATK");
+                        return (
+                          <div className="grid grid-cols-2 gap-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800">
+                            <p className="col-span-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">{lang === "ja" ? "現在の合計ステータス (詳細)" : "Current Stats Details"}</p>
+                            <div>
+                              <label className="block text-[9px] text-slate-500 mb-1">{labelName}</label>
+                              <input type="number" value={currentBaseVal} onChange={e => setCurrentBaseVal(Number(e.target.value))} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white text-center"/>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] text-slate-500 mb-1">{lang === "ja" ? "現在の会心率 (%)" : "Current CRIT Rate (%)"}</label>
+                              <input type="number" step="0.1" value={currentCritRate} onChange={e => setCurrentCritRate(Number(e.target.value))} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white text-center"/>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] text-slate-500 mb-1">{lang === "ja" ? "現在の会心ダメ (%)" : "Current CRIT DMG (%)"}</label>
+                              <input type="number" step="0.1" value={currentCritDmg} onChange={e => setCurrentCritDmg(Number(e.target.value))} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white text-center"/>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] text-slate-500 mb-1">{lang === "ja" ? "現在のダメバフ (%)" : "Current DMG Bonus (%)"}</label>
+                              <input type="number" step="0.1" value={currentDmgBonus} onChange={e => setCurrentDmgBonus(Number(e.target.value))} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white text-center"/>
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })()}
+
+                      {simMode === "roll" && (
+                        <div className="space-y-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800 animate-in slide-in-from-top-2 duration-200">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">
+                            {lang === "ja" ? "強化前の聖遺物ステータス" : "Artifact Pre-upgrade Stats"}
+                          </p>
+                          <div className="grid grid-cols-2 gap-3.5">
+                            <div>
+                              <label className="block text-[9px] text-slate-500 mb-1">{lang === "ja" ? "初期オプション数" : "Initial Options"}</label>
+                              <div className="grid grid-cols-2 gap-1 bg-slate-900 p-1 rounded-lg">
+                                <button type="button" onClick={() => setRollInitialOpt(3)} className={`py-1 rounded text-xs font-bold ${rollInitialOpt === 3 ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>3</button>
+                                <button type="button" onClick={() => setRollInitialOpt(4)} className={`py-1 rounded text-xs font-bold ${rollInitialOpt === 4 ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}>4</button>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] text-slate-500 mb-1">{lang === "ja" ? "現在のレベル" : "Current Level"}</label>
+                              <input type="number" min="0" max={gameId === "genshin" ? 20 : 15} value={rollCurrentLevel} onChange={e => setRollCurrentLevel(Math.min(gameId === "genshin" ? 20 : 15, Math.max(0, Number(e.target.value))))} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-1.5 text-xs text-white text-center"/>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3.5">
+                            <div className="col-span-2">
+                              <label className="block text-[9px] text-slate-500 mb-1">{lang === "ja" ? "メインステータス (重複防止用)" : "Main Stat"}</label>
+                              <select value={rollMainStat} onChange={e => setRollMainStat(e.target.value)} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white">
+                                <option value="">{lang === "ja" ? "未選択" : "None"}</option>
+                                {config.mainStats.map(m => <option key={m} value={m}>{t(m)}</option>)}
+                              </select>
+                            </div>
+                            <div className="col-span-2">
+                              <label className="block text-[9px] text-slate-500 mb-1">{lang === "ja" ? "目標スコア" : "Target Score"}</label>
+                              <input type="number" value={rollTargetScore} onChange={e => setRollTargetScore(Number(e.target.value))} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-1.5 text-xs text-white text-center"/>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
+                            <p className="text-[9px] text-slate-500 font-bold uppercase">{lang === "ja" ? "現在のサブステータス" : "Substats"}</p>
+                            {rollSubs.map((sub, idx) => {
+                              const isDisabled = rollInitialOpt === 3 && rollCurrentLevel === 0 && idx === 3;
+                              return (
+                                <div key={idx} className={`flex items-center gap-2 ${isDisabled ? 'opacity-30 pointer-events-none' : ''}`}>
+                                  <select 
+                                    value={sub.name} 
+                                    onChange={e => {
+                                      const newSubs = [...rollSubs];
+                                      newSubs[idx] = { ...newSubs[idx], name: e.target.value };
+                                      setRollSubs(newSubs);
+                                    }} 
+                                    disabled={isDisabled}
+                                    className="bg-slate-850 border border-slate-750 text-xs p-1.5 rounded-lg flex-1 text-white"
+                                  >
+                                    <option value="">{idx === 3 && rollInitialOpt === 3 ? (lang === "ja" ? "レベルアップで追加" : "Added on upgrade") : (lang === "ja" ? "未選択" : "None")}</option>
+                                    {config.subStats.filter(s => s !== rollMainStat).map(s => <option key={s} value={s}>{t(s)}</option>)}
+                                  </select>
+                                  <input 
+                                    type="number" 
+                                    step="0.1" 
+                                    value={sub.value || ""} 
+                                    placeholder="0.0"
+                                    onChange={e => {
+                                      const newSubs = [...rollSubs];
+                                      newSubs[idx] = { ...newSubs[idx], value: e.target.value === "" ? 0 : Number(e.target.value) };
+                                      setRollSubs(newSubs);
+                                    }} 
+                                    disabled={isDisabled || !sub.name}
+                                    className="bg-slate-850 border border-slate-750 rounded-lg p-1.5 text-xs text-white w-20 text-center"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {simMode !== "roll" && (
+                        <div className="grid grid-cols-2 gap-2 bg-slate-950/30 p-3 rounded-xl border border-slate-800/50">
+                          <p className="col-span-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">{t('currentScores')}</p>
+                          {config.slots.filter(s => s !== "未選択").map(slot => (
+                            <div key={slot}>
+                              <label className="block text-[9px] text-slate-500 mb-0.5">{t(slot)}</label>
+                              <input inputMode="decimal" pattern="[0-9.]*" type="number" value={userPartScores[slot] || 0} onChange={e => setUserPartScores({...userPartScores, [slot]: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white text-center"/>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1512,6 +2105,32 @@ export default function Home() {
                   )}
                   {result && !isSimulating && (
                     <div className="w-full space-y-4 animate-in zoom-in-95 duration-300">
+                      {/* メイン画面側の合計ステータス表示 */}
+                      {result.pieces && (() => {
+                        const totals = calculateTotalStats(gameId, result.pieces);
+                        const displayStats = Object.entries(totals).filter(([_, v]) => v > 0);
+                        if (displayStats.length === 0) return null;
+                        return (
+                          <div className="bg-slate-900/30 border border-slate-800 rounded-[24px] p-5 w-full">
+                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                              <Sword size={14} className="text-blue-400" />
+                              {lang === 'ja' ? '聖遺物による合計ステータス上昇' : 'Total Stats from Artifacts'}
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                              {displayStats.map(([statId, val]) => {
+                                const isPercent = statId !== STAT_IDS.HP_FLAT && statId !== STAT_IDS.ATK_FLAT && statId !== STAT_IDS.DEF_FLAT && statId !== STAT_IDS.EM && statId !== STAT_IDS.SPEED && statId !== STAT_IDS.AM_MAS;
+                                return (
+                                  <div key={statId} className="bg-slate-950/40 border border-slate-850 rounded-xl p-3 flex flex-col justify-center">
+                                    <span className="text-[9px] text-slate-500 font-bold mb-1">{t(statId)}</span>
+                                    <span className="text-sm font-black text-white">+{isPercent ? val.toFixed(1) + '%' : Math.round(val)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       <div className="bg-slate-900/30 p-5 rounded-[24px] border border-slate-800 mb-4 w-full">
                         <div className="flex justify-between items-center mb-6">
                           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -1568,7 +2187,7 @@ export default function Home() {
                                 <Tooltip
                                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', fontSize: '10px', color: '#cbd5e1' }}
                                   labelFormatter={(label) => result.type === "target" ? `${label} 日` : `${label} pt`}
-                                  formatter={(value) => [`${value}%`, result.type === "target" ? (lang === 'ja' ? "達成確率 (この日数以内で完了)" : "Success Probability") : (lang === 'ja' ? "達成確率 (このスコア以上になる確率)" : "Probability")]}
+                                  formatter={(value) => [`${value}%`, result.type === "target" ? (lang === 'ja' ? "達成確率 (この日数以内で完了)" : "Success Probability") : result.type === "roll" ? (lang === 'ja' ? "累積確率 (このスコア以下になる確率)" : "Cumulative Probability") : (lang === 'ja' ? "達成確率 (このスコア以上になる確率)" : "Probability")]}
                                 />
                                 <Area type="monotone" dataKey="percent" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorPercent)" />
                                 <ReferenceLine 
@@ -1701,6 +2320,265 @@ export default function Home() {
                         </div>
                       )}
 
+                      {result.type === "damage" && (
+                        <div className="space-y-6 w-full">
+                          <h3 className="text-center text-xl font-bold">
+                            {lang === 'ja' ? `${days}日間の厳選によるダメージ期待値比較` : `${days} Days Damage Comparison`}
+                          </h3>
+                          
+                          {/* 増加率カード */}
+                          {(() => {
+                            const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+                            const afterDmg = currentLuckRes?.damage || 0;
+                            const diffPercent = result.currentDmg > 0 ? ((afterDmg - result.currentDmg) / result.currentDmg) * 100 : 0;
+                            const plusSign = diffPercent >= 0 ? "+" : "";
+                            
+                            return (
+                              <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[40px] text-center max-w-2xl mx-auto shadow-xl">
+                                <p className="text-[10px] text-slate-500 font-black uppercase mb-1">
+                                  {lang === 'ja' ? `現在の運勢（${t('topLuck', luckPercentile)}）でのダメージ増加率` : `DMG Change at Selected Luck (${t('topLuck', luckPercentile)})`}
+                                </p>
+                                <p className={`text-6xl font-black tracking-tighter mb-4 ${diffPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  {plusSign}{diffPercent.toFixed(1)}%
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  {lang === 'ja' 
+                                    ? `期待値: ${Math.round(result.currentDmg).toLocaleString()} ➔ ${Math.round(afterDmg).toLocaleString()}` 
+                                    : `Expected DMG: ${Math.round(result.currentDmg).toLocaleString()} ➔ ${Math.round(afterDmg).toLocaleString()}`}
+                                </p>
+                              </div>
+                            );
+                          })()}
+
+                          {/* ステータス比較テーブル */}
+                          {(() => {
+                            const currentLuckRes = sortedResults[Math.floor((luckPercentile / 100) * (sortedResults.length - 1))];
+                            const afterDmg = currentLuckRes?.damage || 0;
+                            const afterStats = currentLuckRes?.afterStats;
+                            
+                            const charData = config.characters.find(c => c.name === characterName);
+                            const scaling = charData?.defaults?.baseStats?.scalingMode || "atk";
+                            const statLabel = scaling === "hp" ? (lang === "ja" ? "HP" : "HP")
+                                            : scaling === "def" ? (lang === "ja" ? "防御力" : "DEF")
+                                            : scaling === "em" ? (lang === "ja" ? "元素熟知" : "EM")
+                                            : (lang === "ja" ? "攻撃力" : "ATK");
+                                            
+                            const rows = [
+                              {
+                                label: lang === 'ja' ? '期待値ダメージ' : 'Expected DMG',
+                                before: Math.round(result.currentDmg).toLocaleString(),
+                                after: Math.round(afterDmg).toLocaleString(),
+                                diff: (() => {
+                                  const diff = afterDmg - result.currentDmg;
+                                  const pct = result.currentDmg > 0 ? (diff / result.currentDmg) * 100 : 0;
+                                  return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+                                })(),
+                                isPositive: afterDmg >= result.currentDmg
+                              },
+                              {
+                                label: `${lang === 'ja' ? '合計' : 'Total '}${statLabel}`,
+                                before: Math.round(currentBaseVal).toLocaleString(),
+                                after: Math.round(afterStats?.baseVal || 0).toLocaleString(),
+                                diff: (() => {
+                                  const diff = (afterStats?.baseVal || 0) - currentBaseVal;
+                                  return `${diff >= 0 ? '+' : ''}${Math.round(diff).toLocaleString()}`;
+                                })(),
+                                isPositive: (afterStats?.baseVal || 0) >= currentBaseVal
+                              },
+                              {
+                                label: lang === 'ja' ? '会心率' : 'CRIT Rate',
+                                before: `${currentCritRate.toFixed(1)}%`,
+                                after: `${(afterStats?.critRate || 0).toFixed(1)}%`,
+                                diff: (() => {
+                                  const diff = (afterStats?.critRate || 0) - currentCritRate;
+                                  return `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                })(),
+                                isPositive: (afterStats?.critRate || 0) >= currentCritRate
+                              },
+                              {
+                                label: lang === 'ja' ? '会心ダメージ' : 'CRIT DMG',
+                                before: `${currentCritDmg.toFixed(1)}%`,
+                                after: `${(afterStats?.critDmg || 0).toFixed(1)}%`,
+                                diff: (() => {
+                                  const diff = (afterStats?.critDmg || 0) - currentCritDmg;
+                                  return `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                })(),
+                                isPositive: (afterStats?.critDmg || 0) >= currentCritDmg
+                              },
+                              {
+                                label: lang === 'ja' ? 'ダメバフ' : 'DMG Bonus',
+                                before: `${currentDmgBonus.toFixed(1)}%`,
+                                after: `${(afterStats?.dmgBonus || 0).toFixed(1)}%`,
+                                diff: (() => {
+                                  const diff = (afterStats?.dmgBonus || 0) - currentDmgBonus;
+                                  return `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                })(),
+                                isPositive: (afterStats?.dmgBonus || 0) >= currentDmgBonus
+                              }
+                            ];
+                            
+                            return (
+                              <div className="bg-slate-900/30 border border-slate-800 rounded-[24px] p-5 w-full">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                                  <Sword size={14} className="text-blue-400" />
+                                  {lang === 'ja' ? 'ステータス比較 (現在 vs 厳選後)' : 'Stats Comparison (Current vs Farmed)'}
+                                </h4>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                      <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase font-black">
+                                        <th className="py-2.5">{lang === 'ja' ? 'ステータス' : 'Status'}</th>
+                                        <th className="py-2.5 text-right">{lang === 'ja' ? '現在 (Before)' : 'Before'}</th>
+                                        <th className="py-2.5 text-right">{lang === 'ja' ? '厳選後 (After)' : 'After'}</th>
+                                        <th className="py-2.5 text-right">{lang === 'ja' ? '差分' : 'Diff'}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-800/40 text-slate-300">
+                                      {rows.map((row, i) => (
+                                        <tr key={i} className="hover:bg-slate-800/10">
+                                          <td className="py-3 font-bold">{row.label}</td>
+                                          <td className="py-3 text-right font-medium text-slate-400">{row.before}</td>
+                                          <td className="py-3 text-right font-black text-white">{row.after}</td>
+                                          <td className={`py-3 text-right font-black ${row.isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            {row.diff}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* 統計サマリー (運勢ごとの期待値) */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                            <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[24px] text-center">
+                              <p className="text-[10px] text-slate-500 font-black uppercase mb-1">{lang === 'ja' ? '期待値 (運勢50%)' : 'Median Luck (50%)'}</p>
+                              <p className="text-2xl font-black text-white">
+                                {Math.round(result.median).toLocaleString()}
+                              </p>
+                              <p className="text-[10px] text-emerald-400 font-bold mt-1">
+                                {(() => {
+                                  const pct = result.currentDmg > 0 ? ((result.median - result.currentDmg) / result.currentDmg) * 100 : 0;
+                                  return `+${pct.toFixed(1)}%`;
+                                })()}
+                              </p>
+                            </div>
+                            <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[24px] text-center">
+                              <p className="text-[10px] text-emerald-500 font-black uppercase mb-1">{lang === 'ja' ? '豪運 (上位10%)' : 'Lucky streak (Top 10%)'}</p>
+                              <p className="text-2xl font-black text-white">
+                                {Math.round(result.top10).toLocaleString()}
+                              </p>
+                              <p className="text-[10px] text-emerald-400 font-bold mt-1">
+                                {(() => {
+                                  const pct = result.currentDmg > 0 ? ((result.top10 - result.currentDmg) / result.currentDmg) * 100 : 0;
+                                  return `+${pct.toFixed(1)}%`;
+                                })()}
+                              </p>
+                            </div>
+                            <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[24px] text-center">
+                              <p className="text-[10px] text-rose-400 font-black uppercase mb-1">{lang === 'ja' ? '悲運 (下位10%)' : 'Unlucky (Bottom 10%)'}</p>
+                              <p className="text-2xl font-black text-white">
+                                {Math.round(result.bottom10).toLocaleString()}
+                              </p>
+                              <p className="text-[10px] text-emerald-400 font-bold mt-1">
+                                {(() => {
+                                  const pct = result.currentDmg > 0 ? ((result.bottom10 - result.currentDmg) / result.currentDmg) * 100 : 0;
+                                  return `+${pct.toFixed(1)}%`;
+                                })()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {result.type === "roll" && (
+                        <div className="space-y-6 w-full">
+                          <h3 className="text-center text-xl font-bold">
+                            {lang === 'ja' ? '聖遺物強化シミュレーション結果' : 'Artifact Upgrade Simulation Results'}
+                          </h3>
+                          
+                          {/* 達成率カード */}
+                          <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[40px] text-center max-w-2xl mx-auto shadow-xl">
+                            <p className="text-[10px] text-slate-500 font-black uppercase mb-1">
+                              {lang === 'ja' ? `目標スコア（${rollTargetScore}pt）の達成確率` : `Chance to Reach Target Score (${rollTargetScore}pt)`}
+                            </p>
+                            <p className="text-6xl font-black text-white tracking-tighter mb-4">
+                              {result.successRate.toFixed(1)}<span className="text-2xl text-slate-500">%</span>
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {lang === 'ja' 
+                                ? `1万回の強化シミュレーションに基づく確率分布` 
+                                : `Based on 10,000 upgrade simulations`}
+                            </p>
+                          </div>
+
+                          {/* 統計サマリー */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                            <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[24px] text-center">
+                              <p className="text-[10px] text-slate-500 font-black uppercase mb-1">{lang === 'ja' ? '期待値 (運勢50%)' : 'Expected (50% Luck)'}</p>
+                              <p className="text-2xl font-black text-white">
+                                {result.median.toFixed(1)}<span className="text-xs text-slate-500">pt</span>
+                              </p>
+                            </div>
+                            <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[24px] text-center text-emerald-400">
+                              <p className="text-[10px] text-emerald-500 font-black uppercase mb-1">{lang === 'ja' ? '理論上最高 (豪運)' : 'Max Potential (Lucky)'}</p>
+                              <p className="text-2xl font-black text-white">
+                                {result.best.toFixed(1)}<span className="text-xs text-slate-500">pt</span>
+                              </p>
+                            </div>
+                            <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[24px] text-center text-rose-400">
+                              <p className="text-[10px] text-rose-500 font-black uppercase mb-1">{lang === 'ja' ? '最低保証 (悲運5%)' : 'Worst Case (Unlucky 5%)'}</p>
+                              <p className="text-2xl font-black text-white">
+                                {result.worst5.toFixed(1)}<span className="text-xs text-slate-500">pt</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* サブステ詳細テーブル */}
+                          <div className="bg-slate-900/30 border border-slate-800 rounded-[24px] p-5 w-full">
+                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                              <Sword size={14} className="text-blue-400" />
+                              {lang === 'ja' ? '強化後の期待されるステータス' : 'Expected Substats after Upgrade'}
+                            </h4>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-xs border-collapse">
+                                <thead>
+                                  <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase font-black">
+                                    <th className="py-2.5">{lang === 'ja' ? 'サブステータス' : 'Substat'}</th>
+                                    <th className="py-2.5 text-right">{lang === 'ja' ? '初期値' : 'Initial'}</th>
+                                    <th className="py-2.5 text-right">{lang === 'ja' ? '強化後期待値' : 'Expected'}</th>
+                                    <th className="py-2.5 text-right">{lang === 'ja' ? '平均跳ね回数' : 'Avg. Upgrades'}</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800/40 text-slate-300">
+                                  {Object.entries(result.medianSubs).map(([subName, finalVal]: [string, any]) => {
+                                    const initialVal = rollSubs.find(s => s.name === subName)?.value || 0;
+                                    const avgRollCount = result.avgRolls[subName] || 0;
+                                    const isPercent = subName.includes("%") || subName.includes("率") || subName.includes("ダメ");
+                                    return (
+                                      <tr key={subName} className="hover:bg-slate-800/10">
+                                        <td className="py-3 font-bold">{t(subName)}</td>
+                                        <td className="py-3 text-right font-medium text-slate-400">
+                                          {initialVal > 0 ? (isPercent ? `${initialVal.toFixed(1)}%` : Math.round(initialVal)) : "-"}
+                                        </td>
+                                        <td className="py-3 text-right font-black text-white">
+                                          {isPercent ? `${finalVal.toFixed(1)}%` : Math.round(finalVal)}
+                                        </td>
+                                        <td className="py-3 text-right font-black text-blue-400">
+                                          {avgRollCount.toFixed(1)} {lang === 'ja' ? '回' : 'times'}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {result.type === "rank" && (
                         <div className="space-y-8 w-full">
                           <div className="flex flex-col items-center text-center space-y-4">
@@ -1722,25 +2600,31 @@ export default function Home() {
                   )}
                 </div>
               )}
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4 py-8 border-t border-slate-800/50 mt-6 w-full">
-                <button onClick={downloadImage} className="flex items-center gap-2 px-8 py-3 bg-white text-slate-950 font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
-                  <Share2 size={18} />
-                  <span>{t('share')}</span>
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 py-8 border-t border-slate-800/50 mt-6 w-full flex-wrap">
+                <button onClick={downloadImage} className="flex items-center gap-2 px-6 py-3 bg-white text-slate-950 font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                  <Share2 size={16} />
+                  <span>{lang === 'ja' ? '画像で保存・シェア' : 'Save & Share as Image'}</span>
                 </button>
-                <button onClick={copyShareLink} type="button" className="flex items-center gap-2 px-8 py-3 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
-                  <Link2 size={18} className="text-blue-400" />
-                  <span>{lang === 'ja' ? '設定をURLとして保存・共有' : 'Save & Share Settings via URL'}</span>
+                <button onClick={shareOnX} className="flex items-center gap-2 px-6 py-3 bg-slate-950 border border-slate-800 text-white font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                  <span>{lang === 'ja' ? 'SNS(X)でシェア' : 'Share on X'}</span>
+                </button>
+                <button onClick={copyShareLink} type="button" className="flex items-center gap-2 px-6 py-3 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                  <Link2 size={16} className="text-blue-400" />
+                  <span>{lang === 'ja' ? 'リンクをコピー' : 'Copy Share Link'}</span>
                 </button>
                 <a 
                   href="https://www.youtube.com/channel/UCl9ZmeECCvInf8XiNSWduuA" 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="flex items-center gap-2 px-8 py-3 bg-[#ff0000] hover:bg-[#cc0000] text-white font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                  className="flex items-center gap-2 px-6 py-3 bg-[#ff0000] hover:bg-[#cc0000] text-white font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all"
                 >
-                  <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.108C19.53 3.5 12 3.5 12 3.5s-7.53 0-9.388.555A3.002 3.002 0 0 0 .502 6.163C0 8.07 0 12 0 12s0 3.93.502 5.837a3.003 3.003 0 0 0 2.11 2.108C4.47 20.5 12 20.5 12 20.5s7.53 0 9.388-.555a3.003 3.003 0 0 0 2.11-2.108C24 15.93 24 12 24 12s0-3.93-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                   </svg>
-                  <span>{lang === 'ja' ? 'YouTubeチャンネル' : 'YouTube Channel'}</span>
+                  <span>{lang === 'ja' ? 'YouTube' : 'YouTube'}</span>
                 </a>
               </div>
             </div>
