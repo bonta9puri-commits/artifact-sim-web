@@ -1,6 +1,46 @@
-// 汎用シミュレーターロジック (セット効果・詳細確率対応版)
 import { GameId } from './game_data';
-import { STAT_IDS } from './stats';
+import { STAT_IDS, normalizeStatId } from './stats';
+import { getActiveSets, SET_BONUS_STATS } from './set_effects';
+
+export interface SpeedLimitConfig {
+  targetSpeed: number;
+  baseSpeed: number;
+  currentSubSpeed?: number;
+}
+
+export function calculateBuildSpeed(baseSpeed: number, pieces: Record<string, any>): number {
+  let speed = baseSpeed;
+  Object.values(pieces).forEach((art: any) => {
+    if (!art) return;
+    if (art.main === STAT_IDS.SPEED || art.main === "速度") {
+      speed += 25.03;
+    }
+    if (art.substats) {
+      if (art.substats[STAT_IDS.SPEED] !== undefined) {
+        speed += art.substats[STAT_IDS.SPEED];
+      } else if (art.substats["速度"] !== undefined) {
+        speed += art.substats["速度"];
+      }
+    }
+  });
+
+  const activeSets = getActiveSets(pieces);
+  let speedPercentBonus = 0;
+  Object.entries(activeSets).forEach(([setName, count]) => {
+    const bonus = SET_BONUS_STATS[setName];
+    if (bonus) {
+      if (count >= 4 && bonus["4pc"]?.[STAT_IDS.SPEED]) {
+        speedPercentBonus += bonus["4pc"][STAT_IDS.SPEED];
+      } else if (count >= 2 && bonus["2pc"]?.[STAT_IDS.SPEED]) {
+        speedPercentBonus += bonus["2pc"][STAT_IDS.SPEED];
+      }
+    }
+  });
+  
+  speed += baseSpeed * (speedPercentBonus / 100);
+  return speed;
+}
+
 
 // --- サブステータス定義 ---
 const GENSHIN_SUBSTAT_VALUES: Record<string, number[]> = {
@@ -24,8 +64,9 @@ const ZZZ_SUBSTAT_VALUES: Record<string, number> = {
 };
 
 const getSubstatValue = (gameId: GameId, substatName: string): number => {
-  if (gameId === "zzz") return ZZZ_SUBSTAT_VALUES[substatName] || 0;
-  const values = gameId === "genshin" ? GENSHIN_SUBSTAT_VALUES[substatName] : STARRAIL_SUBSTAT_VALUES[substatName];
+  const norm = normalizeStatId(substatName);
+  if (gameId === "zzz") return ZZZ_SUBSTAT_VALUES[norm] || 0;
+  const values = gameId === "genshin" ? GENSHIN_SUBSTAT_VALUES[norm] : STARRAIL_SUBSTAT_VALUES[norm];
   return values ? values[Math.floor(Math.random() * values.length)] : 0;
 };
 
@@ -113,9 +154,9 @@ export const ELIXIR_COST: Record<string, number> = {
   "理の冠": 3
 };
 
-export function generateArtifact(gameId: GameId, part: string, subPool: string[], scoreWeights: Record<string, number>, targetSets: string[] = [], isOrnament: boolean = false, isStrongbox: boolean = false) {
+export function generateArtifact(gameId: GameId, part: string, subPool: string[], scoreWeights: Record<string, number>, targetSets: string[] = [], isOrnament: boolean = false, isStrongbox: boolean = false, forcedMain?: string) {
   const mainProbs = MAIN_PROBS[gameId][part] || { "攻撃力%": 100 };
-  const main = weightedRandom(mainProbs);
+  const main = forcedMain ? forcedMain : weightedRandom(mainProbs);
   
   const activeTargetSets = targetSets.filter(s => s !== "" && s !== "未選択");
   let setName = "その他";
@@ -144,7 +185,7 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
   const tempAvailable = [...available];
   while (selectedSubs.length < numSubs && tempAvailable.length > 0) {
     const probs: Record<string, number> = {};
-    tempAvailable.forEach(s => probs[s] = gameSubWeights[s] || 10);
+    tempAvailable.forEach(s => probs[s] = gameSubWeights[normalizeStatId(s)] || 10);
     const s = weightedRandom(probs);
     if (s) {
       selectedSubs.push(s);
@@ -161,7 +202,7 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
     if (keys.length < 4) {
       const rem = available.filter(s => !(s in substats));
       const probs: Record<string, number> = {};
-      rem.forEach(s => probs[s] = gameSubWeights[s] || 10);
+      rem.forEach(s => probs[s] = gameSubWeights[normalizeStatId(s)] || 10);
       const s = weightedRandom(probs);
       if (s) substats[s] = getSubstatValue(gameId, s);
     } else {
@@ -175,9 +216,10 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
   if (gameId === "zzz") {
     let totalUsefulRolls = 0;
     for (const [s, v] of Object.entries(substats)) {
-      const weight = scoreWeights[s] || 0;
+      const norm = normalizeStatId(s);
+      const weight = scoreWeights[norm] || scoreWeights[s] || 0;
       if (weight > 0) {
-        const baseValue = ZZZ_SUBSTAT_VALUES[s] || 1;
+        const baseValue = ZZZ_SUBSTAT_VALUES[norm] || 1;
         totalUsefulRolls += (v / baseValue) * weight;
       }
     }
@@ -186,9 +228,10 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
     const mainScore = 50; 
     let totalUsefulRolls = 0;
     for (const [s, v] of Object.entries(substats)) {
-      const weight = scoreWeights[s] || 0;
+      const norm = normalizeStatId(s);
+      const weight = scoreWeights[norm] || scoreWeights[s] || 0;
       if (weight > 0) {
-        const avgRoll = s === STAT_IDS.CRIT_RATE ? 2.9 : s === STAT_IDS.CRIT_DMG ? 5.8 : s === STAT_IDS.SPEED ? 2.3 : 3.9;
+        const avgRoll = norm === STAT_IDS.CRIT_RATE ? 2.9 : norm === STAT_IDS.CRIT_DMG ? 5.8 : norm === STAT_IDS.SPEED ? 2.3 : 3.9;
         totalUsefulRolls += (v / avgRoll) * weight;
       }
     }
@@ -196,12 +239,13 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
     score = mainScore + subScore;
   } else {
     for (const [s, v] of Object.entries(substats)) {
-      const weight = scoreWeights[s] || 0;
+      const norm = normalizeStatId(s);
+      const weight = scoreWeights[norm] || scoreWeights[s] || 0;
       if (weight > 0) score += v * weight;
     }
   }
   
-  return { part, main, score: score || 0, substats, isTargetSet, setName, isOrnament };
+  return { part, main, score: score || 0, substats, isTargetSet, setName, isOrnament, isElixir: false };
 }
 
 export function generateElixirArtifact(config: ElixirConfig, subPool: string[], scoreWeights: Record<string, number>) {
@@ -219,7 +263,7 @@ export function generateElixirArtifact(config: ElixirConfig, subPool: string[], 
   const tempAvailable = [...available];
   while (selectedSubs.length < numSubs && tempAvailable.length > 0) {
     const probs: Record<string, number> = {};
-    tempAvailable.forEach(s => probs[s] = gameSubWeights[s] || 10);
+    tempAvailable.forEach(s => probs[s] = gameSubWeights[normalizeStatId(s)] || 10);
     const s = weightedRandom(probs);
     if (s) {
       selectedSubs.push(s);
@@ -236,7 +280,7 @@ export function generateElixirArtifact(config: ElixirConfig, subPool: string[], 
     if (keys.length < 4) {
       const rem = available.filter(s => !(s in substats));
       const probs: Record<string, number> = {};
-      rem.forEach(s => probs[s] = gameSubWeights[s] || 10);
+      rem.forEach(s => probs[s] = gameSubWeights[normalizeStatId(s)] || 10);
       const s = weightedRandom(probs);
       if (s) substats[s] = getSubstatValue("genshin", s);
     } else {
@@ -247,7 +291,8 @@ export function generateElixirArtifact(config: ElixirConfig, subPool: string[], 
 
   let score = 0;
   for (const [s, v] of Object.entries(substats)) {
-    const weight = scoreWeights[s] || 0;
+    const norm = normalizeStatId(s);
+    const weight = scoreWeights[norm] || scoreWeights[s] || 0;
     if (weight > 0) score += v * weight;
   }
 
@@ -255,7 +300,7 @@ export function generateElixirArtifact(config: ElixirConfig, subPool: string[], 
 }
 
 // 最高スコア(コンボ考慮)を計算
-function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<string, any>>, targetSets: string[]) {
+function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<string, any>>, targetSets: string[], speedLimitConfig?: SpeedLimitConfig | null) {
   const slots = Object.keys(bestPieces);
   const setsA = [targetSets[0], targetSets[1]].filter(s => s && s !== "未選択");
   const setsB = [targetSets[2], targetSets[3]].filter(s => s && s !== "未選択");
@@ -300,55 +345,107 @@ function calculateBestCombo(gameId: GameId, bestPieces: Record<string, Record<st
     });
     return { total: maxTotal, substatTotal: maxSubstat, pieces: bestSet };
   } else if (gameId === "starrail") {
-    let maxTotal = 0;
+    let maxTotal = -9999999;
     let maxSubstat = 0;
     let bestSet: Record<string, any> = {};
+    let bestMeetsSpeed = true;
     const relicSlots = ["頭部", "手部", "胴体", "脚部"];
     const ornamentSlots = ["次元界オーブ", "連結縄"];
+
+    const getComparisonScore = (art: any) => {
+      if (!art) return -9999999;
+      let compScore = art.score;
+      if (speedLimitConfig && speedLimitConfig.targetSpeed > 0) {
+        const speedVal = art.substats?.[STAT_IDS.SPEED] || art.substats?.["速度"] || 0;
+        compScore += speedVal * 6.0;
+      }
+      return compScore;
+    };
     
     (setsA.length > 0 ? setsA : ["any"]).forEach(tRelic => {
       (setsB.length > 0 ? setsB : ["any"]).forEach(tOrna => {
-        let currentTotal = 0;
-        let currentSubstat = 0;
-        let rCount = 0;
-        let oCount = 0;
-        const currentSet: Record<string, any> = {};
-        
-        relicSlots.forEach(s => {
-          const art = bestPieces[s][tRelic] || bestPieces[s]["any"];
-          if (art) {
-            currentTotal += art.score;
-            currentSubstat += art.score;
-            if (art.setName === tRelic) rCount++;
-          }
-          currentSet[s] = art;
-        });
-        ornamentSlots.forEach(s => {
-          const art = bestPieces[s][tOrna] || bestPieces[s]["any"];
-          if (art) {
-            currentTotal += art.score;
-            currentSubstat += art.score;
-            if (art.setName === tOrna) oCount++;
-          }
-          currentSet[s] = art;
-        });
-        
-        if (rCount >= 2) currentTotal += 15;
-        if (rCount >= 4) currentTotal += 40;
-        if (oCount >= 2) currentTotal += 20;
+        const getSlotCandidates = (slot: string, tSet: string) => {
+          const cands: any[] = [];
+          const seen = new Set<any>();
+          
+          const p1 = bestPieces[slot][tSet];
+          if (p1) { cands.push(p1); seen.add(p1); }
+          
+          const p2 = bestPieces[slot]["any"];
+          if (p2 && !seen.has(p2)) { cands.push(p2); seen.add(p2); }
+          
+          const p3 = bestPieces[slot]["initial"];
+          if (p3 && !seen.has(p3)) { cands.push(p3); seen.add(p3); }
+          
+          if (cands.length === 0) cands.push(null);
+          return cands;
+        };
 
-        // セット1とセット3(本命)を優先する補正
-        if (tRelic === targetSets[0]) currentTotal += 10000;
-        if (tOrna === targetSets[2]) currentTotal += 10000;
+        const candsHead = getSlotCandidates("頭部", tRelic);
+        const candsHands = getSlotCandidates("手部", tRelic);
+        const candsBody = getSlotCandidates("胴体", tRelic);
+        const candsFeet = getSlotCandidates("脚部", tRelic);
+        const candsSphere = getSlotCandidates("次元界オーブ", tOrna);
+        const candsRope = getSlotCandidates("連結縄", tOrna);
 
-        if (currentTotal > maxTotal) {
-          maxTotal = currentTotal;
-          maxSubstat = currentSubstat;
-          bestSet = currentSet;
-        }
+        candsHead.forEach(h => {
+          candsHands.forEach(ha => {
+            candsBody.forEach(b => {
+              candsFeet.forEach(f => {
+                candsSphere.forEach(o => {
+                  candsRope.forEach(r => {
+                    const tempSet = { "頭部": h, "手部": ha, "胴体": b, "脚部": f, "次元界オーブ": o, "連結縄": r };
+                    
+                    let currentTotal = 0;
+                    let currentSubstat = 0;
+                    let rCount = 0;
+                    let oCount = 0;
+                    
+                    Object.entries(tempSet).forEach(([slot, art]) => {
+                      if (!art) return;
+                      currentTotal += getComparisonScore(art);
+                      currentSubstat += art.score;
+                      
+                      const isRelic = relicSlots.includes(slot);
+                      if (isRelic) {
+                        if (art.setName === tRelic) rCount++;
+                      } else {
+                        if (art.setName === tOrna) oCount++;
+                      }
+                    });
+                    
+                    if (rCount >= 2) currentTotal += 15;
+                    if (rCount >= 4) currentTotal += 40;
+                    if (oCount >= 2) currentTotal += 20;
+
+                    let meetsSpeed = true;
+                    if (speedLimitConfig && speedLimitConfig.targetSpeed > 0) {
+                      const buildSpeed = calculateBuildSpeed(speedLimitConfig.baseSpeed, tempSet);
+                      if (buildSpeed < speedLimitConfig.targetSpeed) {
+                        meetsSpeed = false;
+                        currentTotal -= 100000;
+                      }
+                    }
+
+                    if (tRelic === targetSets[0]) currentTotal += 10000;
+                    if (tOrna === targetSets[2]) currentTotal += 10000;
+
+                    if (currentTotal > maxTotal) {
+                      maxTotal = currentTotal;
+                      maxSubstat = currentSubstat;
+                      bestSet = tempSet;
+                      bestMeetsSpeed = meetsSpeed;
+                    }
+                  });
+                });
+              });
+            });
+          });
+        });
       });
     });
-    return { total: maxTotal, substatTotal: maxSubstat, pieces: bestSet };
+    const finalSubstat = bestMeetsSpeed ? maxSubstat : 0;
+    return { total: maxTotal, substatTotal: finalSubstat, pieces: bestSet };
   } else if (gameId === "zzz") {
     let maxTotal = 0;
     let maxSubstat = 0;
@@ -408,9 +505,32 @@ function getDefaultSetForSlot(gameId: GameId, part: string, targetSets: string[]
 }
 
 // シミュレーション (目標スコア)
-export function simulateUntilScore(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[], elixirConfig?: ElixirConfig | null, initialScores?: Record<string, number> | null) {
+export function simulateUntilScore(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[], elixirConfig?: ElixirConfig | null, initialScores?: Record<string, number> | null, speedLimitConfig?: SpeedLimitConfig | null) {
   const parts = Object.keys(MAIN_PROBS[gameId]);
   const bestPieces: Record<string, Record<string, any>> = {};
+
+  let initialPartsCount = 0;
+  if (initialScores) {
+    parts.forEach(p => {
+      if (initialScores[p] !== undefined && initialScores[p] > 0) {
+        initialPartsCount++;
+      }
+    });
+  }
+  const initialSubSpeedPerPart = (speedLimitConfig?.currentSubSpeed && initialPartsCount > 0)
+    ? speedLimitConfig.currentSubSpeed / initialPartsCount
+    : 0;
+
+  const getComparisonScore = (art: any) => {
+    if (!art) return -9999999;
+    let compScore = art.score;
+    if (gameId === "starrail" && speedLimitConfig && speedLimitConfig.targetSpeed > 0) {
+      const speedVal = art.substats?.[STAT_IDS.SPEED] || art.substats?.["速度"] || 0;
+      compScore += speedVal * 6.0;
+    }
+    return compScore;
+  };
+
   parts.forEach(p => {
     bestPieces[p] = { "any": null };
     targetSets.forEach(s => { if(s && s !== "未選択") bestPieces[p][s] = null; });
@@ -422,7 +542,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
         part: p,
         main: mainStats[p] || "",
         score: initScore,
-        substats: {},
+        substats: initialSubSpeedPerPart > 0 ? { [STAT_IDS.SPEED]: initialSubSpeedPerPart } : {},
         isTargetSet: defaultSet !== "その他",
         setName: defaultSet,
         isOrnament: gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄"),
@@ -430,6 +550,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
       };
       bestPieces[p][defaultSet] = dummyPiece;
       bestPieces[p]["any"] = dummyPiece;
+      bestPieces[p]["initial"] = dummyPiece;
     }
   });
   
@@ -448,7 +569,7 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
   while (attempts < 100000) {
     attempts++;
 
-    if (gameId === "genshin" && elixirConfig?.enabled) {
+    if (elixirConfig?.enabled) {
       const days = attempts / (defaults.dailyStamina / defaults.staminaCost);
       const totalElixirs = elixirConfig.initialCount + Math.floor(days / 42) * elixirConfig.perVersion;
       
@@ -462,41 +583,71 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
 
           let loopImproved = false;
           for (const { slot } of currentPieces) {
-            const cost = ELIXIR_COST[slot] || 1;
+            const cost = gameId === "genshin" ? (ELIXIR_COST[slot] || 1) : 1;
             if (currentAvailable >= cost) {
               const isTargetPart = slot === elixirConfig.targetPart;
               let targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || STAT_IDS.ATK_PER);
               
-              // 固定メインステータスの強制適用 (花・羽)
-              if (slot.includes("花")) targetMain = STAT_IDS.HP_FLAT;
-              if (slot.includes("羽")) targetMain = STAT_IDS.ATK_FLAT;
+              // 固定メインステータスの強制適用
+              if (gameId === "genshin") {
+                if (slot.includes("花")) targetMain = STAT_IDS.HP_FLAT;
+                if (slot.includes("羽")) targetMain = STAT_IDS.ATK_FLAT;
+              } else if (gameId === "starrail") {
+                if (slot === "頭部") targetMain = STAT_IDS.HP_FLAT;
+                if (slot === "手部") targetMain = STAT_IDS.ATK_FLAT;
+              } else if (gameId === "zzz") {
+                if (slot === "スロット1") targetMain = STAT_IDS.HP_FLAT;
+                if (slot === "スロット2") targetMain = STAT_IDS.ATK_FLAT;
+                if (slot === "スロット3") targetMain = STAT_IDS.DEF_FLAT;
+              }
 
-              const sortedSubs = Object.entries(scoreWeights)
-                .filter(([s]) => s !== targetMain && s !== "未選択")
-                .sort((a, b) => b[1] - a[1])
-                .map(e => e[0]);
-              
-              const s1 = isTargetPart ? elixirConfig.sub1 : sortedSubs[0];
-              const s2 = isTargetPart ? elixirConfig.sub2 : sortedSubs[1];
+              let eArt;
+              if (gameId === "genshin") {
+                const sortedSubs = Object.entries(scoreWeights)
+                  .filter(([s]) => s !== targetMain && s !== "未選択")
+                  .sort((a, b) => b[1] - a[1])
+                  .map(e => e[0]);
+                
+                const s1 = isTargetPart ? elixirConfig.sub1 : sortedSubs[0];
+                const s2 = isTargetPart ? elixirConfig.sub2 : sortedSubs[1];
 
-              const tempConfig = { ...elixirConfig, targetPart: slot, targetMain, sub1: s1, sub2: s2 };
-              const eArt = generateElixirArtifact(tempConfig, subPool, scoreWeights);
+                const tempConfig = { ...elixirConfig, targetPart: slot, targetMain, sub1: s1, sub2: s2 };
+                eArt = generateElixirArtifact(tempConfig, subPool, scoreWeights);
+              } else {
+                const isSOrnament = gameId === "starrail" && (slot === "次元界オーブ" || slot === "連結縄");
+                const currentEquippedSet = (finalResult.pieces as any)[slot]?.setName || targetSets[0];
+                const finalSet = currentEquippedSet !== "その他" ? currentEquippedSet : targetSets[0];
+                
+                eArt = generateArtifact(
+                  gameId,
+                  slot,
+                  subPool,
+                  scoreWeights,
+                  [finalSet],
+                  isSOrnament,
+                  false,
+                  targetMain
+                );
+                eArt.isElixir = true;
+              }
+
               if (eArt.score >= 58) godPieces.push(eArt);
               
               const currentEquippedSet = (finalResult.pieces as any)[slot]?.setName || targetSets[0];
               const finalSet = currentEquippedSet !== "その他" ? currentEquippedSet : targetSets[0];
               eArt.setName = finalSet;
 
-              const currentBest = (bestPieces[slot][finalSet]?.score || 0);
-              if (eArt.score > currentBest) {
+              const currentBest = bestPieces[slot][finalSet];
+              if (getComparisonScore(eArt) > getComparisonScore(currentBest)) {
                 bestPieces[slot][finalSet] = eArt;
-                if (eArt.score > (bestPieces[slot]["any"]?.score || 0)) bestPieces[slot]["any"] = eArt;
+                const currentBestAny = bestPieces[slot]["any"];
+                if (getComparisonScore(eArt) > getComparisonScore(currentBestAny)) bestPieces[slot]["any"] = eArt;
                 loopImproved = true;
               }
               
               currentAvailable -= cost;
               usedElixirCount += cost;
-              finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
+              finalResult = calculateBestCombo(gameId, bestPieces, targetSets, speedLimitConfig);
               if (loopImproved) break;
             }
           }
@@ -550,39 +701,75 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
     const art = generateArtifact(gameId, p, subPool, scoreWeights, currentPool, isOrnament);
     if (art.score >= 58) godPieces.push(art);
     
-    const isMainMatch = art.main === mainStats[p] || 
+    const isMainMatch = normalizeStatId(art.main) === normalizeStatId(mainStats[p]) || 
       p.includes("花") || p.includes("羽") || 
       p === "頭部" || p === "手部" || 
       p === "スロット1" || p === "スロット2" || p === "スロット3";
 
     if (isMainMatch) {
-      if (art.isTargetSet && art.score > (bestPieces[p][art.setName]?.score || 0)) bestPieces[p][art.setName] = art;
-      if (art.score > (bestPieces[p]["any"]?.score || 0)) bestPieces[p]["any"] = art;
+      const currentBestInSet = bestPieces[p][art.setName];
+      if (art.isTargetSet && getComparisonScore(art) > getComparisonScore(currentBestInSet)) bestPieces[p][art.setName] = art;
+      const currentBestAny = bestPieces[p]["any"];
+      if (getComparisonScore(art) > getComparisonScore(currentBestAny)) bestPieces[p]["any"] = art;
     } else if (useRecycle) {
       recycleQueue++;
     }
 
     if (useRecycle && recycleQueue >= defaults.recycleRatio) {
       recycleQueue -= defaults.recycleRatio;
-      const sp = parts[Math.floor(Math.random() * parts.length)];
+      
+      let sp;
+      if (gameId === "genshin") {
+        sp = parts[Math.floor(Math.random() * parts.length)];
+      } else {
+        const currentPieces = finalResult.pieces as Record<string, any>;
+        const unmatchedSlots = parts.filter(slot => {
+          const isFixed = slot.includes("花") || slot.includes("羽") || 
+            slot === "頭部" || slot === "手部" || 
+            slot === "スロット1" || slot === "スロット2" || slot === "スロット3";
+          if (isFixed) return false;
+          
+          const art = currentPieces[slot];
+          const targetMain = mainStats[slot];
+          return !art || normalizeStatId(art.main) !== normalizeStatId(targetMain);
+        });
+
+        if (unmatchedSlots.length > 0) {
+          sp = unmatchedSlots[Math.floor(Math.random() * unmatchedSlots.length)];
+        } else {
+          let minScore = Infinity;
+          let worstSlot = parts[0];
+          parts.forEach(slot => {
+            const score = currentPieces[slot]?.score ?? 0;
+            if (score < minScore) {
+              minScore = score;
+              worstSlot = slot;
+            }
+          });
+          sp = worstSlot;
+        }
+      }
+
       const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
       let sPool = targetSets[0] && targetSets[0] !== "未選択" ? [targetSets[0]] : dungeonA;
       if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? [dungeonB[0]] : sPool;
 
       const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament, true);
       if (sart.score >= 58) godPieces.push(sart);
-      const isSMainMatch = sart.main === mainStats[sp] || 
+      const isSMainMatch = normalizeStatId(sart.main) === normalizeStatId(mainStats[sp]) || 
         sp.includes("花") || sp.includes("羽") || 
         sp === "頭部" || sp === "手部" || 
         sp === "スロット1" || sp === "スロット2" || sp === "スロット3";
 
       if (isSMainMatch) {
-        if (sart.isTargetSet && sart.score > (bestPieces[sp][sart.setName]?.score || 0)) bestPieces[sp][sart.setName] = sart;
-        if (sart.score > (bestPieces[sp]["any"]?.score || 0)) bestPieces[sp]["any"] = sart;
+        const currentBestInSet = bestPieces[sp][sart.setName];
+        if (sart.isTargetSet && getComparisonScore(sart) > getComparisonScore(currentBestInSet)) bestPieces[sp][sart.setName] = sart;
+        const currentBestAny = bestPieces[sp]["any"];
+        if (getComparisonScore(sart) > getComparisonScore(currentBestAny)) bestPieces[sp]["any"] = sart;
       }
     }
 
-    finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
+    finalResult = calculateBestCombo(gameId, bestPieces, targetSets, speedLimitConfig);
     if (attemptsMinus10 === 0 && finalResult.substatTotal >= target - 10) {
       attemptsMinus10 = attempts;
     }
@@ -600,9 +787,32 @@ export function simulateUntilScore(gameId: GameId, target: number, scoreWeights:
 }
 
 // シミュレーション (固定期間)
-export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, staminaPerDay: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[], elixirConfig?: ElixirConfig | null, initialScores?: Record<string, number> | null) {
+export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, staminaPerDay: number, scoreWeights: Record<string, number>, subPool: string[], useRecycle: boolean, mainStats: Record<string, string>, targetSets: string[], elixirConfig?: ElixirConfig | null, initialScores?: Record<string, number> | null, speedLimitConfig?: SpeedLimitConfig | null) {
   const parts = Object.keys(MAIN_PROBS[gameId]);
   const bestPieces: Record<string, Record<string, any>> = {};
+
+  let initialPartsCount = 0;
+  if (initialScores) {
+    parts.forEach(p => {
+      if (initialScores[p] !== undefined && initialScores[p] > 0) {
+        initialPartsCount++;
+      }
+    });
+  }
+  const initialSubSpeedPerPart = (speedLimitConfig?.currentSubSpeed && initialPartsCount > 0)
+    ? speedLimitConfig.currentSubSpeed / initialPartsCount
+    : 0;
+
+  const getComparisonScore = (art: any) => {
+    if (!art) return -9999999;
+    let compScore = art.score;
+    if (gameId === "starrail" && speedLimitConfig && speedLimitConfig.targetSpeed > 0) {
+      const speedVal = art.substats?.[STAT_IDS.SPEED] || art.substats?.["速度"] || 0;
+      compScore += speedVal * 6.0;
+    }
+    return compScore;
+  };
+
   parts.forEach(p => {
     bestPieces[p] = { "any": null };
     targetSets.forEach(s => { if(s && s !== "未選択") bestPieces[p][s] = null; });
@@ -614,7 +824,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
         part: p,
         main: mainStats[p] || "",
         score: initScore,
-        substats: {},
+        substats: initialSubSpeedPerPart > 0 ? { [STAT_IDS.SPEED]: initialSubSpeedPerPart } : {},
         isTargetSet: defaultSet !== "other",
         setName: defaultSet,
         isOrnament: gameId === "starrail" && (p === "次元界オーブ" || p === "連結縄"),
@@ -622,6 +832,7 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
       };
       bestPieces[p][defaultSet] = dummyPiece;
       bestPieces[p]["any"] = dummyPiece;
+      bestPieces[p]["initial"] = dummyPiece;
     }
   });
   
@@ -670,47 +881,83 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
     const art = generateArtifact(gameId, p, subPool, scoreWeights, currentPool, isOrnament);
     if (art.score >= 58) godPieces.push(art);
     
-    const isMainMatch = art.main === mainStats[p] || 
+    const isMainMatch = normalizeStatId(art.main) === normalizeStatId(mainStats[p]) || 
       p.includes("花") || p.includes("羽") || 
       p === "頭部" || p === "手部" || 
       p === "スロット1" || p === "スロット2" || p === "スロット3";
 
     if (isMainMatch) {
-      if (art.isTargetSet && art.score > (bestPieces[p][art.setName]?.score || 0)) bestPieces[p][art.setName] = art;
-      if (art.score > (bestPieces[p]["any"]?.score || 0)) bestPieces[p]["any"] = art;
+      const currentBestInSet = bestPieces[p][art.setName];
+      if (art.isTargetSet && getComparisonScore(art) > getComparisonScore(currentBestInSet)) bestPieces[p][art.setName] = art;
+      const currentBestAny = bestPieces[p]["any"];
+      if (getComparisonScore(art) > getComparisonScore(currentBestAny)) bestPieces[p]["any"] = art;
     } else if (useRecycle) {
       recycleQueue++;
     }
 
     if (useRecycle && recycleQueue >= defaults.recycleRatio) {
       recycleQueue -= defaults.recycleRatio;
-      const sp = parts[Math.floor(Math.random() * parts.length)];
+      
+      let sp;
+      if (gameId === "genshin") {
+        sp = parts[Math.floor(Math.random() * parts.length)];
+      } else {
+        const currentPieces = finalResult.pieces as Record<string, any>;
+        const unmatchedSlots = parts.filter(slot => {
+          const isFixed = slot.includes("花") || slot.includes("羽") || 
+            slot === "頭部" || slot === "手部" || 
+            slot === "スロット1" || slot === "スロット2" || slot === "スロット3";
+          if (isFixed) return false;
+          
+          const art = currentPieces[slot];
+          const targetMain = mainStats[slot];
+          return !art || normalizeStatId(art.main) !== normalizeStatId(targetMain);
+        });
+
+        if (unmatchedSlots.length > 0) {
+          sp = unmatchedSlots[Math.floor(Math.random() * unmatchedSlots.length)];
+        } else {
+          let minScore = Infinity;
+          let worstSlot = parts[0];
+          parts.forEach(slot => {
+            const score = currentPieces[slot]?.score ?? 0;
+            if (score < minScore) {
+              minScore = score;
+              worstSlot = slot;
+            }
+          });
+          sp = worstSlot;
+        }
+      }
+
       const isSOrnament = gameId === "starrail" && (sp === "次元界オーブ" || sp === "連結縄");
       let sPool = targetSets[0] && targetSets[0] !== "未選択" ? [targetSets[0]] : dungeonA;
       if (gameId === "starrail" && isSOrnament) sPool = dungeonB.length > 0 ? [dungeonB[0]] : sPool;
 
       const sart = generateArtifact(gameId, sp, subPool, scoreWeights, sPool, isSOrnament, true);
       if (sart.score >= 58) godPieces.push(sart);
-      const isSMainMatch = sart.main === mainStats[sp] || 
+      const isSMainMatch = normalizeStatId(sart.main) === normalizeStatId(mainStats[sp]) || 
         sp.includes("花") || sp.includes("羽") || 
         sp === "頭部" || sp === "手部" || 
         sp === "スロット1" || sp === "スロット2" || sp === "スロット3";
 
       if (isSMainMatch) {
-        if (sart.isTargetSet && sart.score > (bestPieces[sp][sart.setName]?.score || 0)) bestPieces[sp][sart.setName] = sart;
-        if (sart.score > (bestPieces[sp]["any"]?.score || 0)) bestPieces[sp]["any"] = sart;
+        const currentBestInSet = bestPieces[sp][sart.setName];
+        if (sart.isTargetSet && getComparisonScore(sart) > getComparisonScore(currentBestInSet)) bestPieces[sp][sart.setName] = sart;
+        const currentBestAny = bestPieces[sp]["any"];
+        if (getComparisonScore(sart) > getComparisonScore(currentBestAny)) bestPieces[sp]["any"] = sart;
       }
     }
     
     if (i % 20 === 0 || i === totalAttempts - 1) {
-      finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
+      finalResult = calculateBestCombo(gameId, bestPieces, targetSets, speedLimitConfig);
     }
   }
 
   const scoreBeforeElixir = finalResult.substatTotal;
 
   // 2. 厳選終了後のエリクシル投入 (最適化処理)
-  if (gameId === "genshin" && elixirConfig?.enabled) {
+  if (elixirConfig?.enabled) {
     const days = totalAttempts / (staminaPerDay / defaults.staminaCost);
     let totalElixirs = elixirConfig.initialCount + Math.floor(days / 42) * elixirConfig.perVersion;
     
@@ -722,25 +969,53 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
         .sort((a, b) => a.score - b.score);
 
       for (const { slot } of currentPieces) {
-        const cost = ELIXIR_COST[slot] || 1;
+        const cost = gameId === "genshin" ? (ELIXIR_COST[slot] || 1) : 1;
         if (totalElixirs >= cost) {
           const isTargetPart = slot === elixirConfig.targetPart;
           let targetMain = isTargetPart ? elixirConfig.targetMain : (mainStats[slot] || STAT_IDS.ATK_PER);
           
-          // 固定メインステータスの強制適用 (花・羽)
-          if (slot.includes("花")) targetMain = STAT_IDS.HP_FLAT;
-          if (slot.includes("羽")) targetMain = STAT_IDS.ATK_FLAT;
+          // 固定メインステータスの強制適用
+          if (gameId === "genshin") {
+            if (slot.includes("花")) targetMain = STAT_IDS.HP_FLAT;
+            if (slot.includes("羽")) targetMain = STAT_IDS.ATK_FLAT;
+          } else if (gameId === "starrail") {
+            if (slot === "頭部") targetMain = STAT_IDS.HP_FLAT;
+            if (slot === "手部") targetMain = STAT_IDS.ATK_FLAT;
+          } else if (gameId === "zzz") {
+            if (slot === "スロット1") targetMain = STAT_IDS.HP_FLAT;
+            if (slot === "スロット2") targetMain = STAT_IDS.ATK_FLAT;
+            if (slot === "スロット3") targetMain = STAT_IDS.DEF_FLAT;
+          }
 
-          const sortedSubs = Object.entries(scoreWeights)
-            .filter(([s]) => s !== targetMain && s !== "未選択")
-            .sort((a, b) => b[1] - a[1])
-            .map(e => e[0]);
-          
-          const s1 = isTargetPart ? elixirConfig.sub1 : sortedSubs[0];
-          const s2 = isTargetPart ? elixirConfig.sub2 : sortedSubs[1];
+          let eArt;
+          if (gameId === "genshin") {
+            const sortedSubs = Object.entries(scoreWeights)
+              .filter(([s]) => s !== targetMain && s !== "未選択")
+              .sort((a, b) => b[1] - a[1])
+              .map(e => e[0]);
+            
+            const s1 = isTargetPart ? elixirConfig.sub1 : sortedSubs[0];
+            const s2 = isTargetPart ? elixirConfig.sub2 : sortedSubs[1];
 
-          const tempConfig = { ...elixirConfig, targetPart: slot, targetMain, sub1: s1, sub2: s2 };
-          const eArt = generateElixirArtifact(tempConfig, subPool, scoreWeights);
+            const tempConfig = { ...elixirConfig, targetPart: slot, targetMain, sub1: s1, sub2: s2 };
+            eArt = generateElixirArtifact(tempConfig, subPool, scoreWeights);
+          } else {
+            const isSOrnament = gameId === "starrail" && (slot === "次元界オーブ" || slot === "連結縄");
+            const currentEquippedSet = (finalResult.pieces as any)[slot]?.setName || targetSets[0];
+            const finalSet = currentEquippedSet !== "その他" ? currentEquippedSet : targetSets[0];
+            
+            eArt = generateArtifact(
+              gameId,
+              slot,
+              subPool,
+              scoreWeights,
+              [finalSet],
+              isSOrnament,
+              false,
+              targetMain
+            );
+            eArt.isElixir = true;
+          }
           
           if (eArt.score >= 58) godPieces.push(eArt);
           
@@ -748,15 +1023,16 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
           const finalSet = currentEquippedSet !== "その他" ? currentEquippedSet : targetSets[0];
           eArt.setName = finalSet;
 
-          const currentBest = (bestPieces[slot][finalSet]?.score || 0);
-          if (eArt.score > currentBest) {
+          const currentBest = bestPieces[slot][finalSet];
+          if (getComparisonScore(eArt) > getComparisonScore(currentBest)) {
             bestPieces[slot][finalSet] = eArt;
-            if (eArt.score > (bestPieces[slot]["any"]?.score || 0)) bestPieces[slot]["any"] = eArt;
+            const currentBestAny = bestPieces[slot]["any"];
+            if (getComparisonScore(eArt) > getComparisonScore(currentBestAny)) bestPieces[slot]["any"] = eArt;
             improved = true;
           }
           
           totalElixirs -= cost;
-          finalResult = calculateBestCombo(gameId, bestPieces, targetSets);
+          finalResult = calculateBestCombo(gameId, bestPieces, targetSets, speedLimitConfig);
           if (improved) break; 
         }
       }
@@ -772,9 +1048,9 @@ export function simulateFixedAttempts(gameId: GameId, totalAttempts: number, sta
 }
 
 // --- リサイクル効率比較シミュレーション ---
-export function compareRecycleEfficiency(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], mainStats: Record<string, string>, targetSets: string[]) {
-  const resultWithRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, true, mainStats, targetSets);
-  const resultWithoutRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, false, mainStats, targetSets);
+export function compareRecycleEfficiency(gameId: GameId, target: number, scoreWeights: Record<string, number>, subPool: string[], mainStats: Record<string, string>, targetSets: string[], speedLimitConfig?: SpeedLimitConfig | null) {
+  const resultWithRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, true, mainStats, targetSets, null, null, speedLimitConfig);
+  const resultWithoutRecycle = simulateUntilScore(gameId, target, scoreWeights, subPool, false, mainStats, targetSets, null, null, speedLimitConfig);
 
   const staminaSaved = resultWithoutRecycle.stamina - resultWithRecycle.stamina;
   const daysSaved = staminaSaved / GAME_DEFAULTS[gameId].dailyStamina;
@@ -844,7 +1120,7 @@ export function simulateUpgradeProgress(
         const tempPool = availablePool.filter(s => !activeSubs.includes(s));
         if (tempPool.length > 0) {
           const probs: Record<string, number> = {};
-          tempPool.forEach(s => probs[s] = gameSubWeights[s] || 10);
+          tempPool.forEach(s => probs[s] = gameSubWeights[normalizeStatId(s)] || 10);
           const newSub = weightedRandom(probs);
           if (newSub) {
             // 新規追加。初期値は最低値または平均値。
@@ -866,7 +1142,8 @@ export function simulateUpgradeProgress(
     // 最終スコアの計算
     let score = 0;
     Object.entries(subs).forEach(([subName, subVal]) => {
-      const weight = scoreWeights[subName] || 0;
+      const norm = normalizeStatId(subName);
+      const weight = scoreWeights[norm] || scoreWeights[subName] || 0;
       score += subVal * weight;
     });
 

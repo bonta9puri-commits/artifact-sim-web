@@ -5,13 +5,13 @@ import Link from 'next/link';
 import { GAME_CONFIGS, GameId, GameConfig } from '@/lib/game_data';
 import { GENSHIN_CHARACTERS, GENSHIN_MAIN_STATS, GENSHIN_SUB_STATS, GENSHIN_SETS, GENSHIN_SLOTS } from "@/lib/genshin_data";
 import { calculateTotalStats, calculateDamageExpectation, DEFAULT_BASE_STATS, MAIN_STAT_VALUES } from "@/lib/stats_values";
-import { STAT_IDS } from "@/lib/stats";
+import { STAT_IDS, normalizeStatId } from "@/lib/stats";
 import { simulateUntilScore, simulateFixedAttempts, compareRecycleEfficiency, ElixirConfig, MAIN_PROBS, simulateUpgradeProgress } from "@/lib/simulator";
 import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effects';
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis, AreaChart, Area } from 'recharts';
-import { Link2, Sparkles, Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Link2, Sparkles, Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 
 function toKatakana(str: string): string {
   return str.replace(/[\u3041-\u3096]/g, (match) => {
@@ -97,12 +97,12 @@ function SearchableSelect({ value, onChange, options, placeholder = "選択し�
   );
 }
 
+
 export default function Home() {
   const [lang, setLang] = useState<"ja" | "en">("ja");
   const [showShareToast, setShowShareToast] = useState(false);
 
   const charJaToEnMap: Record<string, string> = {
-    "ヌヴィレット": "neuvillette",
     "フリーナ": "furina",
     "ナヒーダ": "nahida",
     "雷電将軍": "raiden",
@@ -174,9 +174,10 @@ export default function Home() {
         else if (slot === "スロット3") mainStat = STAT_IDS.DEF_FLAT;
       }
 
-      const mainVal = MAIN_STAT_VALUES[gameId]?.[mainStat] || 0;
+      const normMain = normalizeStatId(mainStat);
+      const mainVal = MAIN_STAT_VALUES[gameId]?.[normMain] || 0;
       if (mainVal > 0 && mainStat) {
-        mainStatsTotal[mainStat] = (mainStatsTotal[mainStat] || 0) + mainVal;
+        mainStatsTotal[normMain] = (mainStatsTotal[normMain] || 0) + mainVal;
       }
     });
 
@@ -205,7 +206,8 @@ export default function Home() {
           }
         } else if (gameId === "starrail") {
           const rolls = (subScoreAllocated * 9) / 50;
-          const avgRoll = sub === STAT_IDS.CRIT_RATE ? 2.9 : sub === STAT_IDS.CRIT_DMG ? 5.8 : sub === STAT_IDS.SPEED ? 2.3 : 3.9;
+          const norm = normalizeStatId(sub);
+          const avgRoll = norm === STAT_IDS.CRIT_RATE ? 2.9 : norm === STAT_IDS.CRIT_DMG ? 5.8 : norm === STAT_IDS.SPEED ? 2.3 : 3.9;
           val = rolls * avgRoll;
         } else if (gameId === "zzz") {
           const rolls = (subScoreAllocated * 7) / 100;
@@ -213,7 +215,8 @@ export default function Home() {
             [STAT_IDS.CRIT_RATE]: 2.4, [STAT_IDS.CRIT_DMG]: 4.8, [STAT_IDS.ATK_PER]: 3.0, [STAT_IDS.HP_PER]: 3.0, [STAT_IDS.DEF_PER]: 4.8,
             [STAT_IDS.ATK_FLAT]: 19, [STAT_IDS.HP_FLAT]: 112, [STAT_IDS.DEF_FLAT]: 15, [STAT_IDS.AM_MAS]: 9, [STAT_IDS.AM_PRO]: 9, [STAT_IDS.PEN_FLAT]: 9, [STAT_IDS.IMPACT]: 1.2,
           };
-          const baseValue = zzzSubVals[sub] || 1;
+          const norm = normalizeStatId(sub);
+          const baseValue = zzzSubVals[norm] || 1;
           val = rolls * baseValue;
         }
 
@@ -383,7 +386,13 @@ export default function Home() {
       farmingDays: "厳選日数",
       currentScores: "現在の部位別スコア",
       elixir: "祝聖のエリクシル",
+      elixir_genshin: "祝聖のエリクシル",
+      elixir_starrail: "自塑樹脂",
+      elixir_zzz: "音律チューナー",
       strongbox: "聖遺物廻聖",
+      strongbox_genshin: "聖遺物廻聖",
+      strongbox_starrail: "遺物合成",
+      strongbox_zzz: "ディスク調律",
       run: "シミュレーション開始",
       simulating: "解析中...",
       outcome: "解析結果",
@@ -398,6 +407,9 @@ export default function Home() {
       luck75: "下位25%",
       luck90: "悲運",
       elixirSaved: (n: number) => `エリクシルで ${n} 日短縮`,
+      elixirSaved_genshin: (n: number) => `エリクシルで ${n} 日短縮`,
+      elixirSaved_starrail: (n: number) => `自塑樹脂で ${n} 日短縮`,
+      elixirSaved_zzz: (n: number) => `音律チューナーで ${n} 日短縮`,
       superiority: "ビルド実力（勝率）",
       yourScore: "あなたのスコア",
       avgScore: (n: number) => `${n}日間の平均`,
@@ -425,6 +437,20 @@ export default function Home() {
       [STAT_IDS.GEO_DMG]: "岩元素ダメージ",
       [STAT_IDS.PHYSICAL_DMG]: "物理ダメージ",
       [STAT_IDS.HEAL_BONUS]: "与える治癒効果",
+      [STAT_IDS.SPEED]: "速度",
+      [STAT_IDS.BREAK_EFFECT]: "撃破特効",
+      [STAT_IDS.EFFECT_HIT]: "効果命中",
+      [STAT_IDS.EFFECT_RES]: "効果抵抗",
+      [STAT_IDS.ERR]: "EP回復効率",
+      [STAT_IDS.QUANTUM_DMG]: "量子属性ダメージ",
+      [STAT_IDS.IMAGINARY_DMG]: "虚数属性ダメージ",
+      [STAT_IDS.AM_MAS]: "異常マスタリー",
+      [STAT_IDS.AM_PRO]: "異常掌握",
+      [STAT_IDS.PEN_FLAT]: "貫通値",
+      [STAT_IDS.PEN_PER]: "貫通率",
+      [STAT_IDS.IMPACT]: "衝撃力",
+      [STAT_IDS.ENERGY_GEN]: "エネルギー自動回復",
+      [STAT_IDS.ETHER_DMG]: "エーテル属性ダメージ",
       "生の花": "生の花",
       "死の羽": "死の羽",
       "時の砂": "時の砂",
@@ -466,6 +492,9 @@ export default function Home() {
       farmingDays: "Farming Days",
       currentScores: "Current Part Scores",
       elixir: "Sanctifying Elixir",
+      elixir_genshin: "Sanctifying Elixir",
+      elixir_starrail: "Self-Modeling Resin",
+      elixir_zzz: "Tuning Tuner",
       "祝聖のエリクシル": "Sanctifying Elixir",
       "天からの贈り物": "Celestial Gift",
       "影に沈む幻": "Disenchantment in Deep Shadow",
@@ -508,6 +537,9 @@ export default function Home() {
       "魈": "Xiao",
       "その他": "Others",
       strongbox: "Strongbox",
+      strongbox_genshin: "Strongbox",
+      strongbox_starrail: "Relic Synthesizer",
+      strongbox_zzz: "Tuning",
       run: "Run Simulation",
       simulating: "Analyzing...",
       outcome: "Outcome",
@@ -522,6 +554,9 @@ export default function Home() {
       luck75: "Bad",
       luck90: "Terrible",
       elixirSaved: (n: number) => `${n} days saved by Elixir`,
+      elixirSaved_genshin: (n: number) => `${n} days saved by Elixir`,
+      elixirSaved_starrail: (n: number) => `${n} days saved by Resin`,
+      elixirSaved_zzz: (n: number) => `${n} days saved by Tuner`,
       superiority: "Build Superiority",
       yourScore: "Your Score",
       avgScore: (n: number) => `${n}d Average`,
@@ -549,6 +584,20 @@ export default function Home() {
       [STAT_IDS.GEO_DMG]: "Geo DMG Bonus",
       [STAT_IDS.PHYSICAL_DMG]: "Physical DMG Bonus",
       [STAT_IDS.HEAL_BONUS]: "Healing Bonus",
+      [STAT_IDS.SPEED]: "Speed",
+      [STAT_IDS.BREAK_EFFECT]: "Break Effect",
+      [STAT_IDS.EFFECT_HIT]: "Effect Hit Rate",
+      [STAT_IDS.EFFECT_RES]: "Effect RES",
+      [STAT_IDS.ERR]: "Energy Regen Rate",
+      [STAT_IDS.QUANTUM_DMG]: "Quantum DMG Bonus",
+      [STAT_IDS.IMAGINARY_DMG]: "Imaginary DMG Bonus",
+      [STAT_IDS.AM_MAS]: "Anomaly Mastery",
+      [STAT_IDS.AM_PRO]: "Anomaly Proficiency",
+      [STAT_IDS.PEN_FLAT]: "PEN (Flat)",
+      [STAT_IDS.PEN_PER]: "PEN (%)",
+      [STAT_IDS.IMPACT]: "Impact",
+      [STAT_IDS.ENERGY_GEN]: "Energy Regen",
+      [STAT_IDS.ETHER_DMG]: "Ether DMG Bonus",
       "生の花": "Flower",
       "死の羽": "Plume",
       "時の砂": "Sands",
@@ -577,7 +626,11 @@ export default function Home() {
   };
 
   const t = (key: string, param?: any) => {
-    const entry = translations[lang][key] || key;
+    let actualKey = key;
+    if (key === 'elixir' || key === 'elixirSaved' || key === 'strongbox') {
+      actualKey = `${key}_${gameId}`;
+    }
+    const entry = translations[lang][actualKey] || translations[lang][key] || key;
     return typeof entry === 'function' ? entry(param) : entry;
   };
 
@@ -621,8 +674,24 @@ export default function Home() {
     if (charData && charData.defaults) {
       const d = charData.defaults;
       if (d.weights) setScoreWeights(d.weights);
-      if (d.mainStats) setMainStats(d.mainStats);
-      if (d.targetSets) setTargetSets(d.targetSets);
+      if (d.mainStats) {
+        const normalizedMain: Record<string, string> = {};
+        Object.entries(d.mainStats).forEach(([slot, val]) => {
+          normalizedMain[slot] = normalizeStatId(val);
+        });
+        setMainStats(normalizedMain);
+      }
+      if (d.targetSets) {
+        let fullSets = ["", "", "", ""];
+        if (gameId === "starrail" || gameId === "zzz") {
+          fullSets[0] = d.targetSets[0] || "";
+          fullSets[2] = d.targetSets[1] || "";
+        } else {
+          fullSets = [...d.targetSets];
+          while (fullSets.length < 4) fullSets.push("");
+        }
+        setTargetSets(fullSets);
+      }
 
       // ダメージモード初期ステータスの調整
       const scaling = d.baseStats?.scalingMode || "atk";
@@ -678,7 +747,7 @@ export default function Home() {
     const parts = gameId === "genshin" ? ["時の砂", "空の杯", "理の冠"] : gameId === "starrail" ? ["胴体", "脚部", "次元界オーブ", "連結縄"] : ["スロット4", "スロット5", "スロット6"];
     const summary = parts.map(p => {
       const stat = mainStats[p];
-      return stat ? t(stat).substring(0, 4) : "";
+      return stat ? t(normalizeStatId(stat)).substring(0, 4) : "";
     }).filter(Boolean).join("/");
     return summary || (lang === 'ja' ? "固定のみ" : "Fixed Only");
   };
@@ -756,6 +825,10 @@ export default function Home() {
   const [latestGodPiece, setLatestGodPiece] = useState<any>(null);
   const [allGodPieces, setAllGodPieces] = useState<any[]>([]);
 
+  const [showScoreHelp, setShowScoreHelp] = useState(false);
+  const [targetSpeed, setTargetSpeed] = useState<number>(0);
+  const [baseSpeed, setBaseSpeed] = useState<number>(95);
+  const [currentSubSpeed, setCurrentSubSpeed] = useState<number>(0);
   const cardRef = useRef<HTMLDivElement>(null);
 
     // 設定のロード (URLパラメータ & localStorage)
@@ -842,9 +915,34 @@ export default function Home() {
     // 各ステートへの反映
     if (loadedSettings.targetScore) setTargetScore(loadedSettings.targetScore);
     if (loadedSettings.scoreWeights) setScoreWeights(loadedSettings.scoreWeights);
-    if (loadedSettings.mainStats) setMainStats(loadedSettings.mainStats);
+    if (loadedSettings.mainStats) {
+      const normalizedMain: Record<string, string> = {};
+      Object.entries(loadedSettings.mainStats).forEach(([slot, val]: [string, any]) => {
+        normalizedMain[slot] = normalizeStatId(val);
+      });
+      setMainStats(normalizedMain);
+    }
     if (loadedSettings.userPartScores) setUserPartScores(loadedSettings.userPartScores);
     if (loadedSettings.staminaPerDay) setStaminaPerDay(loadedSettings.staminaPerDay);
+    if (loadedSettings.targetSpeed !== undefined) setTargetSpeed(loadedSettings.targetSpeed);
+    if (loadedSettings.baseSpeed !== undefined) setBaseSpeed(loadedSettings.baseSpeed);
+    if (loadedSettings.currentSubSpeed !== undefined) setCurrentSubSpeed(loadedSettings.currentSubSpeed);
+    if (loadedSettings.targetSets) {
+      setTargetSets(loadedSettings.targetSets);
+    } else {
+      const charData = config.characters.find(c => c.name === characterName);
+      if (charData?.defaults?.targetSets) {
+        let fullSets = ["", "", "", ""];
+        if (gameId === "starrail" || gameId === "zzz") {
+          fullSets[0] = charData.defaults.targetSets[0] || "";
+          fullSets[2] = charData.defaults.targetSets[1] || "";
+        } else {
+          fullSets = [...charData.defaults.targetSets];
+          while (fullSets.length < 4) fullSets.push("");
+        }
+        setTargetSets(fullSets);
+      }
+    }
 
     if (!savedSettings) {
       // 初期値設定
@@ -890,14 +988,52 @@ export default function Home() {
       });
       setUserPartScores(initialPartScores);
       setStaminaPerDay(gameId === "genshin" ? 180 : 240);
+      setTargetSpeed(0);
+      setBaseSpeed(95);
+      setCurrentSubSpeed(0);
+      const charData = config.characters.find(c => c.name === characterName);
+      if (charData?.defaults?.targetSets) {
+        let fullSets = ["", "", "", ""];
+        if (gameId === "starrail" || gameId === "zzz") {
+          fullSets[0] = charData.defaults.targetSets[0] || "";
+          fullSets[2] = charData.defaults.targetSets[1] || "";
+        } else {
+          fullSets = [...charData.defaults.targetSets];
+          while (fullSets.length < 4) fullSets.push("");
+        }
+        setTargetSets(fullSets);
+      }
+    }
+
+    // elixirTargetPart の安全チェック
+    if (!config.slots.includes(elixirTargetPart)) {
+      const defaultSlot = config.slots.find(s => s !== "未選択") || config.slots[0];
+      setElixirTargetPart(defaultSlot);
+      
+      const probs = MAIN_PROBS[gameId]?.[defaultSlot] || {};
+      const mainKeys = Object.keys(probs);
+      if (mainKeys.length > 0) {
+        setElixirTargetMain(mainKeys[0]);
+      }
     }
   }, [gameId, config]);
 
+  // 調定パーツ変更時のメインステータスの初期化
+  useEffect(() => {
+    const probs = MAIN_PROBS[gameId]?.[elixirTargetPart];
+    if (probs) {
+      const keys = Object.keys(probs);
+      if (keys.length > 0 && !keys.includes(elixirTargetMain)) {
+        setElixirTargetMain(keys[0]);
+      }
+    }
+  }, [gameId, elixirTargetPart, elixirTargetMain]);
+
     // 設定の保存
   useEffect(() => {
-    const settings = { targetScore, scoreWeights, mainStats, userPartScores, staminaPerDay };
+    const settings = { targetScore, scoreWeights, mainStats, userPartScores, staminaPerDay, targetSpeed, baseSpeed, currentSubSpeed, targetSets };
     localStorage.setItem(`sim_settings_${gameId}`, JSON.stringify(settings));
-  }, [gameId, targetScore, scoreWeights, mainStats, userPartScores, staminaPerDay]);
+  }, [gameId, targetScore, scoreWeights, mainStats, userPartScores, staminaPerDay, targetSpeed, baseSpeed, currentSubSpeed, targetSets]);
 
   // 履歴のロード
   useEffect(() => {
@@ -943,7 +1079,19 @@ export default function Home() {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
-        const res = simulateFixedAttempts(gameId, attempts, staminaPerDay, scoreWeights, subPool, useStrongbox, mainStats, targetSets);
+        const res = simulateFixedAttempts(
+          gameId,
+          attempts,
+          staminaPerDay,
+          scoreWeights,
+          subPool,
+          useStrongbox,
+          mainStats,
+          targetSets,
+          null,
+          null,
+          gameId === "starrail" ? { targetSpeed, baseSpeed, currentSubSpeed } : null
+        );
         
         let upgradedAny = false;
         Object.entries(res.pieces).forEach(([slot, piece]: [string, any]) => {
@@ -1020,11 +1168,33 @@ export default function Home() {
           setSimProgress(Math.floor((i / trials) * 100));
           await new Promise(r => setTimeout(r, 1));
         }
-        const res = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, elixirConfig, userPartScores);
+        const res = simulateUntilScore(
+          gameId,
+          targetScore,
+          scoreWeights,
+          subPool,
+          useStrongbox,
+          mainStats,
+          targetSets,
+          elixirConfig,
+          userPartScores,
+          gameId === "starrail" ? { targetSpeed, baseSpeed, currentSubSpeed } : null
+        );
         results.push(res);
         
         if (elixirEnabled && i < 50) {
-          const base = simulateUntilScore(gameId, targetScore, scoreWeights, subPool, useStrongbox, mainStats, targetSets, { ...elixirConfig, enabled: false }, userPartScores);
+          const base = simulateUntilScore(
+            gameId,
+            targetScore,
+            scoreWeights,
+            subPool,
+            useStrongbox,
+            mainStats,
+            targetSets,
+            { ...elixirConfig, enabled: false },
+            userPartScores,
+            gameId === "starrail" ? { targetSpeed, baseSpeed, currentSubSpeed } : null
+          );
           baselineResults.push(base);
         }
 
@@ -1161,7 +1331,8 @@ export default function Home() {
           mainStats,
           targetSets,
           elixirConfig,
-          simMode === "period" || simMode === "damage" ? userPartScores : null
+          simMode === "period" || simMode === "damage" ? userPartScores : null,
+          gameId === "starrail" ? { targetSpeed, baseSpeed, currentSubSpeed } : null
         );
 
         let trialDmg = 0;
@@ -1334,7 +1505,9 @@ export default function Home() {
                   {result.type === "target" && result.medianWithoutElixir && (
                     <p className="text-[10px] text-yellow-500/80 font-black mb-4 uppercase tracking-[0.15em] flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20">
                       <span className="animate-pulse">✨</span> 
-                      {(result.medianWithoutElixir - result.median).toFixed(0)} DAYS SAVED BY ELIXIR
+                      {lang === 'ja'
+                        ? `${gameId === 'genshin' ? 'エリクシル' : gameId === 'starrail' ? '自塑樹脂' : '音律チューナー'}で ${(result.medianWithoutElixir - result.median).toFixed(0)} 日短縮`
+                        : `${(result.medianWithoutElixir - result.median).toFixed(0)} DAYS SAVED BY ${gameId === 'genshin' ? 'ELIXIR' : gameId === 'starrail' ? 'RESIN' : 'TUNER'}`}
                     </p>
                   )}
                   <p className="text-sm font-black text-blue-400 mb-8 tracking-wider">
@@ -1494,7 +1667,7 @@ export default function Home() {
                       <div key={slot} className="bg-slate-900/60 border border-white/5 p-4 rounded-3xl flex flex-col items-center justify-between min-h-[120px] relative overflow-hidden group">
                         {art.isElixir && (
                           <div className="absolute top-0 right-0 bg-gradient-to-l from-yellow-400 to-yellow-600 text-slate-950 text-[6px] font-black px-2 py-0.5 rounded-bl-lg uppercase tracking-tighter z-10 shadow-sm animate-pulse">
-                            祝聖
+                            {gameId === "genshin" ? "祝聖" : gameId === "starrail" ? "自塑" : "調律"}
                           </div>
                         )}
                         <p className="text-[7px] text-slate-600 font-black uppercase tracking-widest truncate w-full text-center">{t(slot)}</p>
@@ -1769,8 +1942,12 @@ export default function Home() {
                                   {slot.includes("花") || slot === "頭部" || slot === "スロット1" ? t("HP(固定値)") : slot.includes("羽") || slot === "手部" || slot === "スロット2" ? t("攻撃力(固定値)") : t("防御力(固定値)")}
                                 </span>
                               ) : (
-                                <select value={mainStats[slot] || ""} onChange={e => setMainStats({...mainStats, [slot]: e.target.value})} className="bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 flex-1 outline-none text-white max-w-[160px]">
-                                  {Object.keys(MAIN_PROBS[gameId][slot] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
+                                <select value={normalizeStatId(mainStats[slot] || "")} onChange={e => setMainStats({...mainStats, [slot]: e.target.value})} className="bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 flex-1 outline-none text-white max-w-[160px]">
+                                  {Object.keys(MAIN_PROBS[gameId][slot] || {}).map(m => (
+                                    <option key={m} value={m} className="bg-slate-900 text-white" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                                      {t(m)}
+                                    </option>
+                                  ))}
                                 </select>
                               )}
                             </div>
@@ -1792,7 +1969,7 @@ export default function Home() {
                       <span className="font-bold text-xs text-white">③ ⚖️ サブ重み・廻聖・エリクシル</span>
                       {!openSections.sub && (
                         <span className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">
-                          廻聖:{useStrongbox ? "ON" : "OFF"} / {gameId === "genshin" ? `エリクシル:${elixirEnabled ? "ON" : "OFF"}` : ""}
+                          {t('strongbox')}:{useStrongbox ? "ON" : "OFF"} / {t('elixir')}:{elixirEnabled ? "ON" : "OFF"}
                         </span>
                       )}
                     </div>
@@ -1812,50 +1989,75 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {gameId === "genshin" && (
-                        <div className="bg-slate-950/50 p-3 rounded-xl border border-emerald-950/60">
-                          <div className="flex items-center justify-between mb-3">
-                            <label className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">✨ {t('elixir')}</label>
-                            <button type="button" onClick={() => setElixirEnabled(!elixirEnabled)} className={`w-8 h-4 rounded-full relative transition-colors ${elixirEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
-                              <div className={`w-2.5 h-2.5 bg-white rounded-full absolute top-0.5 transition-all ${elixirEnabled ? 'left-5' : 'left-0.5'}`} />
-                            </button>
-                          </div>
-                          {elixirEnabled && (
-                            <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
-                              <div className="grid grid-cols-2 gap-2.5">
-                                <div>
-                                  <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '初期所持数' : 'Initial Count'}</p>
-                                  <input inputMode="numeric" pattern="[0-9]*" type="number" value={elixirInitialCount} onChange={e => setElixirInitialCount(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500 text-center"/>
-                                </div>
-                                <div>
-                                  <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '1Ver獲得数' : 'Per Ver (42d)'}</p>
-                                  <input inputMode="numeric" pattern="[0-9]*" type="number" value={elixirPerVersion} onChange={e => setElixirPerVersion(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500 text-center"/>
-                                </div>
+                      <div className="bg-slate-950/50 p-3 rounded-xl border border-emerald-950/60">
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">✨ {t('elixir')}</label>
+                          <button type="button" onClick={() => setElixirEnabled(!elixirEnabled)} className={`w-8 h-4 rounded-full relative transition-colors ${elixirEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                            <div className={`w-2.5 h-2.5 bg-white rounded-full absolute top-0.5 transition-all ${elixirEnabled ? 'left-5' : 'left-0.5'}`} />
+                          </button>
+                        </div>
+                        {elixirEnabled && (
+                          <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+                            <div className="grid grid-cols-2 gap-2.5">
+                              <div>
+                                <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '初期所持数' : 'Initial Count'}</p>
+                                <input inputMode="numeric" pattern="[0-9]*" type="number" value={elixirInitialCount} onChange={e => setElixirInitialCount(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500 text-center"/>
                               </div>
-                              <div className="grid grid-cols-2 gap-2.5">
-                                <div>
-                                  <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '部位' : 'Part'}</p>
-                                  <select value={elixirTargetPart} onChange={e => setElixirTargetPart(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                                    <option value="生の花">{t('生の花')} (1)</option>
-                                    <option value="死の羽">{t('死の羽')} (1)</option>
-                                    <option value="時の砂">{t('時の砂')} (2)</option>
-                                    <option value="空の杯">{t('空の杯')} (4)</option>
-                                    <option value="理の冠">{t('理の冠')} (3)</option>
-                                  </select>
-                                </div>
-                                <div>
-                                  <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'セット' : 'Set'}</p>
-                                  <select value={elixirTargetSet} onChange={e => setElixirTargetSet(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                                    {targetSets.filter(s => s && s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
-                                    {targetSets.filter(s => s && s !== "未選択").length === 0 && <option value="">{lang === 'ja' ? 'ダンジョン準拠' : 'Use Domain'}</option>}
-                                  </select>
-                                </div>
+                              <div>
+                                <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '1Ver獲得数' : 'Per Ver (42d)'}</p>
+                                <input inputMode="numeric" pattern="[0-9]*" type="number" value={elixirPerVersion} onChange={e => setElixirPerVersion(e.target.value === "" ? 0 : Number(e.target.value))} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500 text-center"/>
                               </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2.5">
+                              <div>
+                                <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '部位' : 'Part'}</p>
+                                <select value={elixirTargetPart} onChange={e => setElixirTargetPart(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                                  {gameId === "genshin" && (
+                                    <>
+                                      <option value="生の花">{t('生の花')} (1)</option>
+                                      <option value="死の羽">{t('死の羽')} (1)</option>
+                                      <option value="時の砂">{t('時の砂')} (2)</option>
+                                      <option value="空の杯">{t('空の杯')} (4)</option>
+                                      <option value="理の冠">{t('理の冠')} (3)</option>
+                                    </>
+                                  )}
+                                  {gameId === "starrail" && (
+                                    <>
+                                      <option value="頭部">{t('頭部')} (1)</option>
+                                      <option value="手部">{t('手部')} (1)</option>
+                                      <option value="胴体">{t('胴体')} (1)</option>
+                                      <option value="脚部">{t('脚部')} (1)</option>
+                                      <option value="次元界オーブ">{t('次元界オーブ')} (1)</option>
+                                      <option value="連結縄">{t('連結縄')} (1)</option>
+                                    </>
+                                  )}
+                                  {gameId === "zzz" && (
+                                    <>
+                                      <option value="スロット1">{t('スロット1')} (1)</option>
+                                      <option value="スロット2">{t('スロット2')} (1)</option>
+                                      <option value="スロット3">{t('スロット3')} (1)</option>
+                                      <option value="スロット4">{t('スロット4')} (1)</option>
+                                      <option value="スロット5">{t('スロット5')} (1)</option>
+                                      <option value="スロット6">{t('スロット6')} (1)</option>
+                                    </>
+                                  )}
+                                </select>
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'セット' : 'Set'}</p>
+                                <select value={elixirTargetSet} onChange={e => setElixirTargetSet(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                                  {targetSets.filter(s => s && s !== "未選択").map(s => <option key={s} value={s}>{s}</option>)}
+                                  {targetSets.filter(s => s && s !== "未選択").length === 0 && <option value="">{lang === 'ja' ? 'ダンジョン準拠' : 'Use Domain'}</option>}
+                                </select>
+                              </div>
+                            </div>
+                            
+                            {gameId === "genshin" ? (
                               <div className="grid grid-cols-3 gap-1.5">
                                 <div>
                                   <p className="text-[8px] text-slate-500 font-bold mb-1">{lang === 'ja' ? 'メイン' : 'Main'}</p>
                                   <select value={elixirTargetMain} onChange={e => setElixirTargetMain(e.target.value)} className="w-full bg-slate-800 text-[10px] p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
-                                    {Object.keys(MAIN_PROBS["genshin"]?.[elixirTargetPart] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
+                                    {Object.keys(MAIN_PROBS[gameId]?.[elixirTargetPart] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
                                   </select>
                                 </div>
                                 <div>
@@ -1871,20 +2073,39 @@ export default function Home() {
                                   </select>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                            ) : (
+                              <div>
+                                <p className="text-[9px] text-slate-500 font-bold mb-1">{lang === 'ja' ? '固定するメインステータス' : 'Forced Main Stat'}</p>
+                                <select value={elixirTargetMain} onChange={e => setElixirTargetMain(e.target.value)} className="w-full bg-slate-800 text-xs p-2 rounded-xl border border-slate-700 text-white outline-none focus:border-emerald-500">
+                                  {Object.keys(MAIN_PROBS[gameId]?.[elixirTargetPart] || {}).map(m => <option key={m} value={m}>{t(m)}</option>)}
+                                </select>
+                                <p className="text-[8px] text-slate-500 mt-1">
+                                  {gameId === "starrail" 
+                                    ? "* 自塑樹脂はサブステータスを指定できません (完全ランダム)。"
+                                    : "* 音律チューナーはサブステータスを指定できません (完全ランダム)。"}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
                       <div className="bg-slate-950/50 p-3.5 rounded-xl border border-yellow-950/60">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-bold text-yellow-500 flex items-center gap-1.5">
-                            ♻️ {lang === 'ja' ? '聖遺物廻聖を利用' : `Use ${t('strongbox')}`}
+                            ♻️ {lang === 'ja' ? `${t('strongbox')}を利用` : `Use ${t('strongbox')}`}
                           </label>
                           <button type="button" onClick={() => setUseStrongbox(!useStrongbox)} className={`w-8 h-4 rounded-full relative transition-colors ${useStrongbox ? 'bg-yellow-500' : 'bg-slate-700'}`}>
                             <div className={`w-2.5 h-2.5 bg-white rounded-full absolute top-0.5 transition-all ${useStrongbox ? 'left-5' : 'left-0.5'}`} />
                           </button>
                         </div>
+                        {useStrongbox && (gameId === "starrail" || gameId === "zzz") && (
+                          <p className="text-[8px] text-slate-500 mt-1.5">
+                            {lang === 'ja'
+                              ? `* ${t('strongbox')}時は、装備の中で最も更新価値の高い部位（メイン不一致 or 最小スコア）を狙って合成します。`
+                              : `* Targeted synthesis: Auto-selects slot with unmatched main stat or lowest score.`}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1902,6 +2123,7 @@ export default function Home() {
                       {!openSections.sim && (
                         <span className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">
                           {simMode === "target" ? `${t('targetScore')}: ${targetScore}pt` : `${t('farmingDays')}: ${days}日`}
+                          {gameId === "starrail" && targetSpeed > 0 ? ` / 速度:${targetSpeed}` : ""}
                         </span>
                       )}
                     </div>
@@ -1911,7 +2133,17 @@ export default function Home() {
                     <div className="p-4 space-y-4 bg-slate-950/20">
                       {simMode === "target" && (
                         <div className="space-y-2">
-                          <label className="block text-xs font-bold text-slate-400">{t('targetScore')}</label>
+                          <div className="flex items-center gap-1.5">
+                            <label className="text-xs font-bold text-slate-400">{t('targetScore')}</label>
+                            <button
+                              type="button"
+                              onClick={() => setShowScoreHelp(true)}
+                              className="text-slate-500 hover:text-slate-300 transition-colors"
+                              title={lang === 'ja' ? 'スコアの出し方を見る' : 'How score is calculated'}
+                            >
+                              <HelpCircle size={14} className="inline-block cursor-pointer" />
+                            </button>
+                          </div>
                           <div className="flex flex-wrap gap-1 mb-2">
                             {(gameId === "genshin" ? [160, 180, 200, 220, 240] : [360, 390, 420, 450, 480]).map(val => (
                               <button
@@ -1930,6 +2162,66 @@ export default function Home() {
                             onChange={e => setTargetScore(e.target.value === "" ? 0 : Number(e.target.value))} 
                             className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition-all text-xs"
                           />
+                        </div>
+                      )}
+
+                      {gameId === "starrail" && (
+                        <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800/80 space-y-3">
+                          <p className="text-[11px] font-black text-blue-400 uppercase tracking-wider">
+                            {lang === 'ja' ? '⚡ スターレイル速度制限設定' : '⚡ Star Rail Speed Limits'}
+                          </p>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <p className="text-[9px] text-slate-500 font-bold mb-1">
+                                {lang === 'ja' ? '目標速度 (死守)' : 'Target Speed'}
+                              </p>
+                              <div className="flex gap-1">
+                                {[0, 134, 160].map(sp => (
+                                  <button
+                                    key={sp}
+                                    type="button"
+                                    onClick={() => setTargetSpeed(sp)}
+                                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold transition-all border ${targetSpeed === sp ? `bg-blue-600 border-blue-500 text-white shadow-md` : 'bg-slate-880 border-slate-700 text-slate-400 hover:text-slate-200'}`}
+                                  >
+                                    {sp === 0 ? (lang === 'ja' ? 'なし' : 'None') : sp}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-slate-500 font-bold mb-1">
+                                {lang === 'ja' ? '基礎速度' : 'Base Speed'}
+                              </p>
+                              <input
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                type="number"
+                                value={baseSpeed}
+                                onChange={e => setBaseSpeed(e.target.value === "" ? 0 : Number(e.target.value))}
+                                className="w-full bg-slate-850 border border-slate-750 rounded-lg p-1.5 text-xs text-white text-center outline-none focus:border-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-slate-500 font-bold mb-1" title={lang === 'ja' ? '現在装備のサブステータスに含まれる速度値の合計' : 'Total speed from substats of current gear'}>
+                                {lang === 'ja' ? '現在サブ速度' : 'Current Sub Spd'}
+                              </p>
+                              <input
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                type="number"
+                                value={currentSubSpeed}
+                                onChange={e => setCurrentSubSpeed(e.target.value === "" ? 0 : Number(e.target.value))}
+                                className="w-full bg-slate-850 border border-slate-750 rounded-lg p-1.5 text-xs text-white text-center outline-none focus:border-blue-500"
+                              />
+                            </div>
+                          </div>
+                          {targetSpeed > 0 && (
+                            <p className="text-[8px] text-slate-500 leading-relaxed">
+                              {lang === 'ja'
+                                ? `* シミュレーターは、合計速度が ${targetSpeed} 以上に達しない遺物の組み合わせを無効（スコア 0）として除外します。`
+                                : `* Simulator rejects any relic combos that fall below ${targetSpeed} SPD.`}
+                            </p>
+                          )}
                         </div>
                       )}
 
@@ -1993,8 +2285,12 @@ export default function Home() {
                             <div className="col-span-2">
                               <label className="block text-[9px] text-slate-500 mb-1">{lang === "ja" ? "メインステータス (重複防止用)" : "Main Stat"}</label>
                               <select value={rollMainStat} onChange={e => setRollMainStat(e.target.value)} className="w-full bg-slate-850 border border-slate-750 rounded-lg p-2 text-xs text-white">
-                                <option value="">{lang === "ja" ? "未選択" : "None"}</option>
-                                {config.mainStats.map(m => <option key={m} value={m}>{t(m)}</option>)}
+                                <option value="" className="bg-slate-900 text-white" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>{lang === "ja" ? "未選択" : "None"}</option>
+                                {config.mainStats.map(m => (
+                                  <option key={m} value={m} className="bg-slate-900 text-white" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                                    {t(m)}
+                                  </option>
+                                ))}
                               </select>
                             </div>
                             <div className="col-span-2">
@@ -2019,8 +2315,14 @@ export default function Home() {
                                     disabled={isDisabled}
                                     className="bg-slate-850 border border-slate-750 text-xs p-1.5 rounded-lg flex-1 text-white"
                                   >
-                                    <option value="">{idx === 3 && rollInitialOpt === 3 ? (lang === "ja" ? "レベルアップで追加" : "Added on upgrade") : (lang === "ja" ? "未選択" : "None")}</option>
-                                    {config.subStats.filter(s => s !== rollMainStat).map(s => <option key={s} value={s}>{t(s)}</option>)}
+                                    <option value="" className="bg-slate-900 text-white" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                                      {idx === 3 && rollInitialOpt === 3 ? (lang === "ja" ? "レベルアップで追加" : "Added on upgrade") : (lang === "ja" ? "未選択" : "None")}
+                                    </option>
+                                    {config.subStats.filter(s => s !== rollMainStat).map(s => (
+                                      <option key={s} value={s} className="bg-slate-900 text-white" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+                                        {t(s)}
+                                      </option>
+                                    ))}
                                   </select>
                                   <input 
                                     type="number" 
@@ -2279,7 +2581,7 @@ export default function Home() {
                                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-8">
                                     {Object.entries(currentLuckRes?.pieces || {}).map(([slot, art]: [string, any]) => (
                                       <div key={slot} className="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl relative overflow-hidden">
-                                        {art?.isElixir && <div className="absolute top-0 right-0 bg-yellow-500 text-slate-950 text-[6px] font-black px-1.5 py-0.5 rounded-bl-lg uppercase">祝聖</div>}
+                                        {art?.isElixir && <div className="absolute top-0 right-0 bg-yellow-500 text-slate-950 text-[6px] font-black px-1.5 py-0.5 rounded-bl-lg uppercase">{gameId === "genshin" ? "祝聖" : gameId === "starrail" ? "自塑" : "調律"}</div>}
                                         <p className="text-[9px] text-slate-500 font-black uppercase mb-2 truncate">{t(slot)}</p>
                                         <p className="text-sm font-black text-white">{art?.score.toFixed(1)}</p>
                                       </div>
@@ -2797,6 +3099,111 @@ export default function Home() {
                       : (lang === "ja" ? "スタート！" : "Start!")}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- SCORE CALCULATION HELP MODAL --- */}
+        {showScoreHelp && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-800 rounded-[32px] w-full max-w-lg p-6 md:p-8 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar text-left animate-in zoom-in-95 duration-200">
+              <button 
+                onClick={() => setShowScoreHelp(false)}
+                className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 transition-colors p-2"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="space-y-2 text-center pb-2 border-b border-slate-800">
+                <h3 className="text-xl font-black text-white tracking-tight flex items-center justify-center gap-2">
+                  <BookOpen size={20} className="text-blue-400" />
+                  {lang === "ja" ? "スコアの算出方法" : "How Score is Calculated"}
+                </h3>
+                <p className="text-[10px] text-slate-500">
+                  {lang === "ja" 
+                    ? "各ゲームにおける遺物/聖遺物スコアの計算仕様です" 
+                    : "Rules for relic/artifact score calculations by game"}
+                </p>
+              </div>
+
+              <div className="space-y-5 text-xs text-slate-300">
+                {/* 原神 */}
+                <div className="space-y-2 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/80">
+                  <h4 className="font-black text-purple-400 flex items-center gap-1.5 text-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                    原神 (Genshin Impact)
+                  </h4>
+                  <p className="leading-relaxed">
+                    {lang === "ja"
+                      ? "サブステータスの実数値に、指定された「重み」を直接掛け合わせて加算します。これは一般的な聖遺物スコア（会心率×2 ＋ 会心ダメ ＋ 攻撃% など）の計算と同様です。"
+                      : "Multiplies the actual value of each substat by the designated weight. Equivalent to common community scoring (e.g. CRIT Rate × 2 + CRIT DMG + ATK%)."}
+                  </p>
+                  <div className="text-[10px] text-slate-500 bg-slate-900/50 p-2 rounded-lg leading-loose">
+                    {lang === "ja"
+                      ? "【計算式】 Σ (サブステの値 × 重み)\n※推奨の「会心率: 2, 会心ダメ: 1」のとき、会心率3.9%は 3.9 × 2 = 7.8pt と計算されます。"
+                      : "[Formula] Σ (Substat Value × Weight)\n* E.g. With CRIT Rate weight = 2 and CRIT DMG = 1, a 3.9% CRIT Rate yields 3.9 × 2 = 7.8pt."}
+                  </div>
+                </div>
+
+                {/* スターレイル */}
+                <div className="space-y-2 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/80">
+                  <h4 className="font-black text-blue-400 flex items-center gap-1.5 text-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                    崩壊：スターレイル (Star Rail)
+                  </h4>
+                  <p className="leading-relaxed">
+                    {lang === "ja"
+                      ? "メインステータス点（50点満点）と、サブステータスの「有効ロール数」に基づく点数（50点満点）の合計（最大100点）で計算します。"
+                      : "Calculates a total of 100 points, consisting of a Main Stat score (max 50) and a Substat roll score (max 50) based on useful substat rolls."}
+                  </p>
+                  <div className="text-[10px] text-slate-500 bg-slate-900/50 p-2 rounded-lg leading-relaxed space-y-1">
+                    <p>
+                      {lang === "ja"
+                        ? "【有効ロール数】 サブステの上昇値を「平均1強化分（会心率=2.9%, 会心ダメ=5.8%, 速度=2.3, その他=3.9）」で割り、指定の重みを掛けた値の合計。"
+                        : "[Useful Rolls] Sum of (Substat Value / Average 1-Roll Value) × Weight. Average 1-roll values: CRIT Rate = 2.9%, CRIT DMG = 5.8%, SPD = 2.3, etc."}
+                    </p>
+                    <p className="pt-1 border-t border-slate-800">
+                      {lang === "ja"
+                        ? "【計算式】 50 (メイン一致時) ＋ (有効ロール数 / 9) × 50"
+                        : "[Formula] 50 (If Main matches) + (Useful Rolls / 9) × 50"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* ゼンゼロ */}
+                <div className="space-y-2 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/80">
+                  <h4 className="font-black text-orange-400 flex items-center gap-1.5 text-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                    ゼンレスゾーンゼロ (ZZZ)
+                  </h4>
+                  <p className="leading-relaxed">
+                    {lang === "ja"
+                      ? "サブステータスの「有効ロール数」をベースに、基準となる最大ロール数（7回）を分母とした100点満点換算で計算します。"
+                      : "Evaluates score on a 100-point scale based on the number of useful substat rolls, setting a baseline maximum of 7 rolls."}
+                  </p>
+                  <div className="text-[10px] text-slate-500 bg-slate-900/50 p-2 rounded-lg leading-relaxed space-y-1">
+                    <p>
+                      {lang === "ja"
+                        ? "【有効ロール数】 各サブステを「1回あたりの出現値（会心率=2.4%, 会心ダメ=4.8%, 攻撃%=3.0%, 異常マスタリー=9.0）」で割り、重みを掛けた値の合計。"
+                        : "[Useful Rolls] Sum of (Substat Value / 1-Roll Value) × Weight. 1-roll values: CRIT Rate = 2.4%, CRIT DMG = 4.8%, ATK% = 3.0%, AM = 9.0, etc."}
+                    </p>
+                    <p className="pt-1 border-t border-slate-800">
+                      {lang === "ja"
+                        ? "【計算式】 (有効ロール数 / 7) × 100"
+                        : "[Formula] (Useful Rolls / 7) × 100"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowScoreHelp(false)}
+                  className="w-full py-3 bg-slate-800 hover:bg-slate-750 text-white font-bold rounded-2xl transition-all border border-slate-700 text-xs text-center"
+                >
+                  {lang === "ja" ? "閉じる" : "Close"}
+                </button>
               </div>
             </div>
           </div>

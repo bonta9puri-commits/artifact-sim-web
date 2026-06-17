@@ -7,7 +7,7 @@ export const STARRAIL_CHARACTERS: CharacterData[] = [
     defaults: {
       weights: { "会心率": 2, "会心ダメージ": 1, "攻撃力%": 1, "速度": 0.3 },
       mainStats: { "胴体": "会心ダメージ", "脚部": "攻撃力%", "次元界オーブ": "攻撃力%", "連結縄": "攻撃力%" },
-      targetSets: ["死水に潜る先駆者", "出雲顕神と高天原"],
+      targetSets: ["死水に潜る先駆者", "顕世の出雲と高天の神国"],
       baseStats: { rate: 5, dmg: 50, atk: 100, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
     }
   },
@@ -137,7 +137,7 @@ export const STARRAIL_CHARACTERS: CharacterData[] = [
     defaults: {
       weights: { "撃破特効": 2.0, "速度": 1.5, "HP%": 0.8, "防御力%": 0.8 },
       mainStats: { "胴体": "HP%", "脚部": "速度", "次元界オーブ": "HP%", "連結縄": "EP回復効率" },
-      targetSets: ["流星 of 跡を追う怪盗" /* 正しくは "流星の跡を追う怪盗" */, "折れた竜骨"],
+      targetSets: ["流星の跡を追う怪盗", "折れた竜骨"],
       baseStats: { rate: 5, dmg: 50, atk: 1000, hp: 0, def: 0, er: 100, em: 0, scalingMode: "atk" }
     }
   },

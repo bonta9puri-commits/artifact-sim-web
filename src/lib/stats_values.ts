@@ -1,4 +1,4 @@
-import { STAT_IDS } from './stats';
+import { STAT_IDS, normalizeStatId } from './stats';
 import { GameId } from './game_data';
 
 export const MAIN_STAT_VALUES: Record<GameId, Record<string, number>> = {
@@ -30,16 +30,16 @@ export const MAIN_STAT_VALUES: Record<GameId, Record<string, number>> = {
     [STAT_IDS.DEF_PER]: 54.0,
     [STAT_IDS.CRIT_RATE]: 32.4,
     [STAT_IDS.CRIT_DMG]: 64.8,
-    "治癒量": 34.5,
+    [STAT_IDS.HEAL_BONUS]: 34.5,
     [STAT_IDS.EFFECT_HIT]: 43.2,
     [STAT_IDS.SPEED]: 25.03,
-    "物理属性ダメージ": 38.8,
-    "火属性ダメージ": 38.8,
-    "氷属性ダメージ": 38.8,
-    "雷属性ダメージ": 38.8,
-    "風属性ダメージ": 38.8,
-    "量子属性ダメージ": 38.8,
-    "虚数属性ダメージ": 38.8,
+    [STAT_IDS.PHYSICAL_DMG]: 38.8,
+    [STAT_IDS.PYRO_DMG]: 38.8,
+    [STAT_IDS.CRYO_DMG]: 38.8,
+    [STAT_IDS.ELECTRO_DMG]: 38.8,
+    [STAT_IDS.ANEMO_DMG]: 38.8,
+    [STAT_IDS.QUANTUM_DMG]: 38.8,
+    [STAT_IDS.IMAGINARY_DMG]: 38.8,
     [STAT_IDS.BREAK_EFFECT]: 64.8,
     [STAT_IDS.ERR]: 19.4,
   },
@@ -53,12 +53,12 @@ export const MAIN_STAT_VALUES: Record<GameId, Record<string, number>> = {
     [STAT_IDS.CRIT_RATE]: 24.0,
     [STAT_IDS.CRIT_DMG]: 48.0,
     [STAT_IDS.AM_MAS]: 92,
-    "物理属性ダメージ": 30.0,
-    "炎属性ダメージ": 30.0,
-    "氷属性ダメージ": 30.0,
-    "電気属性ダメージ": 30.0,
-    "エーテル属性ダメージ": 30.0,
-    "貫通率": 24.0,
+    [STAT_IDS.PHYSICAL_DMG]: 30.0,
+    [STAT_IDS.PYRO_DMG]: 30.0,
+    [STAT_IDS.CRYO_DMG]: 30.0,
+    [STAT_IDS.ELECTRO_DMG]: 30.0,
+    [STAT_IDS.ETHER_DMG]: 30.0,
+    [STAT_IDS.PEN_PER]: 24.0,
     [STAT_IDS.IMPACT]: 18.0,
     [STAT_IDS.AM_PRO]: 30.0,
     [STAT_IDS.ENERGY_GEN]: 60.0,
@@ -85,15 +85,17 @@ export function calculateTotalStats(gameId: GameId, pieces: Record<string, any>)
       else if (slot === "スロット3") mainStat = STAT_IDS.DEF_FLAT;
     }
 
-    const mainVal = MAIN_STAT_VALUES[gameId]?.[mainStat] || 0;
+    const mainVal = MAIN_STAT_VALUES[gameId]?.[normalizeStatId(mainStat)] || 0;
     if (mainVal > 0) {
-      totals[mainStat] = (totals[mainStat] || 0) + mainVal;
+      const normMain = normalizeStatId(mainStat);
+      totals[normMain] = (totals[normMain] || 0) + mainVal;
     }
 
     // 2. サブステータス加算
     if (art.substats) {
       Object.entries(art.substats).forEach(([subKey, subVal]: [string, any]) => {
-        totals[subKey] = (totals[subKey] || 0) + subVal;
+        const norm = normalizeStatId(subKey);
+        totals[norm] = (totals[norm] || 0) + subVal;
       });
     }
   });
