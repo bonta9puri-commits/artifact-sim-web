@@ -2123,7 +2123,7 @@ export default function Home() {
                       {!openSections.sim && (
                         <span className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">
                           {simMode === "target" ? `${t('targetScore')}: ${targetScore}pt` : `${t('farmingDays')}: ${days}日`}
-                          {gameId === "starrail" && targetSpeed > 0 ? ` / 速度:${targetSpeed}` : ""}
+                          {/* 速度表示は一時非表示 */}
                         </span>
                       )}
                     </div>
@@ -2165,7 +2165,8 @@ export default function Home() {
                         </div>
                       )}
 
-                      {gameId === "starrail" && (
+                      {/* 速度制限設定 - 一時非表示 (バグ修正中) */}
+                      {false && gameId === "starrail" && (
                         <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800/80 space-y-3">
                           <p className="text-[11px] font-black text-blue-400 uppercase tracking-wider">
                             {lang === 'ja' ? '⚡ スターレイル速度制限設定' : '⚡ Star Rail Speed Limits'}
