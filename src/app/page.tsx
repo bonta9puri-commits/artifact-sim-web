@@ -3154,19 +3154,29 @@ export default function Home() {
                   </h4>
                   <p className="leading-relaxed">
                     {lang === "ja"
-                      ? "メインステータス点（50点満点）と、サブステータスの「有効ロール数」に基づく点数（50点満点）の合計（最大100点）で計算します。"
-                      : "Calculates a total of 100 points, consisting of a Main Stat score (max 50) and a Substat roll score (max 50) based on useful substat rolls."}
+                      ? "メインステータスのスコアとサブステータスのスコアを 50:50 で合算します（最大100点）。"
+                      : "Combines Main Stat score and Substat score at 50:50 ratio (max 100 points)."}
                   </p>
                   <div className="text-[10px] text-slate-500 bg-slate-900/50 p-2 rounded-lg leading-relaxed space-y-1">
                     <p>
                       {lang === "ja"
-                        ? "【有効ロール数】 サブステの上昇値を「平均1強化分（会心率=2.9%, 会心ダメ=5.8%, 速度=2.3, その他=3.9）」で割り、指定の重みを掛けた値の合計。"
-                        : "[Useful Rolls] Sum of (Substat Value / Average 1-Roll Value) × Weight. Average 1-roll values: CRIT Rate = 2.9%, CRIT DMG = 5.8%, SPD = 2.3, etc."}
+                        ? "【メインステ】 (遺物のレベル + 1) ÷ 16 × 重要度 × 100　→ max Lv.15 の場合は 100点"
+                        : "[Main Stat] (Relic Level + 1) ÷ 16 × Importance × 100　→ 100pt at max Lv.15"}
                     </p>
-                    <p className="pt-1 border-t border-slate-800">
+                    <p>
                       {lang === "ja"
-                        ? "【計算式】 50 (メイン一致時) ＋ (有効ロール数 / 9) × 50"
-                        : "[Formula] 50 (If Main matches) + (Useful Rolls / 9) × 50"}
+                        ? "【サブステ】 Σ ( 値 ÷ 理論上の最大値 × 重要度 × 100 )　※理論上の最大値 = 1ロール最大値 × 9"
+                        : "[Substats] Σ ( Value ÷ Theoretical Max × Importance × 100 )　*Theoretical Max = Max 1-Roll × 9"}
+                    </p>
+                    <p className="pt-1 border-t border-slate-800 font-bold text-slate-400">
+                      {lang === "ja"
+                        ? "【最終スコア】 メインステのスコア × 0.5 ＋ サブステのスコア × 0.5"
+                        : "[Final Score] Main Stat Score × 0.5 + Substat Score × 0.5"}
+                    </p>
+                    <p className="text-slate-600">
+                      {lang === "ja"
+                        ? "※ 1ロール最大値: 会心率 3.2%, 会心ダメ 6.4%, 速度 2.6, HP%/ATK% 4.3%, DEF% 5.4%"
+                        : "* Max 1-roll: CRIT Rate 3.2%, CRIT DMG 6.4%, SPD 2.6, HP%/ATK% 4.3%, DEF% 5.4%"}
                     </p>
                   </div>
                 </div>

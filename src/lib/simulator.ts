@@ -58,6 +58,16 @@ const STARRAIL_SUBSTAT_VALUES: Record<string, number[]> = {
   [STAT_IDS.EFFECT_HIT]: [3.4, 3.8, 4.3], [STAT_IDS.EFFECT_RES]: [3.4, 3.8, 4.3],
 };
 
+// スタレ: サブステ1ロールあたりの理論最大値
+const STARRAIL_MAX_ROLL: Record<string, number> = {
+  [STAT_IDS.HP_FLAT]: 42, [STAT_IDS.ATK_FLAT]: 21, [STAT_IDS.DEF_FLAT]: 21,
+  [STAT_IDS.HP_PER]: 4.3, [STAT_IDS.ATK_PER]: 4.3, [STAT_IDS.DEF_PER]: 5.4,
+  [STAT_IDS.CRIT_RATE]: 3.2, [STAT_IDS.CRIT_DMG]: 6.4,
+  [STAT_IDS.SPEED]: 2.6, [STAT_IDS.BREAK_EFFECT]: 6.4,
+  [STAT_IDS.EFFECT_HIT]: 4.3, [STAT_IDS.EFFECT_RES]: 4.3,
+};
+const STARRAIL_MAX_ROLLS = 9; // 初期4枠 + 強化5回
+
 const ZZZ_SUBSTAT_VALUES: Record<string, number> = {
   [STAT_IDS.CRIT_RATE]: 2.4, [STAT_IDS.CRIT_DMG]: 4.8, [STAT_IDS.ATK_PER]: 3.0, [STAT_IDS.HP_PER]: 3.0, [STAT_IDS.DEF_PER]: 4.8,
   [STAT_IDS.ATK_FLAT]: 19, [STAT_IDS.HP_FLAT]: 112, [STAT_IDS.DEF_FLAT]: 15, [STAT_IDS.AM_MAS]: 9, [STAT_IDS.AM_PRO]: 9, [STAT_IDS.PEN_FLAT]: 9, [STAT_IDS.IMPACT]: 1.2,
@@ -225,18 +235,21 @@ export function generateArtifact(gameId: GameId, part: string, subPool: string[]
     }
     score = (totalUsefulRolls / 7) * 100;
   } else if (gameId === "starrail") {
-    const mainScore = 50; 
-    let totalUsefulRolls = 0;
+    // スコア = (遺物のレベル+1)÷16 × 重要度 × 100 → maxレベル15なので常に100
+    const mainScore = ((15 + 1) / 16) * 1 * 100; // = 100
+    let totalSubScore = 0;
     for (const [s, v] of Object.entries(substats)) {
       const norm = normalizeStatId(s);
       const weight = scoreWeights[norm] || scoreWeights[s] || 0;
       if (weight > 0) {
-        const avgRoll = norm === STAT_IDS.CRIT_RATE ? 2.9 : norm === STAT_IDS.CRIT_DMG ? 5.8 : norm === STAT_IDS.SPEED ? 2.3 : 3.9;
-        totalUsefulRolls += (v / avgRoll) * weight;
+        // 理論上の最大値 = 1ロール最大値 × 最大ロール数(9)
+        const maxRollVal = STARRAIL_MAX_ROLL[norm] || 4.3;
+        const theoreticalMax = maxRollVal * STARRAIL_MAX_ROLLS;
+        totalSubScore += (v / theoreticalMax) * weight * 100;
       }
     }
-    const subScore = (totalUsefulRolls / 9) * 50;
-    score = mainScore + subScore;
+    // 遺物スコア = メインステのスコア × 0.5 + サブステのスコア × 0.5
+    score = mainScore * 0.5 + totalSubScore * 0.5;
   } else {
     for (const [s, v] of Object.entries(substats)) {
       const norm = normalizeStatId(s);
