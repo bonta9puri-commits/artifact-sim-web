@@ -72,19 +72,80 @@ export default function ChronicleForm({ config }: { config: GameConfig }) {
     if (dSet !== "未選択") setSetName(dSet);
   };
 
+  const getBase64 = async (url: string): Promise<string> => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+    });
+  };
+
   const handleTriggerOCR = async () => {
     if (!selectedImage) return;
-    setIsProcessing(true); setProgressText("OCRエンジンを準備中...");
+    setIsProcessing(true);
+    setProgressText("AIによる高精度解析を実行中...");
+
     try {
-      const worker = await createWorker('jpn', 1, {
-        logger: (m) => { if (m.status === 'recognizing text') setProgressText(`解析中... ${Math.round(m.progress * 100)}%`); }
+      // 1. 画像のBase64化
+      const base64Image = await getBase64(selectedImage);
+
+      // 2. APIの呼び出し
+      const response = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64Image, gameId: config.id }),
       });
-      const { data: { text } } = await worker.recognize(selectedImage);
-      parseOCRText(text);
-      await worker.terminate();
-      setProgressText("解析完了！手動で修正してください。");
-    } catch (error) { console.error(error); setProgressText("エラーが発生しました。"); }
-    finally { setIsProcessing(false); }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "AI解析でエラーが発生しました");
+      }
+
+      const data = await response.json();
+      
+      // AIの返答をフォームに適用
+      if (data.slot && data.slot !== "未選択") setSlot(data.slot);
+      if (data.mainStat && data.mainStat !== "未選択") setMainStat(data.mainStat);
+      if (data.setName && data.setName !== "未選択") setSetName(data.setName);
+      if (data.character && data.character !== "未選択") setCharacter(data.character);
+      
+      if (data.substats && Array.isArray(data.substats)) {
+        const mappedSubs: Substat[] = [];
+        for (let i = 0; i < 4; i++) {
+          const s = data.substats[i];
+          mappedSubs.push(s ? { id: i + 1, type: s.type || "未選択", value: s.value || "" } : { id: i + 1, type: "未選択", value: "" });
+        }
+        setSubstats(mappedSubs);
+      }
+
+      setProgressText("AIによる解析が完了しました！");
+    } catch (aiError) {
+      console.warn("AI OCRが利用できないため、ローカルOCRを実行します:", aiError);
+      setProgressText("AI解析が利用できないため、ローカルOCRを起動します...");
+
+      // Tesseract.jsによるローカルOCRにフォールバック
+      try {
+        const worker = await createWorker('jpn', 1, {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              setProgressText(`ローカル解析中... ${Math.round(m.progress * 100)}%`);
+            }
+          }
+        });
+        const { data: { text } } = await worker.recognize(selectedImage);
+        parseOCRText(text);
+        await worker.terminate();
+        setProgressText("ローカル解析完了！手動で修正してください。");
+      } catch (localError) {
+        console.error("Local OCR Error:", localError);
+        setProgressText("解析中にエラーが発生しました。");
+      }
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const updateSubstat = (id: number, field: "type"|"value", v: string) => {

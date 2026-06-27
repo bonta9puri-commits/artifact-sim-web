@@ -11,7 +11,7 @@ import { SET_EFFECTS_TEXT, SET_BONUS_STATS, getActiveSets } from '@/lib/set_effe
 import { SET_PAIRS } from '@/lib/set_pairs';
 import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, YAxis, AreaChart, Area } from 'recharts';
-import { Link2, Sparkles, Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { Link2, Sparkles, Zap, Shield, Sword, LayoutGrid, BookOpen, Target, Calendar, MessageSquare, ChevronLeft, ChevronRight, X, Share2, Settings2, ChevronDown, ChevronUp, HelpCircle, History } from 'lucide-react';
 
 function toKatakana(str: string): string {
   return str.replace(/[\u3041-\u3096]/g, (match) => {
@@ -736,6 +736,45 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [upgradeResult, setUpgradeResult] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  
+  const workerRef = useRef<Worker | null>(null);
+  const saveHistoryRef = useRef<any>(null);
+
+  useEffect(() => {
+    saveHistoryRef.current = saveHistory;
+  }, [saveHistory]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      workerRef.current = new Worker(new URL("./workers/simulator.worker.ts", import.meta.url));
+      
+      workerRef.current.onmessage = (event) => {
+        const { type, progress, result: simResult, upgradeResult: simUpgradeResult, sortedResults: simSortedResults, allGodPieces: simAllGodPieces, latestGodPiece } = event.data;
+        
+        if (type === "progress") {
+          setSimProgress(progress);
+        } else if (type === "godPiece") {
+          if (latestGodPiece) setLatestGodPiece(latestGodPiece);
+        } else if (type === "result") {
+          if (simResult) {
+            setResult(simResult);
+            saveHistoryRef.current?.(simResult);
+          }
+          if (simUpgradeResult) setUpgradeResult(simUpgradeResult);
+          if (simSortedResults) setSortedResults(simSortedResults);
+          if (simAllGodPieces) setAllGodPieces(simAllGodPieces);
+          
+          setSimProgress(100);
+          setIsSimulating(false);
+        }
+      };
+    }
+    
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
+
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     char: true,
     main: false,
@@ -1042,7 +1081,7 @@ export default function Home() {
     else setHistory([]);
   }, [gameId]);
 
-  const saveHistory = (res: any) => {
+  function saveHistory(res: any) {
     const newRecord = {
       gameId,
       result: res,
@@ -1055,7 +1094,7 @@ export default function Home() {
     const updated = [...history, newRecord].slice(-20);
     setHistory(updated);
     localStorage.setItem(`sim_history_${gameId}`, JSON.stringify(updated));
-  };
+  }
 
   const handleSimulate = async (overrideDays?: number) => {
     setIsSimulating(true);
@@ -1068,387 +1107,114 @@ export default function Home() {
     const trials = 500;
     const subPool = config.subStats;
 
-    if (simMode === "upgrade") {
-      const upgradeStats: Record<string, { count: number, totalIncrease: number }> = {};
-      config.slots.forEach(s => { if(s !== "未選択") upgradeStats[s] = { count: 0, totalIncrease: 0 }; });
-      let overallUpgraded = 0;
-      const attempts = Math.ceil((days * staminaPerDay) / staminaCost);
+    // damageモード特有の前処理を計算
+    let baseWhite = 800;
+    let percentStatId: string = STAT_IDS.ATK_PER;
+    let flatStatId: string = STAT_IDS.ATK_FLAT;
+    let baseOtherVal = 0;
+    let baseOtherCritRate = 0;
+    let baseOtherCritDmg = 0;
+    let baseOtherDmgBonus = 0;
+    let dmgBonusStatId: string = STAT_IDS.PYRO_DMG;
+    let currentDmg = 0;
 
-      for (let i = 0; i < trials; i++) {
-        if (i % 10 === 0) {
-          setSimProgress(Math.floor((i / trials) * 100));
-          await new Promise(r => setTimeout(r, 1));
-        }
-        const res = simulateFixedAttempts(
-          gameId,
-          attempts,
-          staminaPerDay,
-          scoreWeights,
-          subPool,
-          useStrongbox,
-          mainStats,
-          targetSets,
-          null,
-          null,
-          gameId === "starrail" ? { targetSpeed, baseSpeed, currentSubSpeed } : null
-        );
-        
-        let upgradedAny = false;
-        Object.entries(res.pieces).forEach(([slot, piece]: [string, any]) => {
-          const current = userPartScores[slot] || 0;
-          if (piece && piece.score > current) {
-            upgradeStats[slot].count++;
-            upgradeStats[slot].totalIncrease += (piece.score - current);
-            upgradedAny = true;
-          }
-        });
-        if (upgradedAny) overallUpgraded++;
+    if (simMode === "damage") {
+      const charData = config.characters.find(c => c.name === characterName);
+      const bStats = charData?.defaults?.baseStats || {};
+      const scaling = bStats.scalingMode || "atk";
+      
+      if (scaling === "hp") {
+        baseWhite = bStats.hp || DEFAULT_BASE_STATS.hp;
+        percentStatId = STAT_IDS.HP_PER;
+        flatStatId = STAT_IDS.HP_FLAT;
+      } else if (scaling === "def") {
+        baseWhite = bStats.def || DEFAULT_BASE_STATS.def;
+        percentStatId = STAT_IDS.DEF_PER;
+        flatStatId = STAT_IDS.DEF_FLAT;
+      } else if (scaling === "em") {
+        baseWhite = 1;
+        percentStatId = "none";
+        flatStatId = STAT_IDS.EM;
+      } else {
+        baseWhite = bStats.atk || DEFAULT_BASE_STATS.atk;
+        percentStatId = STAT_IDS.ATK_PER;
+        flatStatId = STAT_IDS.ATK_FLAT;
       }
 
-      const overallProb = (overallUpgraded / trials) * 100;
-      const slotResults = Object.entries(upgradeStats).map(([slot, stat]) => ({
-        slot,
-        prob: (stat.count / trials) * 100,
-        avgIncrease: stat.count > 0 ? stat.totalIncrease / stat.count : 0
-      })).sort((a, b) => b.prob - a.prob);
+      const currentArtStats = estimateCurrentArtifactStats();
+      const currentArtValFlat = currentArtStats[flatStatId] || 0;
+      const currentArtValPer = currentArtStats[percentStatId] || 0;
+      const currentArtValTotal = currentArtValFlat + (currentArtValPer * baseWhite) / 100;
 
-      setUpgradeResult({ overallProb, slotResults, trials, days });
-      setResult({ type: "upgrade" });
-      setSimProgress(100);
-      setIsSimulating(false);
-      return;
+      const currentArtCritRate = currentArtStats[STAT_IDS.CRIT_RATE] || 0;
+      const currentArtCritDmg = currentArtStats[STAT_IDS.CRIT_DMG] || 0;
+      
+      const elementalDmgKeys = [
+        STAT_IDS.PYRO_DMG, STAT_IDS.HYDRO_DMG, STAT_IDS.ANEMO_DMG, STAT_IDS.ELECTRO_DMG,
+        STAT_IDS.DENDRO_DMG, STAT_IDS.CRYO_DMG, STAT_IDS.GEO_DMG, STAT_IDS.PHYSICAL_DMG
+      ];
+      const cupMain = mainStats["空の杯"] || mainStats["次元界オーブ"] || mainStats["スロット5"] || "";
+      const matchedDmgBonus = elementalDmgKeys.find(k => k === cupMain);
+      if (matchedDmgBonus) {
+        dmgBonusStatId = matchedDmgBonus;
+      }
+      const currentArtDmgBonus = currentArtStats[dmgBonusStatId] || 0;
+
+      baseOtherVal = currentBaseVal - currentArtValTotal;
+      baseOtherCritRate = currentCritRate - currentArtCritRate;
+      baseOtherCritDmg = currentCritDmg - currentArtCritDmg;
+      baseOtherDmgBonus = currentDmgBonus - currentArtDmgBonus;
+      currentDmg = calculateDamageExpectation(currentBaseVal, currentCritRate, currentCritDmg, currentDmgBonus);
     }
 
-    if (simMode === "roll") {
-      setSimProgress(10);
-      await new Promise(r => setTimeout(r, 1));
-      
-      const filteredSubs = rollSubs
-        .filter(sub => sub.name && sub.name !== "未選択")
-        .map(sub => ({ name: sub.name, value: sub.value }));
-
-      const finalRes = simulateUpgradeProgress(
+    if (workerRef.current) {
+      workerRef.current.postMessage({
+        simMode,
         gameId,
-        rollInitialOpt,
-        rollCurrentLevel,
-        filteredSubs,
+        trials,
+        days,
+        staminaPerDay,
+        staminaCost,
         scoreWeights,
         subPool,
+        useStrongbox,
+        mainStats,
+        targetSets,
+        userPartScores,
+        targetSpeed,
+        baseSpeed,
+        currentSubSpeed,
+        rollInitialOpt,
+        rollCurrentLevel,
+        rollSubs,
         rollMainStat,
         rollTargetScore,
-        trials
-      );
-
-      setSortedResults(finalRes.rawScores.map(score => ({ score })));
-      setLuckPercentile(50);
-      setResult(finalRes);
-      saveHistory(finalRes);
-      setSimProgress(100);
-      setIsSimulating(false);
-      return;
-    }
-
-    if (simMode === "target") {
-      const elixirConfig = {
-        enabled: elixirEnabled,
-        initialCount: elixirInitialCount,
-        perVersion: elixirPerVersion,
-        targetPart: elixirTargetPart,
-        targetSet: elixirTargetSet,
-        targetMain: elixirTargetMain,
-        sub1: elixirSub1,
-        sub2: elixirSub2
-      };
-      let collectedGods: any[] = [];
-      const results: any[] = [];
-      const baselineResults: any[] = [];
-
-      for (let i = 0; i < trials; i++) {
-        if (i % 20 === 0) {
-          setSimProgress(Math.floor((i / trials) * 100));
-          await new Promise(r => setTimeout(r, 1));
-        }
-        const res = simulateUntilScore(
-          gameId,
-          targetScore,
-          scoreWeights,
-          subPool,
-          useStrongbox,
-          mainStats,
-          targetSets,
-          elixirConfig,
-          userPartScores,
-          gameId === "starrail" ? { targetSpeed, baseSpeed, currentSubSpeed } : null
-        );
-        results.push(res);
+        targetScore,
+        elixirEnabled,
+        elixirInitialCount,
+        elixirPerVersion,
+        elixirTargetPart,
+        elixirTargetSet,
+        elixirTargetMain,
+        elixirSub1,
+        elixirSub2,
         
-        if (elixirEnabled && i < 50) {
-          const base = simulateUntilScore(
-            gameId,
-            targetScore,
-            scoreWeights,
-            subPool,
-            useStrongbox,
-            mainStats,
-            targetSets,
-            { ...elixirConfig, enabled: false },
-            userPartScores,
-            gameId === "starrail" ? { targetSpeed, baseSpeed, currentSubSpeed } : null
-          );
-          baselineResults.push(base);
-        }
-
-        if (res.godPieces && res.godPieces.length > 0) {
-          collectedGods.push(...res.godPieces);
-          setLatestGodPiece(res.godPieces[res.godPieces.length - 1]);
-        }
-      }
-      results.sort((a, b) => a.attempts - b.attempts);
-      baselineResults.sort((a, b) => a.attempts - b.attempts);
-      setSortedResults(results);
-      setLuckPercentile(50);
-      collectedGods.sort((a, b) => b.score - a.score);
-      setAllGodPieces(collectedGods.slice(0, 10));
-      
-      const medianRes = results[Math.floor(trials / 2)];
-      const top10Res = results[Math.floor(trials * 0.1)];
-      const bottom10Res = results[Math.floor(trials * 0.9)];
-      const medianBase = baselineResults.length > 0 ? baselineResults[Math.floor(baselineResults.length / 2)] : null;
-
-      const sortedMinus10 = [...results].sort((a, b) => a.attemptsMinus10 - b.attemptsMinus10);
-      const medianMinus10 = Math.ceil((sortedMinus10[Math.floor(trials / 2)].attemptsMinus10 * staminaCost) / staminaPerDay);
-      const worst5Days = Math.ceil((results[Math.floor(trials * 0.95)].attempts * staminaCost) / staminaPerDay);
-  
-      const finalRes = {
-        type: "target",
-        median: Math.ceil((medianRes.attempts * staminaCost) / staminaPerDay),
-        top10: Math.ceil((top10Res.attempts * staminaCost) / staminaPerDay),
-        bottom10: Math.ceil((bottom10Res.attempts * staminaCost) / staminaPerDay),
-        medianWithoutElixir: medianBase ? Math.ceil((medianBase.attempts * staminaCost) / staminaPerDay) : null,
-        medianMinus10,
-        worst5Days,
-        pieces: medianRes.pieces,
-        trials
-      };
-      setResult(finalRes);
-      saveHistory(finalRes);
+        // damage用パラメータ
+        baseWhite,
+        flatStatId,
+        percentStatId,
+        baseOtherVal,
+        baseOtherCritRate,
+        baseOtherCritDmg,
+        baseOtherDmgBonus,
+        dmgBonusStatId,
+        currentDmg,
+        overrideDays
+      });
     } else {
-      const activeDays = (simMode === "period" || simMode === "damage" ? (overrideDays || days) : days);
-      const totalAttempts = Math.floor((activeDays * staminaPerDay) / staminaCost);
-      const elixirConfig = {
-        enabled: elixirEnabled,
-        initialCount: elixirInitialCount,
-        perVersion: elixirPerVersion,
-        targetPart: elixirTargetPart,
-        targetSet: elixirTargetSet,
-        targetMain: elixirTargetMain,
-        sub1: elixirSub1,
-        sub2: elixirSub2
-      };
-
-      // damageモード特有の逆算処理
-      let baseWhite = 800;
-      let percentStatId: string = STAT_IDS.ATK_PER;
-      let flatStatId: string = STAT_IDS.ATK_FLAT;
-      let baseOtherVal = 0;
-      let baseOtherCritRate = 0;
-      let baseOtherCritDmg = 0;
-      let baseOtherDmgBonus = 0;
-      let dmgBonusStatId: string = STAT_IDS.PYRO_DMG;
-      let currentDmg = 0;
-
-      if (simMode === "damage") {
-        const charData = config.characters.find(c => c.name === characterName);
-        const bStats = charData?.defaults?.baseStats || {};
-        const scaling = bStats.scalingMode || "atk";
-        
-        if (scaling === "hp") {
-          baseWhite = bStats.hp || DEFAULT_BASE_STATS.hp;
-          percentStatId = STAT_IDS.HP_PER;
-          flatStatId = STAT_IDS.HP_FLAT;
-        } else if (scaling === "def") {
-          baseWhite = bStats.def || DEFAULT_BASE_STATS.def;
-          percentStatId = STAT_IDS.DEF_PER;
-          flatStatId = STAT_IDS.DEF_FLAT;
-        } else if (scaling === "em") {
-          baseWhite = 1;
-          percentStatId = "none";
-          flatStatId = STAT_IDS.EM;
-        } else {
-          baseWhite = bStats.atk || DEFAULT_BASE_STATS.atk;
-          percentStatId = STAT_IDS.ATK_PER;
-          flatStatId = STAT_IDS.ATK_FLAT;
-        }
-
-        const currentArtStats = estimateCurrentArtifactStats();
-        const currentArtValFlat = currentArtStats[flatStatId] || 0;
-        const currentArtValPer = currentArtStats[percentStatId] || 0;
-        const currentArtValTotal = currentArtValFlat + (currentArtValPer * baseWhite) / 100;
-
-        const currentArtCritRate = currentArtStats[STAT_IDS.CRIT_RATE] || 0;
-        const currentArtCritDmg = currentArtStats[STAT_IDS.CRIT_DMG] || 0;
-        
-        const elementalDmgKeys = [
-          STAT_IDS.PYRO_DMG, STAT_IDS.HYDRO_DMG, STAT_IDS.ANEMO_DMG, STAT_IDS.ELECTRO_DMG,
-          STAT_IDS.DENDRO_DMG, STAT_IDS.CRYO_DMG, STAT_IDS.GEO_DMG, STAT_IDS.PHYSICAL_DMG
-        ];
-        const cupMain = mainStats["空の杯"] || mainStats["次元界オーブ"] || mainStats["スロット5"] || "";
-        const matchedDmgBonus = elementalDmgKeys.find(k => k === cupMain);
-        if (matchedDmgBonus) {
-          dmgBonusStatId = matchedDmgBonus;
-        }
-        const currentArtDmgBonus = currentArtStats[dmgBonusStatId] || 0;
-
-        baseOtherVal = currentBaseVal - currentArtValTotal;
-        baseOtherCritRate = currentCritRate - currentArtCritRate;
-        baseOtherCritDmg = currentCritDmg - currentArtCritDmg;
-        baseOtherDmgBonus = currentDmgBonus - currentArtDmgBonus;
-        currentDmg = calculateDamageExpectation(currentBaseVal, currentCritRate, currentCritDmg, currentDmgBonus);
-      }
-
-      let collectedGods: any[] = [];
-      const results: {
-        score: number, 
-        pieces: any, 
-        godPieces?: any[], 
-        scoreBeforeElixir?: number,
-        damage?: number,
-        afterStats?: any
-      }[] = [];
-
-      for (let i = 0; i < trials; i++) {
-        if (i % 10 === 0) {
-          setSimProgress(Math.floor((i / trials) * 100));
-          await new Promise(r => setTimeout(r, 1));
-        }
-        const res = simulateFixedAttempts(
-          gameId,
-          totalAttempts,
-          staminaPerDay,
-          scoreWeights,
-          subPool,
-          useStrongbox,
-          mainStats,
-          targetSets,
-          elixirConfig,
-          simMode === "period" || simMode === "damage" ? userPartScores : null,
-          gameId === "starrail" ? { targetSpeed, baseSpeed, currentSubSpeed } : null
-        );
-
-        let trialDmg = 0;
-        let trialStats: any = null;
-
-        if (simMode === "damage") {
-          const afterArtStats = calculateTotalStats(gameId, res.pieces);
-          const afterArtValFlat = afterArtStats[flatStatId] || 0;
-          const afterArtValPer = afterArtStats[percentStatId] || 0;
-          const afterArtValTotal = afterArtValFlat + (afterArtValPer * baseWhite) / 100;
-
-          const afterArtCritRate = afterArtStats[STAT_IDS.CRIT_RATE] || 0;
-          const afterArtCritDmg = afterArtStats[STAT_IDS.CRIT_DMG] || 0;
-          const afterArtDmgBonus = afterArtStats[dmgBonusStatId] || 0;
-
-          const afterTotalVal = baseOtherVal + afterArtValTotal;
-          const afterTotalCritRate = baseOtherCritRate + afterArtCritRate;
-          const afterTotalCritDmg = baseOtherCritDmg + afterArtCritDmg;
-          const afterTotalDmgBonus = baseOtherDmgBonus + afterArtDmgBonus;
-
-          trialDmg = calculateDamageExpectation(afterTotalVal, afterTotalCritRate, afterTotalCritDmg, afterTotalDmgBonus);
-          trialStats = {
-            baseVal: afterTotalVal,
-            critRate: afterTotalCritRate,
-            critDmg: afterTotalCritDmg,
-            dmgBonus: afterTotalDmgBonus
-          };
-        }
-
-        results.push({
-          ...res,
-          damage: trialDmg,
-          afterStats: trialStats
-        });
-
-        if (res.godPieces && res.godPieces.length > 0) {
-          collectedGods.push(...res.godPieces);
-          setLatestGodPiece(res.godPieces[res.godPieces.length - 1]);
-        }
-      }
-
-      if (simMode === "damage") {
-        results.sort((a, b) => (b.damage || 0) - (a.damage || 0));
-      } else {
-        results.sort((a, b) => b.score - a.score);
-      }
-
-      setSortedResults(results);
-      setLuckPercentile(50);
-      collectedGods.sort((a, b) => b.score - a.score);
-      setAllGodPieces(collectedGods.slice(0, 10));
-      
-      if (simMode === "damage") {
-        const medianRes = results[Math.floor(trials / 2)];
-        const top10Res = results[Math.floor(trials * 0.1)];
-        const bottom10Res = results[Math.floor(trials * 0.9)];
-        const worst5Dmg = results[Math.floor(trials * 0.95)].damage || 0;
-
-        const finalRes = {
-          type: "damage",
-          currentDmg,
-          median: medianRes.damage || 0,
-          top10: top10Res.damage || 0,
-          bottom10: bottom10Res.damage || 0,
-          worst5Dmg,
-          pieces: medianRes.pieces,
-          top10Pieces: top10Res.pieces,
-          bottom10Pieces: bottom10Res.pieces,
-          medianStats: medianRes.afterStats,
-          top10Stats: top10Res.afterStats,
-          bottom10Stats: bottom10Res.afterStats,
-          trials
-        };
-        setResult(finalRes);
-        saveHistory(finalRes);
-      } else if (simMode === "period") {
-        const medianRes = results[Math.floor(trials / 2)];
-        const top10Res = results[Math.floor(trials * 0.1)];
-        const bottom10Res = results[Math.floor(trials * 0.9)];
-        const worst5Score = results[Math.floor(trials * 0.95)].score;
-        const avgBonus = results.reduce((acc, r) => acc + (r.score - (r.scoreBeforeElixir || r.score)), 0) / trials;
-
-        const finalRes = {
-          type: "period",
-          median: medianRes.score,
-          top10: top10Res.score,
-          bottom10: bottom10Res.score,
-          worst5Score,
-          elixirBonus: avgBonus,
-          pieces: medianRes.pieces,
-          top10Pieces: top10Res.pieces,
-          bottom10Pieces: bottom10Res.pieces,
-          rawScores: results.map(r => r.score),
-          trials
-        };
-        setResult(finalRes);
-        saveHistory(finalRes);
-      } else {
-        const userTotal = Object.values(userPartScores).reduce((a, b) => a + b, 0);
-        const belowCount = results.filter(r => r.score <= userTotal).length;
-        const percentile = Math.max(0.1, 100 - (belowCount / trials) * 100);
-        const finalRes = {
-          type: "rank",
-          percentile,
-          userScore: userTotal,
-          median: results[Math.floor(trials / 2)].score,
-          pieces: results[Math.floor(trials / 2)].pieces,
-          trials
-        };
-        setResult(finalRes);
-        saveHistory(finalRes);
-      }
+      console.error("Worker is not initialized");
+      setIsSimulating(false);
     }
-
-    setSimProgress(100);
-    setIsSimulating(false);
   };
 
   const snsCardRef = useRef<HTMLDivElement>(null);
@@ -2145,7 +1911,7 @@ export default function Home() {
                             </button>
                           </div>
                           <div className="flex flex-wrap gap-1 mb-2">
-                            {(gameId === "genshin" ? [160, 180, 200, 220, 240] : [360, 390, 420, 450, 480]).map(val => (
+                            {(gameId === "genshin" ? [160, 180, 200, 220] : [360, 390, 420, 450, 480]).map(val => (
                               <button
                                 key={val}
                                 type="button"
@@ -2982,6 +2748,20 @@ export default function Home() {
                     </div>
                   </div>
                   <ChevronRight size={16} className="text-emerald-500 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link 
+                  href="/chronicle" 
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="flex items-center justify-between p-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl group hover:bg-purple-500/20 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <History size={20} className="text-purple-400" />
+                    <div>
+                      <p className="text-sm font-black text-white">{lang === 'ja' ? '厳選記録' : 'Chronicle'}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Artifact History</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-purple-400 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
               <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2">Sim History</p>
