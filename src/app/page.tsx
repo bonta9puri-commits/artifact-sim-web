@@ -1594,12 +1594,10 @@ export default function Home() {
               <div className="space-y-4">
                 {/* モード切り替え (アコーディオンから出して常時表示) */}
                 <div className="flex flex-col gap-2 bg-slate-950/30 p-2.5 rounded-2xl border border-slate-800/80">
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button type="button" onClick={() => setSimMode("target")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "target" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('target')}</button>
                     <button type="button" onClick={() => setSimMode("period")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "period" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('period')}</button>
-                    <button type="button" onClick={() => setSimMode("rank")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "rank" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('rank')}</button>
                     <button type="button" onClick={() => setSimMode("upgrade")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "upgrade" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('upgrade')}</button>
-                    <button type="button" onClick={() => setSimMode("damage")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "damage" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('damage')}</button>
                     <button type="button" onClick={() => setSimMode("roll")} className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all ${simMode === "roll" ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-750"}`}>{t('roll')}</button>
                   </div>
                 </div>
