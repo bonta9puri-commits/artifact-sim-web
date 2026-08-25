@@ -2683,7 +2683,7 @@ export default function Home() {
                   <span>{lang === 'ja' ? 'リンクをコピー' : 'Copy Share Link'}</span>
                 </button>
                 <a 
-                  href="https://www.youtube.com/channel/UCl9ZmeECCvInf8XiNSWduuA" 
+                  href="https://www.youtube.com/@%E3%83%9D%E3%82%A6%E3%83%AF%E3%83%BC-k5k" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="flex items-center gap-2 px-6 py-3 bg-[#ff0000] hover:bg-[#cc0000] text-white font-black text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all"
